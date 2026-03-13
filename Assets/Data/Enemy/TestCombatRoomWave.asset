@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 785d4f5d233da034496f8ad678d9b0d6, type: 3}
+  m_Name: TestCombatRoomWave
+  m_EditorClassIdentifier: 
+  waveId: test_combat_room_wave
+  encounterTier: 0
+  entries:
+  - enemyId: chaser
+    enemyPrefab: {fileID: 930000106, guid: c7f3af65372d46ee83fd98579e23720d, type: 3}
+    count: 2
+    difficultyCost: 1

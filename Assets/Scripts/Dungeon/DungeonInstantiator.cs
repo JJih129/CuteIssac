@@ -1,0 +1,241 @@
+using System;
+using System.Collections.Generic;
+using CuteIssac.Data.Dungeon;
+using CuteIssac.Player;
+using CuteIssac.Room;
+using UnityEngine;
+
+namespace CuteIssac.Dungeon
+{
+    /// <summary>
+    /// Converts generated dungeon data into real scene objects.
+    /// Generation stays data-only, while this class owns prefab creation, door wiring, and cleanup for one instantiated floor.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class DungeonInstantiator : MonoBehaviour
+    {
+        [Header("Scene Targets")]
+        [SerializeField] private Transform roomsRoot;
+        [SerializeField] private RoomNavigationController roomNavigationController;
+        [SerializeField] private PlayerController playerController;
+
+        [Header("Placement")]
+        [SerializeField] private Vector2 roomWorldSpacing = new(40f, 24f);
+        [SerializeField] private bool clearPreviousRoomsBeforeInstantiate = true;
+        [SerializeField] private bool movePlayerToStartRoom = true;
+
+        public event Action<DungeonInstantiationResult> DungeonInstantiated;
+
+        public DungeonInstantiationResult CurrentInstance { get; private set; }
+
+        public DungeonInstantiationResult InstantiateDungeon(DungeonMap dungeonMap)
+        {
+            if (dungeonMap == null)
+            {
+                Debug.LogError("DungeonInstantiator requires a DungeonMap.");
+                return null;
+            }
+
+            if (clearPreviousRoomsBeforeInstantiate)
+            {
+                ClearInstantiatedDungeon();
+            }
+
+            Transform targetRoot = EnsureRoomsRoot();
+            DungeonInstantiationResult result = new(dungeonMap, targetRoot);
+
+            InstantiateRooms(dungeonMap, result, targetRoot);
+            WireDoors(dungeonMap, result);
+            ApplyNavigation(result);
+
+            CurrentInstance = result;
+            DungeonInstantiated?.Invoke(result);
+            return result;
+        }
+
+        [ContextMenu("Clear Instantiated Dungeon")]
+        public void ClearInstantiatedDungeon()
+        {
+            if (roomsRoot == null)
+            {
+                return;
+            }
+
+            for (int i = roomsRoot.childCount - 1; i >= 0; i--)
+            {
+                GameObject child = roomsRoot.GetChild(i).gameObject;
+
+                if (Application.isPlaying)
+                {
+                    Destroy(child);
+                }
+                else
+                {
+                    DestroyImmediate(child);
+                }
+            }
+
+            CurrentInstance = null;
+        }
+
+        private Transform EnsureRoomsRoot()
+        {
+            if (roomsRoot != null)
+            {
+                return roomsRoot;
+            }
+
+            GameObject rootObject = new("GeneratedRooms");
+            rootObject.transform.SetParent(transform, false);
+            roomsRoot = rootObject.transform;
+            return roomsRoot;
+        }
+
+        private void InstantiateRooms(DungeonMap dungeonMap, DungeonInstantiationResult result, Transform targetRoot)
+        {
+            foreach (KeyValuePair<GridPosition, DungeonRoomNode> roomPair in dungeonMap.RoomsByPosition)
+            {
+                DungeonRoomNode roomNode = roomPair.Value;
+                RoomLayoutData layout = roomNode.ResolvedLayout;
+
+                if (layout == null || layout.RoomPrefab == null)
+                {
+                    Debug.LogWarning($"DungeonInstantiator skipped room {roomNode.GridPosition} because no resolved room layout prefab was available.", this);
+                    continue;
+                }
+
+                Vector3 worldPosition = ToWorldPosition(roomNode.GridPosition);
+                RoomController roomInstance = Instantiate(layout.RoomPrefab, worldPosition, Quaternion.identity, targetRoot);
+                roomInstance.name = BuildRoomName(roomNode, layout);
+                ConfigureGeneratedRoom(roomInstance, roomNode);
+                result.RegisterRoom(roomNode.GridPosition, roomInstance, roomNode.RoomType == RoomType.Start);
+            }
+        }
+
+        private void WireDoors(DungeonMap dungeonMap, DungeonInstantiationResult result)
+        {
+            foreach (RoomController roomController in result.BuildRoomArray())
+            {
+                if (roomController == null)
+                {
+                    continue;
+                }
+
+                IReadOnlyList<RoomDoor> roomDoors = roomController.RoomDoors;
+
+                for (int i = 0; i < roomDoors.Count; i++)
+                {
+                    if (roomDoors[i] != null)
+                    {
+                        roomDoors[i].SetConnection(null, null);
+                    }
+                }
+            }
+
+            foreach (KeyValuePair<GridPosition, DungeonRoomNode> roomPair in dungeonMap.RoomsByPosition)
+            {
+                DungeonRoomNode roomNode = roomPair.Value;
+
+                if (!result.TryGetRoom(roomNode.GridPosition, out RoomController roomController))
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < roomNode.Connections.Count; i++)
+                {
+                    RoomConnection connection = roomNode.Connections[i];
+
+                    if (!result.TryGetRoom(connection.TargetPosition, out RoomController targetRoom))
+                    {
+                        continue;
+                    }
+
+                    if (!roomController.TryGetDoor(connection.Direction, out RoomDoor sourceDoor))
+                    {
+                        Debug.LogWarning($"Room {roomController.name} is missing a {connection.Direction} door for dungeon wiring.", roomController);
+                        continue;
+                    }
+
+                    RoomDirection oppositeDirection = RoomDirectionUtility.Opposite(connection.Direction);
+
+                    if (!targetRoom.TryGetDoor(oppositeDirection, out RoomDoor targetDoor))
+                    {
+                        Debug.LogWarning($"Room {targetRoom.name} is missing a {oppositeDirection} door for dungeon wiring.", targetRoom);
+                        continue;
+                    }
+
+                    sourceDoor.SetConnection(targetRoom, targetDoor);
+                }
+            }
+        }
+
+        private void ApplyNavigation(DungeonInstantiationResult result)
+        {
+            if (result == null || result.StartRoom == null)
+            {
+                return;
+            }
+
+            if (roomNavigationController == null)
+            {
+                roomNavigationController = FindFirstObjectByType<RoomNavigationController>(FindObjectsInactive.Exclude);
+            }
+
+            if (playerController == null)
+            {
+                playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            }
+
+            if (roomNavigationController != null)
+            {
+                roomNavigationController.ConfigureGeneratedRooms(result.BuildRoomArray(), result.StartRoom, playerController);
+                return;
+            }
+
+            if (movePlayerToStartRoom && playerController != null)
+            {
+                playerController.transform.position = result.StartRoom.DefaultPlayerSpawnPosition;
+            }
+        }
+
+        private Vector3 ToWorldPosition(GridPosition gridPosition)
+        {
+            return transform.position + new Vector3(gridPosition.X * roomWorldSpacing.x, gridPosition.Y * roomWorldSpacing.y, 0f);
+        }
+
+        private static void ConfigureGeneratedRoom(RoomController roomInstance, DungeonRoomNode roomNode)
+        {
+            if (roomInstance == null || roomNode == null)
+            {
+                return;
+            }
+
+            RoomEnemySpawner roomEnemySpawner = roomInstance.GetComponent<RoomEnemySpawner>();
+
+            if (roomEnemySpawner != null)
+            {
+                roomEnemySpawner.ConfigureEncounter(roomNode.RoomType, roomNode.AssignedEnemyWave);
+            }
+
+            RoomRewardSpawner roomRewardSpawner = roomInstance.GetComponent<RoomRewardSpawner>();
+
+            if (roomRewardSpawner != null)
+            {
+                roomRewardSpawner.ConfigureRoomType(roomNode.RoomType);
+            }
+
+            RoomTypeContentController roomTypeContentController = roomInstance.GetComponent<RoomTypeContentController>();
+
+            if (roomTypeContentController != null)
+            {
+                roomTypeContentController.ConfigureRoom(roomNode.RoomType, roomNode.RoomData);
+            }
+        }
+
+        private static string BuildRoomName(DungeonRoomNode roomNode, RoomLayoutData layout)
+        {
+            string layoutId = !string.IsNullOrWhiteSpace(layout.LayoutId) ? layout.LayoutId : "layout";
+            return $"{roomNode.RoomType}_{layoutId}_{roomNode.GridPosition.X}_{roomNode.GridPosition.Y}";
+        }
+    }
+}

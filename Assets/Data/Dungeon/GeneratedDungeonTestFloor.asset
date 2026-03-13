@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ba28ff6e1065e2409772ddd4a6e54d0, type: 3}
+  m_Name: GeneratedDungeonTestFloor
+  m_EditorClassIdentifier: 
+  floorIndex: 1
+  minNormalRoomCount: 4
+  maxNormalRoomCount: 4
+  minimumBossDistanceFromStart: 2
+  treasureRoomCount: 1
+  minimumTreasureDistanceFromStart: 2
+  shopRoomCount: 1
+  minimumShopDistanceFromStart: 2
+  secretRoomCount: 0
+  minimumSecretDistanceFromStart: 2
+  minimumSecretAdjacentRoomCount: 2
+  startRoomPool:
+    roomType: 0
+    candidateRooms:
+    - {fileID: 11400000, guid: 5d3d9246b38f42fa8fdc7b31e361be21, type: 2}
+    minimumCount: 1
+    maximumCount: 1
+  bossRoomPool:
+    roomType: 4
+    candidateRooms:
+    - {fileID: 11400000, guid: de1c5a8ac17a4badb74c04152f9be8ff, type: 2}
+    minimumCount: 0
+    maximumCount: 1
+  optionalRoomPools:
+  - roomType: 1
+    candidateRooms:
+    - {fileID: 11400000, guid: 9da93e3110d74c4eb00a67f7fbcc3d1c, type: 2}
+    minimumCount: 1
+    maximumCount: 4
+  - roomType: 2
+    candidateRooms:
+    - {fileID: 11400000, guid: 6061ead4d86b47d9b594fcf76d7c712d, type: 2}
+    minimumCount: 0
+    maximumCount: 1
+  - roomType: 3
+    candidateRooms:
+    - {fileID: 11400000, guid: fe63156dfaa74f9e8c34ca50ffb69f68, type: 2}
+    minimumCount: 0
+    maximumCount: 1
+  sharedLayoutSets:
+  - {fileID: 11400000, guid: 92d4a1cfb88e466f800693623c1cc852, type: 2}
+  enemyPool: {fileID: 0}
+  normalRoomEnemyBudget: 4
+  eliteRoomEnemyBudget: 8
+  bossRoomEnemyBudget: 14
+  normalRoomDistanceBudgetBonusPerStep: 1
+  encounterBudgetMultiplier: 1

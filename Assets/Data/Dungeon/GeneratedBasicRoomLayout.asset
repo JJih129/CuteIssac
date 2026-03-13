@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1bb08b74fa4bad94ea254ce7153834a2, type: 3}
+  m_Name: GeneratedBasicRoomLayout
+  m_EditorClassIdentifier: 
+  layoutId: generated_basic_room
+  roomPrefab: {fileID: 980000103, guid: 4b1662f79e08429399d5697c4d17c7db, type: 3}
+  supportedRoomTypes: 00000000010000000200000003000000040000000500000006000000
+  supportedDoorMask: 15
+  selectionWeight: 1
