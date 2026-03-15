@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d9dc04b60744be6af8d0d25b510a611, type: 3}
+  m_Name: A001_FreezeBell
+  m_EditorClassIdentifier: 
+  itemId: active_freeze_bell
+  displayName: Freeze Bell
+  description: Ring once to halt the room for a short breath.
+  icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10011, type: 3}
+  chargeRule: 0
+  maxCharge: 5
+  chargePerRoomClear: 1
+  chargePerEnemyKill: 1
+  startFullyCharged: 0
+  effect: {fileID: 11400000, guid: 8d286375b80544aaaf9a3dc0cb115dc0, type: 2}

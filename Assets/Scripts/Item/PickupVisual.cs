@@ -1,3 +1,4 @@
+using CuteIssac.Data.Visual;
 using UnityEngine;
 
 namespace CuteIssac.Item
@@ -27,6 +28,10 @@ namespace CuteIssac.Item
         [Tooltip("Optional animator for idle, hover, or collect animations.")]
         [SerializeField] private Animator bodyAnimator;
 
+        [Header("Visual Set")]
+        [Tooltip("Optional visual asset set. Swap this in the inspector to replace pickup art without touching logic.")]
+        [SerializeField] private PickupVisualSet visualSet;
+
         [Header("Effect Anchors")]
         [Tooltip("Optional anchor for a collect burst or sparkle effect.")]
         [SerializeField] private Transform pickupEffectAnchor;
@@ -51,12 +56,32 @@ namespace CuteIssac.Item
         private Vector3 _floatingLocalBasePosition;
         private bool _warnedMissingRenderer;
         private bool _collected;
+        private bool _hasCapturedDefaultState;
+        private Sprite _defaultBodySprite;
+        private RuntimeAnimatorController _defaultAnimatorController;
+        private Color _defaultBaseColor;
+        private Color _defaultCollectedColor;
+        private bool _hasRuntimeVisualOverride;
+        private Sprite _runtimeBodySprite;
+        private RuntimeAnimatorController _runtimeAnimatorController;
+        private Color _runtimeBaseColor;
+        private Color _runtimeCollectedColor;
 
         private void Awake()
         {
             ResolveReferences();
-            _floatingLocalBasePosition = (floatingRoot != null ? floatingRoot : visualRoot)?.localPosition ?? Vector3.zero;
-            ApplyBodyColor(baseColor);
+            ApplyConfiguredVisualSet();
+            CaptureFloatingBasePosition();
+            ResetPresentation();
+        }
+
+        private void OnEnable()
+        {
+            ResolveReferences();
+            ClearRuntimeVisualOverride();
+            ApplyConfiguredVisualSet();
+            CaptureFloatingBasePosition();
+            ResetPresentation();
         }
 
         private void Update()
@@ -91,6 +116,72 @@ namespace CuteIssac.Item
             {
                 bodyAnimator.SetTrigger(collectedTriggerParameter);
             }
+
+            if (visualRoot != null)
+            {
+                visualRoot.gameObject.SetActive(false);
+            }
+        }
+
+        public void ResetPresentation()
+        {
+            _collected = false;
+
+            Transform floatTarget = floatingRoot != null ? floatingRoot : visualRoot;
+
+            if (floatTarget != null)
+            {
+                if (visualRoot != null)
+                {
+                    visualRoot.gameObject.SetActive(true);
+                }
+
+                floatTarget.localPosition = _floatingLocalBasePosition;
+            }
+
+            ApplyBodyColor(baseColor);
+        }
+
+        public void ApplyVisualSet(PickupVisualSet nextVisualSet)
+        {
+            visualSet = nextVisualSet;
+            ApplyConfiguredVisualSet();
+            ResetPresentation();
+        }
+
+        public void ApplyRuntimeVisual(Sprite bodySprite, Color runtimeBaseColor, Color runtimeCollectedColor, RuntimeAnimatorController runtimeAnimatorController = null)
+        {
+            ResolveReferences();
+            _hasRuntimeVisualOverride = true;
+            _runtimeBodySprite = bodySprite;
+            _runtimeAnimatorController = runtimeAnimatorController;
+            _runtimeBaseColor = runtimeBaseColor;
+            _runtimeCollectedColor = runtimeCollectedColor;
+            ApplyConfiguredVisualSet();
+            ResetPresentation();
+        }
+
+        public void ClearRuntimeVisualOverride()
+        {
+            _hasRuntimeVisualOverride = false;
+            _runtimeBodySprite = null;
+            _runtimeAnimatorController = null;
+
+            if (_hasCapturedDefaultState)
+            {
+                if (bodySpriteRenderer != null)
+                {
+                    bodySpriteRenderer.sprite = _defaultBodySprite;
+                }
+
+                if (bodyAnimator != null)
+                {
+                    bodyAnimator.runtimeAnimatorController = _defaultAnimatorController;
+                }
+
+                baseColor = _defaultBaseColor;
+                collectedColor = _defaultCollectedColor;
+            }
         }
 
         private void ResolveReferences()
@@ -116,6 +207,58 @@ namespace CuteIssac.Item
             }
         }
 
+        private void ApplyConfiguredVisualSet()
+        {
+            if (_hasRuntimeVisualOverride)
+            {
+                if (bodySpriteRenderer != null && _runtimeBodySprite != null)
+                {
+                    bodySpriteRenderer.sprite = _runtimeBodySprite;
+                }
+
+                if (bodyAnimator != null)
+                {
+                    bodyAnimator.runtimeAnimatorController = _runtimeAnimatorController;
+                }
+
+                baseColor = _runtimeBaseColor;
+                collectedColor = _runtimeCollectedColor;
+                return;
+            }
+
+            if (visualSet != null)
+            {
+                if (bodySpriteRenderer != null && visualSet.BodySprite != null)
+                {
+                    bodySpriteRenderer.sprite = visualSet.BodySprite;
+                }
+
+                if (bodyAnimator != null && visualSet.AnimatorController != null)
+                {
+                    bodyAnimator.runtimeAnimatorController = visualSet.AnimatorController;
+                }
+
+                baseColor = visualSet.BaseColor;
+                collectedColor = visualSet.CollectedColor;
+            }
+
+            CaptureDefaultState();
+        }
+
+        private void CaptureDefaultState()
+        {
+            if (_hasRuntimeVisualOverride)
+            {
+                return;
+            }
+
+            _defaultBodySprite = bodySpriteRenderer != null ? bodySpriteRenderer.sprite : null;
+            _defaultAnimatorController = bodyAnimator != null ? bodyAnimator.runtimeAnimatorController : null;
+            _defaultBaseColor = baseColor;
+            _defaultCollectedColor = collectedColor;
+            _hasCapturedDefaultState = true;
+        }
+
         private void ApplyBodyColor(Color color)
         {
             if (bodySpriteRenderer == null)
@@ -132,6 +275,11 @@ namespace CuteIssac.Item
             bodySpriteRenderer.color = color;
         }
 
+        private void CaptureFloatingBasePosition()
+        {
+            _floatingLocalBasePosition = (floatingRoot != null ? floatingRoot : visualRoot)?.localPosition ?? Vector3.zero;
+        }
+
         private void Reset()
         {
             ResolveReferences();
@@ -140,6 +288,7 @@ namespace CuteIssac.Item
         private void OnValidate()
         {
             ResolveReferences();
+            ApplyConfiguredVisualSet();
         }
     }
 }

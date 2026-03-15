@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 971b35e7528a79a49ba40271396635ed, type: 3}
+  m_Name: BossPassiveItem
+  m_EditorClassIdentifier: 
+  itemId: boss_crown
+  displayName: Boss Crown
+  description: Boss-room passive reward that grants piercing, light homing, and a strong damage spike.
+  icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10010, type: 3}
+  rarity: 2
+  unlockedByDefault: 0
+  unlockKey: unlock.item.boss_crown
+  synergyTags:
+  - 4
+  - 5
+  - 1
+  statModifiers:
+  - statType: 1
+    operation: 0
+    value: 1
+  - statType: 0
+    operation: 0
+    value: 3
+  - statType: 2
+    operation: 0
+    value: -0.12
+  projectileModifiers:
+  - modifierType: 4
+    operation: 0
+    value: 1
+  - modifierType: 5
+    operation: 0
+    value: 0.7
+  gameplayEventEffects: []

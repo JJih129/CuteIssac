@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CuteIssac.Data.Dungeon;
+using CuteIssac.Data.Item;
 using UnityEngine;
 
 namespace CuteIssac.Data.Room
@@ -37,6 +38,8 @@ namespace CuteIssac.Data.Room
     {
         [SerializeField] private RoomType roomType = RoomType.Normal;
         [SerializeField] private RoomRewardTable rewardTableOverride;
+        [SerializeField] private ItemPoolData itemPoolOverride;
+        [SerializeField] private GameObject itemPickupPrefabOverride;
         [SerializeField] private GameObject entryContentPrefab;
         [SerializeField] private bool spawnContentOnFirstEntry = true;
         [SerializeField] private bool applyRoomTint;
@@ -44,6 +47,8 @@ namespace CuteIssac.Data.Room
 
         public RoomType RoomType => roomType;
         public RoomRewardTable RewardTableOverride => rewardTableOverride;
+        public ItemPoolData ItemPoolOverride => itemPoolOverride;
+        public GameObject ItemPickupPrefabOverride => itemPickupPrefabOverride;
         public GameObject EntryContentPrefab => entryContentPrefab;
         public bool SpawnContentOnFirstEntry => spawnContentOnFirstEntry && entryContentPrefab != null;
         public bool ApplyRoomTint => applyRoomTint;

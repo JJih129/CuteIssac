@@ -23,6 +23,7 @@ namespace CuteIssac.Dungeon
         [SerializeField] private Color shopRoomColor = new(0.3f, 0.95f, 0.82f, 0.9f);
         [SerializeField] private Color bossRoomColor = new(0.95f, 0.3f, 0.3f, 0.9f);
         [SerializeField] private Color secretRoomColor = new(0.75f, 0.45f, 0.95f, 0.9f);
+        [SerializeField] private Color curseRoomColor = new(0.84f, 0.32f, 0.66f, 0.9f);
         [SerializeField] private Color connectionColor = new(1f, 0.85f, 0.2f, 1f);
 
         private DungeonMap _lastGeneratedMap;
@@ -79,6 +80,7 @@ namespace CuteIssac.Dungeon
                 RoomType.Shop => shopRoomColor,
                 RoomType.Boss => bossRoomColor,
                 RoomType.Secret => secretRoomColor,
+                RoomType.Curse => curseRoomColor,
                 _ => normalRoomColor
             };
         }

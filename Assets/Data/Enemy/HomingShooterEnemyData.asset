@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d36654f9d0634c82a9582bf31265c61e, type: 3}
+  m_Name: HomingShooterEnemyData
+  m_EditorClassIdentifier: 
+  enemyId: homing_shooter
+  moveSpeed: 1.82
+  maxHealth: 7
+  contactDamage: 0.4
+  visualSet: {fileID: 11400000, guid: 35e75c633f1843b08f0458d9cf77b28d, type: 2}
+  fireInterval: 1.55
+  telegraphDuration: 0.3
+  preferredRange: 6.2
+  retreatRange: 3.1
+  strafeBlend: 0.55
+  strafeSwapInterval: 1.02
+  moveSpeedWhileTelegraphing: 0.18
+  telegraphColor: {r: 0.5, g: 1, b: 0.74, a: 1}
+  panicBurstTriggerRange: 2.4
+  panicBurstProjectileCount: 3
+  panicBurstSpreadAngle: 30
+  panicBurstCooldown: 2.45
+  panicBurstTelegraphDuration: 0.22
+  panicBurstMoveSpeedWhileTelegraphing: 0.08
+  panicBurstTelegraphColor: {r: 1, g: 0.55, b: 0.24, a: 1}

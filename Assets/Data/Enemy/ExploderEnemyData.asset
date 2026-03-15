@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db99f2d5ff5d4ade89f6f592ba2ae377, type: 3}
+  m_Name: ExploderEnemyData
+  m_EditorClassIdentifier: 
+  enemyId: exploder
+  moveSpeed: 2.35
+  maxHealth: 7
+  contactDamage: 0
+  visualSet: {fileID: 11400000, guid: bcf4ba56fa16441380540f994d81dc1f, type: 2}
+  triggerRange: 1.55
+  windupDuration: 0.62
+  windupMoveSpeedMultiplier: 0.12
+  explosionDamage: 2
+  explosionRadius: 1.7
+  explosionKnockback: 8
+  chaseSpeedMultiplier: 1.2
+  telegraphColor: {r: 1, g: 0.28, b: 0.18, a: 1}

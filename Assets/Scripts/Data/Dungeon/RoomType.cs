@@ -12,6 +12,9 @@ namespace CuteIssac.Data.Dungeon
         Shop = 3,
         Boss = 4,
         Secret = 5,
-        Challenge = 6
+        Challenge = 6,
+        MiniBoss = 7,
+        Trap = 8,
+        Curse = 9
     }
 }

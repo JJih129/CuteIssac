@@ -9,8 +9,9 @@ namespace CuteIssac.Core.Run
         FrontEnd = 1,
         StartingRun = 2,
         InRun = 3,
-        Paused = 4,
-        Victory = 5,
-        Defeat = 6
+        TransitioningFloor = 4,
+        Paused = 5,
+        Victory = 6,
+        Defeat = 7
     }
 }

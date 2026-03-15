@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 971b35e7528a79a49ba40271396635ed, type: 3}
+  m_Name: Legendary_028
+  m_EditorClassIdentifier: 
+  itemType: 0
+  itemCategory: 3
+  flavorText: 
+  sourcePools: 000000000200000003000000
+  eventFlags: 
+  damageModifier: 0
+  tearsModifier: 0
+  speedModifier: 0
+  rangeModifier: 0
+  shotSpeedModifier: 0
+  luckModifier: 2
+  maxHealthModifier: 0
+  projectileFlags: 00000000
+  itemId: isaac_legendary_028
+  displayName: Starved Tooth of Echo
+  description: Raises luck. Shots pierce targets.
+  icon: {fileID: 0}
+  rarity: 3
+  unlockedByDefault: 1
+  unlockKey: 
+  itemTags: 04000000
+  statModifiers: []
+  projectileModifiers: []
+  gameplayEventEffects: []

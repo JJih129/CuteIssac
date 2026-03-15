@@ -16,5 +16,15 @@ namespace CuteIssac.Item
         {
             return health != null && health.RestoreHealth(healAmount);
         }
+
+        protected override string BuildPickupFeedbackLabel()
+        {
+            return $"+{healAmount:0.#} HP";
+        }
+
+        protected override Color ResolvePickupFeedbackColor()
+        {
+            return new Color(1f, 0.48f, 0.58f, 1f);
+        }
     }
 }

@@ -1,0 +1,202 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc744b88ec23dc746b1297ae9c2e12d9, type: 3}
+  m_Name: Floor2EnemyPool
+  m_EditorClassIdentifier: 
+  poolId: floor-2-enemy-pool
+  normalEnemies:
+  - enemyId: floor2_chaser
+    enemyPrefab: {fileID: 930000106, guid: c7f3af65372d46ee83fd98579e23720d, type: 3}
+    encounterTier: 0
+    selectionWeight: 3
+    difficultyCost: 1
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_shooter
+    enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
+    encounterTier: 0
+    selectionWeight: 4
+    difficultyCost: 2
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_dasher
+    enemyPrefab: {fileID: 930000106, guid: 4d1a46c92ce84e5dbfe67f5db3dd2bd3, type: 3}
+    encounterTier: 0
+    selectionWeight: 2
+    difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_spawner
+    enemyPrefab: {fileID: 930000106, guid: 2f67f9b2f0e4469b9ce5fba1c5ff8ec5, type: 3}
+    encounterTier: 0
+    selectionWeight: 2
+    difficultyCost: 4
+    unlockFloor: 2
+    unlockedByDefault: 0
+    unlockKey: unlock.enemy.spawner
+  - enemyId: floor2_turret
+    enemyPrefab: {fileID: 930000106, guid: 6e3a1826aa5b492c94f1bd574f6ad8a1, type: 3}
+    encounterTier: 0
+    selectionWeight: 2
+    difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_exploder
+    enemyPrefab: {fileID: 930000106, guid: 6164d8f90a01454085ee67522da78076, type: 3}
+    encounterTier: 0
+    selectionWeight: 2
+    difficultyCost: 2
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_shield
+    enemyPrefab: {fileID: 930000106, guid: c55f610e2f24492d8d19e2a9505d845d, type: 3}
+    encounterTier: 0
+    selectionWeight: 2
+    difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_homing_shooter
+    enemyPrefab: {fileID: 930000106, guid: 4beea86231f8424d9ff9c3f10b7bb8ca, type: 3}
+    encounterTier: 0
+    selectionWeight: 2
+    difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_burst_shooter
+    enemyPrefab: {fileID: 930000106, guid: 128f958fcf6f4743bbdc92522b42a92d, type: 3}
+    encounterTier: 0
+    selectionWeight: 2
+    difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_sniper
+    enemyPrefab: {fileID: 930000106, guid: 12be3871a2c04c89bc466e46791ea602, type: 3}
+    encounterTier: 0
+    selectionWeight: 1
+    difficultyCost: 4
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_mine_layer
+    enemyPrefab: {fileID: 930000106, guid: 5ef42a442165472a96088ab22a16bf70, type: 3}
+    encounterTier: 0
+    selectionWeight: 1
+    difficultyCost: 4
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_teleporter
+    enemyPrefab: {fileID: 930000106, guid: 7139cc0ba61f4d70a74451af85dc0d6b, type: 3}
+    encounterTier: 0
+    selectionWeight: 1
+    difficultyCost: 4
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_puller
+    enemyPrefab: {fileID: 930000106, guid: 6741b17e79a94f1cb74f51b6126d9d93, type: 3}
+    encounterTier: 0
+    selectionWeight: 1
+    difficultyCost: 4
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_splitter
+    enemyPrefab: {fileID: 930000106, guid: d4e70b23e9f56db7df24a0e7be340404, type: 3}
+    encounterTier: 0
+    selectionWeight: 1
+    difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_support_healer
+    enemyPrefab: {fileID: 930000106, guid: f7a6090ea34260d9e48bf0f7f6662606, type: 3}
+    encounterTier: 0
+    selectionWeight: 1
+    difficultyCost: 4
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_orbiter
+    enemyPrefab: {fileID: 930000106, guid: fcfd566b10f69ab3f1f52e956b3fc606, type: 3}
+    encounterTier: 0
+    selectionWeight: 2
+    difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  eliteEnemies:
+  - enemyId: floor2_shooter_elite
+    enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
+    encounterTier: 1
+    selectionWeight: 3
+    difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_dasher_elite
+    enemyPrefab: {fileID: 930000106, guid: 4d1a46c92ce84e5dbfe67f5db3dd2bd3, type: 3}
+    encounterTier: 1
+    selectionWeight: 4
+    difficultyCost: 4
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_fast_champion
+    enemyPrefab: {fileID: 930000106, guid: e14f566c219f50f9e1b178fa9b31b505, type: 3}
+    encounterTier: 1
+    selectionWeight: 2
+    difficultyCost: 4
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_tank_champion
+    enemyPrefab: {fileID: 930000106, guid: e251677d76e5897ff5f6cd4fe6f00405, type: 3}
+    encounterTier: 1
+    selectionWeight: 2
+    difficultyCost: 5
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_explosive_champion
+    enemyPrefab: {fileID: 930000106, guid: f59eab2bc1368e22e5fa125afb110505, type: 3}
+    encounterTier: 1
+    selectionWeight: 2
+    difficultyCost: 5
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_elite_summoner
+    enemyPrefab: {fileID: 930000106, guid: a167cf5784b144aeac085638f0d0c312, type: 3}
+    encounterTier: 1
+    selectionWeight: 2
+    difficultyCost: 5
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  bossEnemies:
+  - enemyId: floor2_boss_chaser
+    enemyPrefab: {fileID: 930000106, guid: 63cae6d6439d4bff9874379459d0a0dd, type: 3}
+    encounterTier: 2
+    selectionWeight: 1
+    difficultyCost: 7
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 

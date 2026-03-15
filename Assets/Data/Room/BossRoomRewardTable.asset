@@ -16,9 +16,9 @@ MonoBehaviour:
   maximumRewardSelections: 1
   allowDuplicateSelections: 0
   rewardEntries:
-  - rewardType: 4
-    pickupPrefab: {fileID: 950000100, guid: 6d4d78d4bfcb4f81ad8fa6654f0ce16b, type: 3}
-    quantity: 1
+  - rewardType: 3
+    pickupPrefab: {fileID: 950000100, guid: 3461c64892874842a0eceae16eaf17c0, type: 3}
+    quantity: 2
     weight: 1
     supportedRoomTypes:
     - 4

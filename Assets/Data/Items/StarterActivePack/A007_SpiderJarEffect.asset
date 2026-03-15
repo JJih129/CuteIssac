@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7552b3bf3cd44c2fad30799cfd279cab, type: 3}
+  m_Name: A007_SpiderJarEffect
+  m_EditorClassIdentifier: 
+  spiderMinionPrefab: {fileID: 990000103, guid: 18c5d441a6f84f2d8b0d0a9787c7d410, type: 3}
+  summonCount: 3
+  summonRadius: 0.9
+  reusePolicy: 0

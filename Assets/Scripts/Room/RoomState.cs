@@ -1,12 +1,15 @@
 namespace CuteIssac.Room
 {
     /// <summary>
-    /// Minimal room encounter states for the prototype.
+    /// Runtime room lifecycle states.
+    /// These stay coarse enough for current gameplay while separating entry, combat resolution, and reward completion.
     /// </summary>
     public enum RoomState
     {
         Idle = 0,
-        Combat = 1,
-        Cleared = 2
+        Entered = 1,
+        Combat = 2,
+        Resolved = 3,
+        Rewarded = 4
     }
 }

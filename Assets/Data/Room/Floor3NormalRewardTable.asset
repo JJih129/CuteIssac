@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4aa2805df8f741388162f72ad8c31de1, type: 3}
+  m_Name: Floor3NormalRewardTable
+  m_EditorClassIdentifier: 
+  minimumRewardSelections: 2
+  maximumRewardSelections: 2
+  allowDuplicateSelections: 0
+  rewardEntries:
+  - rewardType: 0
+    pickupPrefab: {fileID: 950000100, guid: bc5e4a5bb7b5484dac3ba8522f8d5f23, type: 3}
+    quantity: 5
+    weight: 4
+    supportedRoomTypes:
+    - 1
+  - rewardType: 1
+    pickupPrefab: {fileID: 950000100, guid: 5d2d349c6c4d4cb4bc2b0f94a8ea5e41, type: 3}
+    quantity: 1
+    weight: 2
+    supportedRoomTypes:
+    - 1
+  - rewardType: 2
+    pickupPrefab: {fileID: 950000100, guid: b4f92de5fc364a8683df6e375cb7d58c, type: 3}
+    quantity: 2
+    weight: 2
+    supportedRoomTypes:
+    - 1
+  - rewardType: 3
+    pickupPrefab: {fileID: 950000100, guid: 479c9f050d2c4fc0b63353bc129a978b, type: 3}
+    quantity: 1
+    weight: 1.5
+    supportedRoomTypes:
+    - 1
+  - rewardType: 4
+    pickupPrefab: {fileID: 950000100, guid: 6d4d78d4bfcb4f81ad8fa6654f0ce16b, type: 3}
+    quantity: 1
+    weight: 0.5
+    supportedRoomTypes:
+    - 1

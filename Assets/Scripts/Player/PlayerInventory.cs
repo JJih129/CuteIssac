@@ -14,7 +14,7 @@ namespace CuteIssac.Player
     {
         [Header("Starting Resources")]
         [SerializeField] [Min(0)] private int startingCoins;
-        [SerializeField] [Min(0)] private int startingKeys;
+        [SerializeField] [Min(0)] private int startingKeys = 1;
         [SerializeField] [Min(0)] private int startingBombs;
 
         [Header("Passive Items")]
@@ -54,6 +54,30 @@ namespace CuteIssac.Player
         public bool Contains(ItemData itemData)
         {
             return itemData != null && _passiveItems.Contains(itemData);
+        }
+
+        public void ApplyStartingLoadout(int coins, int keys, int bombs, IReadOnlyList<ItemData> passiveItems)
+        {
+            Coins = Mathf.Max(0, coins);
+            Keys = Mathf.Max(0, keys);
+            Bombs = Mathf.Max(0, bombs);
+            _passiveItems.Clear();
+
+            if (passiveItems != null)
+            {
+                for (int index = 0; index < passiveItems.Count; index++)
+                {
+                    ItemData itemData = passiveItems[index];
+
+                    if (itemData != null && !_passiveItems.Contains(itemData))
+                    {
+                        _passiveItems.Add(itemData);
+                    }
+                }
+            }
+
+            InventoryChanged?.Invoke();
+            NotifyResourcesChanged();
         }
 
         public void AddCoins(int amount)

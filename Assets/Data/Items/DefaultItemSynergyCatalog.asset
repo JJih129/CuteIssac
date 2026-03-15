@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b18a8db6ca247d4b3d58d7a97583f56, type: 3}
+  m_Name: DefaultItemSynergyCatalog
+  m_EditorClassIdentifier: 
+  definitions:
+  - synergyId: scatter_breach
+    displayName: Scatter Breach
+    requiredTags:
+    - 3
+    - 4
+    statModifiers:
+    - statType: 7
+      operation: 0
+      value: 1
+    projectileModifiers:
+    - modifierType: 4
+      operation: 0
+      value: 1
+    - modifierType: 2
+      operation: 0
+      value: 0.2
+  - synergyId: seeker_rush
+    displayName: Seeker Rush
+    requiredTags:
+    - 5
+    - 0
+    statModifiers:
+    - statType: 4
+      operation: 0
+      value: 4
+    projectileModifiers:
+    - modifierType: 5
+      operation: 1
+      value: 1.5
+    - modifierType: 0
+      operation: 1
+      value: 1.2
+  - synergyId: blood_rhythm
+    displayName: Blood Tempo
+    requiredTags:
+    - 1
+    - 2
+    statModifiers:
+    - statType: 0
+      operation: 0
+      value: 1.5
+    - statType: 2
+      operation: 0
+      value: -0.05
+    - statType: 7
+      operation: 0
+      value: 0.75
+    projectileModifiers:
+    - modifierType: 2
+      operation: 0
+      value: 0.15

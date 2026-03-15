@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d9dc04b60744be6af8d0d25b510a611, type: 3}
+  m_Name: ActiveGreedSurge
+  m_EditorClassIdentifier: 
+  itemId: active_greed_surge
+  displayName: Greed Surge
+  description: Charges from enemy kills and erupts into coins on use.
+  icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000c, type: 3}
+  chargeRule: 1
+  maxCharge: 6
+  chargePerRoomClear: 1
+  chargePerEnemyKill: 1
+  startFullyCharged: 0
+  effect: {fileID: 11400000, guid: e1023f1db7834498be019b1bba2d2002, type: 2}

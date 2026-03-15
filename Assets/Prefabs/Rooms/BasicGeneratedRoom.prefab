@@ -21,6 +21,9 @@ GameObject:
   - component: {fileID: 980000196}
   - component: {fileID: 980000197}
   - component: {fileID: 980000198}
+  - component: {fileID: 980000242}
+  - component: {fileID: 980000243}
+  - component: {fileID: 980000244}
   - component: {fileID: 980000199}
   m_Layer: 0
   m_Name: BasicGeneratedRoom
@@ -91,7 +94,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0, y: -0.225}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -101,7 +104,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 15.2, y: 8.8}
+  m_Size: {x: 15.2, y: 8.35}
   m_EdgeRadius: 0
 --- !u!114 &980000103
 MonoBehaviour:
@@ -206,7 +209,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -4.525, y: 4.4}
+  m_Offset: {x: -4.525, y: 3.2}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -252,7 +255,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 4.525, y: 4.4}
+  m_Offset: {x: 4.525, y: 3.2}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -390,7 +393,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -7.6, y: 2.9}
+  m_Offset: {x: -7.6, y: 2.5}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -436,7 +439,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -7.6, y: -2.9}
+  m_Offset: {x: -7.6, y: -3.125}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -482,7 +485,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 7.6, y: 2.9}
+  m_Offset: {x: 7.6, y: 2.5}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -528,7 +531,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 7.6, y: -2.9}
+  m_Offset: {x: 7.6, y: -3.125}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -554,11 +557,90 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   roomController: {fileID: 980000103}
   roomRewardSpawner: {fileID: 980000104}
+  treasureRoomSpawner: {fileID: 980000242}
   contentCatalog: {fileID: 11400000, guid: 9f7b3b6300ec4a0a97882fd7c67b3fe5, type: 2}
   contentSpawnAnchor: {fileID: 980000241}
   spawnedContentParent: {fileID: 0}
   roomTintTargets:
   - {fileID: 980000112}
+--- !u!114 &980000242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 980000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5fbff1ec46dd4f3da5a0a2f4d73cf2df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  roomController: {fileID: 980000103}
+  treasurePickupPrefab: {fileID: 950000100, guid: a31e43f509da48bbafba1c37661667d4, type: 3}
+  contentSpawnAnchor: {fileID: 980000241}
+  spawnedContentParent: {fileID: 0}
+--- !u!114 &980000243
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 980000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f03f425b3c84a18bc0a634e4365a716, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  floorRenderer: {fileID: 980000112}
+  wallRenderers:
+  - {fileID: 980000202}
+  - {fileID: 980000212}
+  - {fileID: 980000222}
+  - {fileID: 980000232}
+  doorRenderers:
+  - {fileID: 980000155}
+  - {fileID: 980000165}
+  - {fileID: 980000175}
+  - {fileID: 980000185}
+  floorAnchor: {fileID: 980000111}
+  wallAnchors:
+  - {fileID: 980000201}
+  - {fileID: 980000211}
+  - {fileID: 980000221}
+  - {fileID: 980000231}
+  doorAnchors:
+  - {fileID: 980000151}
+  - {fileID: 980000161}
+  - {fileID: 980000171}
+  - {fileID: 980000181}
+  decorationAnchor: {fileID: 980000241}
+  spawnedThemeParent: {fileID: 980000241}
+--- !u!114 &980000244
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 980000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce8b406fb7444d9f95ba49dca7186347, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  roomController: {fileID: 980000103}
+  roomEnemySpawner: {fileID: 980000105}
+  obstacleRoot: {fileID: 980000241}
+  spawnOnlyForCombatRooms: 1
+  obstacles:
+  - prefab: {fileID: 710000100, guid: 66352ee41a73493fb3ca72adef308022, type: 3}
+    localPosition: {x: -2.55, y: 1.2}
+    rotationZ: 0
+  - prefab: {fileID: 720000100, guid: 632bc3d2482d4c0cb39ee50e9c2f26c4, type: 3}
+    localPosition: {x: 0, y: -1.45}
+    rotationZ: 0
+  - prefab: {fileID: 730000100, guid: 3804a4118b7b40deab67f3003658f9b1, type: 3}
+    localPosition: {x: 2.45, y: 1.15}
+    rotationZ: 0
 --- !u!1 &980000110
 GameObject:
   m_ObjectHideFlags: 0
@@ -675,7 +757,7 @@ Transform:
   m_GameObject: {fileID: 980000120}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.6, z: 0}
+  m_LocalPosition: {x: 0, y: 2.35, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -769,7 +851,7 @@ Transform:
   m_GameObject: {fileID: 980000200}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4.4, z: 0}
+  m_LocalPosition: {x: 0, y: 3.2, z: 0}
   m_LocalScale: {x: 15.8, y: 0.7, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -951,8 +1033,8 @@ Transform:
   m_GameObject: {fileID: 980000220}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.6, y: 0, z: 0}
-  m_LocalScale: {x: 0.7, y: 9.4, z: 1}
+  m_LocalPosition: {x: -7.6, y: -0.225, z: 0}
+  m_LocalScale: {x: 0.7, y: 8.95, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 980000101}
@@ -1042,8 +1124,8 @@ Transform:
   m_GameObject: {fileID: 980000230}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 7.6, y: 0, z: 0}
-  m_LocalScale: {x: 0.7, y: 9.4, z: 1}
+  m_LocalPosition: {x: 7.6, y: -0.225, z: 0}
+  m_LocalScale: {x: 0.7, y: 8.95, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 980000101}
@@ -1136,7 +1218,7 @@ Transform:
   m_GameObject: {fileID: 980000150}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4.4, z: 0}
+  m_LocalPosition: {x: 0, y: 3.2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1343,7 +1425,7 @@ Transform:
   m_GameObject: {fileID: 980000160}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 7.6, y: 0, z: 0}
+  m_LocalPosition: {x: 7.6, y: -0.225, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1757,7 +1839,7 @@ Transform:
   m_GameObject: {fileID: 980000180}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.6, y: 0, z: 0}
+  m_LocalPosition: {x: -7.6, y: -0.225, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

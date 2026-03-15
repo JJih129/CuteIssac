@@ -1,4 +1,5 @@
 using System;
+using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Run;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -18,10 +19,13 @@ namespace CuteIssac.Core.Run
 
         public event Action<RunState> StateChanged;
         public event Action<RunContext> RunStarted;
-        public event Action<RunContext> RunEnded;
+        public event Action<RunContext, RunEndReason> RunEnded;
+        public event Action<RunFloorTransitionInfo> FloorTransitionStarted;
+        public event Action<RunFloorTransitionInfo> FloorTransitionCompleted;
 
         public RunState CurrentState => _context.State;
         public RunContext CurrentContext => _context;
+        public RunConfiguration Configuration => _runConfiguration;
 
         private readonly RunContext _context = new();
         private RunConfiguration _runConfiguration;
@@ -53,6 +57,27 @@ namespace CuteIssac.Core.Run
             RunStarted?.Invoke(_context);
         }
 
+        public void StartRestoredRun(RunSaveData saveData)
+        {
+            if (saveData == null)
+            {
+                return;
+            }
+
+            EnsureBootstrapped();
+            ChangeState(RunState.StartingRun);
+            _context.Restore(
+                saveData.DungeonSeed,
+                saveData.CurrentFloorIndex,
+                saveData.ClearedRoomCount,
+                saveData.TotalClearedRoomCount,
+                saveData.ResolvedRoomCount,
+                saveData.TotalResolvedRoomCount,
+                saveData.BossRoomClearCount);
+            ChangeState(RunState.InRun);
+            RunStarted?.Invoke(_context);
+        }
+
         public void SetPaused(bool paused)
         {
             if (paused)
@@ -78,7 +103,17 @@ namespace CuteIssac.Core.Run
                 return;
             }
 
-            _context.RegisterRoomClear();
+            _context.RegisterRoomResolution(RoomType.Normal, true);
+        }
+
+        public void RegisterRoomResolved(RoomType roomType, bool hadCombatEncounter)
+        {
+            if (CurrentState != RunState.InRun)
+            {
+                return;
+            }
+
+            _context.RegisterRoomResolution(roomType, hadCombatEncounter);
         }
 
         public void AdvanceFloor()
@@ -88,18 +123,39 @@ namespace CuteIssac.Core.Run
                 return;
             }
 
+            int previousFloorIndex = _context.CurrentFloorIndex;
+            ChangeState(RunState.TransitioningFloor);
+
+            RunFloorTransitionInfo transitionInfo =
+                new(_context.Seed, previousFloorIndex, previousFloorIndex + 1);
+
+            FloorTransitionStarted?.Invoke(transitionInfo);
             _context.AdvanceFloor();
+            FloorTransitionCompleted?.Invoke(transitionInfo);
+            ChangeState(RunState.InRun);
         }
 
         public void EndRun(bool cleared)
+        {
+            EndRun(cleared ? RunEndReason.Victory : RunEndReason.Defeat);
+        }
+
+        public void EndRun(RunEndReason endReason)
         {
             if (!_context.HasActiveRun)
             {
                 return;
             }
 
-            ChangeState(cleared ? RunState.Victory : RunState.Defeat);
-            RunEnded?.Invoke(_context);
+            _context.SetEndReason(endReason);
+
+            ChangeState(endReason == RunEndReason.Victory ? RunState.Victory : RunState.Defeat);
+            RunEnded?.Invoke(_context, endReason);
+        }
+
+        public void AbortRun()
+        {
+            EndRun(RunEndReason.Abandoned);
         }
 
         public void ReturnToFrontEnd()
@@ -140,6 +196,22 @@ namespace CuteIssac.Core.Run
             return useFixedSeed
                 ? fixedSeed
                 : Random.Range(int.MinValue, int.MaxValue);
+        }
+
+        public bool TryGetFloorConfig(int floorIndex, out FloorConfig floorConfig)
+        {
+            if (_runConfiguration != null && _runConfiguration.TryGetFloorConfig(floorIndex, out floorConfig))
+            {
+                return true;
+            }
+
+            floorConfig = null;
+            return false;
+        }
+
+        public bool HasFloor(int floorIndex)
+        {
+            return TryGetFloorConfig(floorIndex, out _);
         }
 
         private void ChangeState(RunState nextState)

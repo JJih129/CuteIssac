@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ba28ff6e1065e2409772ddd4a6e54d0, type: 3}
+  m_Name: Floor1DungeonConfig
+  m_EditorClassIdentifier: 
+  floorIndex: 1
+  minNormalRoomCount: 7
+  maxNormalRoomCount: 9
+  minimumBossDistanceFromStart: 2
+  treasureRoomCount: 1
+  minimumTreasureDistanceFromStart: 2
+  shopRoomCount: 1
+  minimumShopDistanceFromStart: 2
+  secretRoomCount: 1
+  minimumSecretDistanceFromStart: 2
+  minimumSecretAdjacentRoomCount: 3
+  startRoomPool:
+    roomType: 0
+    candidateRooms:
+    - {fileID: 11400000, guid: 5d3d9246b38f42fa8fdc7b31e361be21, type: 2}
+    minimumCount: 1
+    maximumCount: 1
+  bossRoomPool:
+    roomType: 4
+    candidateRooms:
+    - {fileID: 11400000, guid: 4c9d666f3c164666a44c0e37dd4a6101, type: 2}
+    minimumCount: 0
+    maximumCount: 1
+  optionalRoomPools:
+  - roomType: 1
+    candidateRooms:
+    - {fileID: 11400000, guid: 4c9d666f3c164666a44c0e37dd4a6001, type: 2}
+    minimumCount: 1
+    maximumCount: 5
+  - roomType: 2
+    candidateRooms:
+    - {fileID: 11400000, guid: 6061ead4d86b47d9b594fcf76d7c712d, type: 2}
+    minimumCount: 0
+    maximumCount: 1
+  - roomType: 3
+    candidateRooms:
+    - {fileID: 11400000, guid: fe63156dfaa74f9e8c34ca50ffb69f68, type: 2}
+    minimumCount: 0
+    maximumCount: 1
+  - roomType: 5
+    candidateRooms:
+    - {fileID: 11400000, guid: 45d3b4df54b14dcb9c2e508be01f3d93, type: 2}
+    minimumCount: 0
+    maximumCount: 1
+  sharedLayoutSets:
+  - {fileID: 11400000, guid: 92d4a1cfb88e466f800693623c1cc852, type: 2}
+  enemyPool: {fileID: 11400000, guid: 1a3e3c3f4f214e1fa1d9f8194d9f0101, type: 2}
+  roomTheme: {fileID: 11400000, guid: c7d8b5b64b08498fadf4ef5d46d8a101, type: 2}
+  normalRoomEnemyBudget: 4
+  eliteRoomEnemyBudget: 7
+  bossRoomEnemyBudget: 12
+  normalRoomDistanceBudgetBonusPerStep: 1
+  encounterBudgetMultiplier: 1
+  encounterPacing:
+    encounterStartAggroDelay: 1.1
+    encounterStartAggroDelayJitter: 0.45
+    minimumDistanceFromPlayer: 3.4
+    preferredSpawnSeparation: 2.6
+    roomCandidateSamples: 10
+    roomBoundsInsetRatio: 0.18
+    firstAttackDelayBonus: 0.45
+    telegraphDurationMultiplier: 1.22
+  normalRoomRewardPool: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c550101, type: 2}
+  bossRoomRewardPool: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c560101, type: 2}
+  treasureRoomRewardPool: {fileID: 0}
+  shopRoomRewardPool: {fileID: 0}
+  secretRoomRewardPool: {fileID: 11400000, guid: f6a0be0680db47e39b9f9a4cad0c8e6d, type: 2}
+  treasureRoomItemPool: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100101, type: 2}
+  shopRoomItemPool: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100401, type: 2}
+  bossRewardItemPool: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100701, type: 2}
+  secretRoomItemPool: {fileID: 11400000, guid: 7b3f7d7e0c6a4dd8b0257f66f55df401, type: 2}

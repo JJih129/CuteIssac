@@ -8,15 +8,17 @@ namespace CuteIssac.Common.Combat
     /// </summary>
     public readonly struct DamageInfo
     {
-        public DamageInfo(float amount, Vector2 hitDirection, Transform source)
+        public DamageInfo(float amount, Vector2 hitDirection, Transform source, float knockbackForce = 0f)
         {
             Amount = amount;
             HitDirection = hitDirection;
             Source = source;
+            KnockbackForce = knockbackForce;
         }
 
         public float Amount { get; }
         public Vector2 HitDirection { get; }
         public Transform Source { get; }
+        public float KnockbackForce { get; }
     }
 }

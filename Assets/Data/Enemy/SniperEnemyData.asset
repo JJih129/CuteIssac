@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6cf1346f2924cd0b031b5d16f4788a5, type: 3}
+  m_Name: SniperEnemyData
+  m_EditorClassIdentifier: 
+  enemyId: sniper
+  moveSpeed: 1.46
+  maxHealth: 6
+  contactDamage: 0.35
+  visualSet: {fileID: 11400000, guid: 87cbaf2650244b7ab5eaef9556c17cb8, type: 2}
+  fireInterval: 2.3
+  telegraphDuration: 0.52
+  preferredRange: 8.6
+  retreatRange: 4.9
+  strafeBlend: 0.16
+  strafeSwapInterval: 1.5
+  moveSpeedWhileTelegraphing: 0.04
+  telegraphColor: {r: 1, g: 0.24, b: 0.3, a: 1}
+  followUpTriggerRange: 7.2
+  followUpDelay: 0.2
+  followUpTelegraphDuration: 0.16
+  moveSpeedWhileFollowUpTelegraphing: 0.02
+  followUpRecovery: 0.72
+  followUpTelegraphColor: {r: 1, g: 0.72, b: 0.3, a: 1}

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CuteIssac.Data.Enemy;
+using CuteIssac.Data.Item;
 using UnityEngine;
 
 namespace CuteIssac.Data.Dungeon
@@ -17,7 +18,11 @@ namespace CuteIssac.Data.Dungeon
         [SerializeField] [Min(1)] private int widthInCells = 1;
         [SerializeField] [Min(1)] private int heightInCells = 1;
         [SerializeField] [Min(0)] private int generationWeight = 1;
+        [SerializeField] [Min(0)] private int entryKeyCost;
+        [SerializeField] private bool consumeEntryCostOnce = true;
         [SerializeField] private EnemyWaveData enemyWaveOverride;
+        [SerializeField] private ItemData treasureItemOverride;
+        [SerializeField] private ItemPoolData treasureItemPoolOverride;
         [SerializeField] private List<RoomLayoutData> localLayouts = new();
 
         public string RoomId => roomId;
@@ -26,7 +31,11 @@ namespace CuteIssac.Data.Dungeon
         public int WidthInCells => widthInCells;
         public int HeightInCells => heightInCells;
         public int GenerationWeight => generationWeight;
+        public int EntryKeyCost => Mathf.Max(0, entryKeyCost);
+        public bool ConsumeEntryCostOnce => consumeEntryCostOnce;
         public EnemyWaveData EnemyWaveOverride => enemyWaveOverride;
+        public ItemData TreasureItemOverride => treasureItemOverride;
+        public ItemPoolData TreasureItemPoolOverride => treasureItemPoolOverride;
         public IReadOnlyList<RoomLayoutData> LocalLayouts => localLayouts;
 
         public void CollectLocalLayouts(List<RoomLayoutData> results)

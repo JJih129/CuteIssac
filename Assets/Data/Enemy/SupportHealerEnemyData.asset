@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e1c4b9e5ef4d498f36d6b2c1117101, type: 3}
+  m_Name: SupportHealerEnemyData
+  m_EditorClassIdentifier: 
+  enemyId: support_healer
+  moveSpeed: 1.7
+  maxHealth: 7
+  contactDamage: 0.2
+  visualSet: {fileID: 11400000, guid: d5f4e7ec81204fb7c269f8d5f4440404, type: 2}
+  preferredRange: 4.9
+  retreatRange: 2.4
+  strafeBlend: 0.36
+  strafeSwapInterval: 1.2
+  healInterval: 2.75
+  healAmount: 2
+  healRange: 4.5
+  allyScanInterval: 0.35
+  telegraphDuration: 0.42
+  moveSpeedWhileTelegraphing: 0.06
+  telegraphColor: {r: 0.38, g: 1, b: 0.54, a: 1}

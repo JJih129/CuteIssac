@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 785d4f5d233da034496f8ad678d9b0d6, type: 3}
+  m_Name: Floor3BossWave
+  m_EditorClassIdentifier: 
+  waveId: floor3_boss_wave
+  encounterTier: 2
+  entries:
+  - enemyId: floor3_boss_chaser
+    enemyPrefab: {fileID: 930000106, guid: 63cae6d6439d4bff9874379459d0a0dd, type: 3}
+    count: 1
+    difficultyCost: 9
+  - enemyId: floor3_dasher_add
+    enemyPrefab: {fileID: 930000106, guid: 4d1a46c92ce84e5dbfe67f5db3dd2bd3, type: 3}
+    count: 1
+    difficultyCost: 3
+  - enemyId: floor3_shooter_add
+    enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
+    count: 1
+    difficultyCost: 2

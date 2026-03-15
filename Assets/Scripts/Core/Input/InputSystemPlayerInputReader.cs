@@ -168,7 +168,7 @@ namespace CuteIssac.Core.Input
 
                     if (!_warnedMissingAsset)
                     {
-                        Debug.Log(
+                        UnityEngine.Debug.Log(
                             "InputSystemPlayerInputReader is using its embedded fallback bindings because no InputActionAsset is assigned.",
                             this);
                         _warnedMissingAsset = true;
@@ -209,11 +209,11 @@ namespace CuteIssac.Core.Input
 
             if (exception == null)
             {
-                Debug.LogError(message, this);
+                UnityEngine.Debug.LogError(message, this);
             }
             else
             {
-                Debug.LogError($"{message}\n{exception}", this);
+                UnityEngine.Debug.LogError($"{message}\n{exception}", this);
             }
 
             enabled = false;

@@ -20,6 +20,11 @@ GameObject:
   - component: {fileID: 910000110}
   - component: {fileID: 910000111}
   - component: {fileID: 910000112}
+  - component: {fileID: 910000113}
+  - component: {fileID: 910000114}
+  - component: {fileID: 910000115}
+  - component: {fileID: 910000116}
+  - component: {fileID: 910000117}
   m_Layer: 0
   m_Name: PlayerRoot
   m_TagString: Player
@@ -189,6 +194,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerMovement: {fileID: 910000105}
   playerCombat: {fileID: 910000107}
+  synergyCatalog: {fileID: 11400000, guid: 43afbc818fc74958b11d84a0a39b80ab, type: 2}
   fallbackMoveSpeed: 5
   fallbackDamage: 3
   fallbackFireInterval: 0.35
@@ -248,9 +254,15 @@ MonoBehaviour:
   facingMode: 1
   useMoveDirectionWhenAimMissing: 1
   moveMuzzleAnchorWithAim: 1
+  screenFeedback: {fileID: 910000113}
+  hitFeedbackRoot: {fileID: 910000121}
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   damagedColor: {r: 1, g: 0.45, b: 0.45, a: 1}
   damagedFlashDuration: 0.08
+  hitKnockbackImpulse: 4.75
+  hitVisualPunchDistance: 0.14
+  hitVisualRecoverSpeed: 1.4
+  screenFeedbackScale: 1
   deadColor: {r: 1, g: 1, b: 1, a: 0.55}
   moveXParameter: MoveX
   moveYParameter: MoveY
@@ -260,6 +272,89 @@ MonoBehaviour:
   firedTriggerParameter: Fired
   damagedTriggerParameter: Damaged
   deadBoolParameter: Dead
+--- !u!114 &910000113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f9a4d0de0a74ae3a6f7b8d1e4a0e61a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetCamera: {fileID: 0}
+  hitZoomDelta: 0.18
+  maxZoomDelta: 0.32
+  zoomRecoverSpeed: 1.8
+--- !u!114 &910000114
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa6d908c21fc4404ab0144f78a190409, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerInventory: {fileID: 910000110}
+  playerHealth: {fileID: 910000108}
+  playerStats: {fileID: 910000109}
+  startingConsumable: {fileID: 0}
+--- !u!114 &910000115
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2107a7319d9a4d2f81f6a4adad995f22, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  consumableHolder: {fileID: 910000114}
+  activeItemController: {fileID: 910000116}
+  inputReaderSource: {fileID: 0}
+--- !u!114 &910000116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4ac3bfb5f9940aeb2c79f05d4c63311, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerHealth: {fileID: 910000108}
+  playerInventory: {fileID: 910000110}
+  playerStats: {fileID: 910000109}
+  inputReaderSource: {fileID: 0}
+  startingActiveItem: {fileID: 11400000, guid: f103bd774c7b4321a93609cbebc13003, type: 2}
+--- !u!114 &910000117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bc2d15dd7074c2da2fd9cb0c725bf9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerInventory: {fileID: 910000110}
+  ownerCollider: {fileID: 910000103}
+  inputReaderSource: {fileID: 0}
+  bombPrefab: {fileID: 980000102, guid: 6c6d29e257df490f9ddadb339f4fd338, type: 3}
+  bombSpawnAnchor: {fileID: 910000101}
+  placementOffset: 0
+  placementCooldown: 0.15
 --- !u!1 &910000120
 GameObject:
   m_ObjectHideFlags: 0
@@ -374,7 +469,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 10
-  m_Sprite: {fileID: 21300000, guid: 96b04b3bdb7b4c0f9678b7db7e6fc79b, type: 3}
+  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10001, type: 3}
   m_Color: {r: 1, g: 0.88, b: 0.92, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -553,7 +648,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 5
-  m_Sprite: {fileID: 21300000, guid: 96b04b3bdb7b4c0f9678b7db7e6fc79b, type: 3}
+  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10002, type: 3}
   m_Color: {r: 0, g: 0, b: 0, a: 0.28}
   m_FlipX: 0
   m_FlipY: 0

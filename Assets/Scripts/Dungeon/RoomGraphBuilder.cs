@@ -5,17 +5,17 @@ using UnityEngine;
 namespace CuteIssac.Dungeon
 {
     /// <summary>
-    /// Builds the first-pass dungeon graph for a floor.
-    /// This stage only places the start room and expands outward with normal rooms on unique grid coordinates.
+    /// Builds an Isaac-style room tree on a 2D grid.
+    /// The graph is expanded with BFS-style frontier growth and a strict adjacency rule so rooms form branches instead of blobs.
     /// </summary>
     public sealed class RoomGraphBuilder
     {
         private readonly List<RoomData> _roomSelectionBuffer = new();
         private readonly DungeonRoomDistanceCalculator _distanceCalculator = new();
-        private readonly DungeonBossRoomAssigner _bossRoomAssigner = new();
-        private readonly DungeonSpecialRoomAssigner _specialRoomAssigner = new();
+        private readonly RoomTypeAssigner _roomTypeAssigner = new();
         private readonly DungeonEnemyWaveAssigner _enemyWaveAssigner = new();
         private readonly RoomLayoutResolver _layoutResolver = new();
+        private readonly List<GridPosition> _frontierRefillBuffer = new();
 
         public DungeonMap Build(FloorConfig floorConfig, int seed)
         {
@@ -26,11 +26,10 @@ namespace CuteIssac.Dungeon
             }
 
             Random.State previousRandomState = Random.state;
-            Random.InitState(seed);
 
             try
             {
-                return BuildInternal(floorConfig);
+                return BuildInternal(floorConfig, seed);
             }
             finally
             {
@@ -38,79 +37,126 @@ namespace CuteIssac.Dungeon
             }
         }
 
-        private DungeonMap BuildInternal(FloorConfig floorConfig)
+        private DungeonMap BuildInternal(FloorConfig floorConfig, int seed)
         {
-            DungeonMap dungeonMap = new(floorConfig);
-            int targetNormalRoomCount = ResolveTargetNormalRoomCount(floorConfig);
-            RoomData startRoomData = SelectRoomData(floorConfig, RoomType.Start);
-
-            dungeonMap.TryAddRoom(new DungeonRoomNode(RoomType.Start, startRoomData, GridPosition.Zero));
-
-            List<GridPosition> frontier = new(targetNormalRoomCount + 1)
+            for (int attemptIndex = 0; attemptIndex < floorConfig.MaxGenerationAttempts; attemptIndex++)
             {
-                GridPosition.Zero
-            };
+                int attemptSeed = seed + (attemptIndex * 104729);
+                Random.InitState(attemptSeed);
+                DungeonMap dungeonMap = new(floorConfig, seed);
+                int targetNormalRoomCount = ResolveTargetNormalRoomCount(floorConfig);
+                RoomData startRoomData = SelectRoomData(floorConfig, RoomType.Start);
 
+                if (startRoomData == null)
+                {
+                    Debug.LogError("RoomGraphBuilder could not find a Start room definition.");
+                    return null;
+                }
+
+                dungeonMap.TryAddRoom(new DungeonRoomNode(RoomType.Start, startRoomData, GridPosition.Zero));
+
+                if (!BuildNormalRoomTree(dungeonMap, floorConfig, targetNormalRoomCount, out string graphFailureReason))
+                {
+                    Debug.LogWarning($"RoomGraphBuilder attempt {attemptIndex + 1}/{floorConfig.MaxGenerationAttempts} failed during graph build: {graphFailureReason}");
+                    continue;
+                }
+
+                _distanceCalculator.CalculateDistances(dungeonMap, GridPosition.Zero);
+
+                if (!_roomTypeAssigner.Assign(dungeonMap, out string typeFailureReason))
+                {
+                    Debug.LogWarning($"RoomGraphBuilder attempt {attemptIndex + 1}/{floorConfig.MaxGenerationAttempts} failed during room type assignment: {typeFailureReason}");
+                    continue;
+                }
+
+                _distanceCalculator.CalculateDistances(dungeonMap, GridPosition.Zero);
+                _enemyWaveAssigner.Assign(dungeonMap);
+
+                if (!_layoutResolver.TryResolveAllLayouts(dungeonMap, out string layoutFailureReason))
+                {
+                    Debug.LogWarning($"RoomGraphBuilder attempt {attemptIndex + 1}/{floorConfig.MaxGenerationAttempts} failed during layout resolution: {layoutFailureReason}");
+                    continue;
+                }
+
+                return dungeonMap;
+            }
+
+            Debug.LogError($"RoomGraphBuilder failed to generate a valid dungeon after {floorConfig.MaxGenerationAttempts} attempts for seed {seed}.");
+            return null;
+        }
+
+        private bool BuildNormalRoomTree(DungeonMap dungeonMap, FloorConfig floorConfig, int targetNormalRoomCount, out string failureReason)
+        {
+            failureReason = null;
+            Queue<GridPosition> frontier = new();
+            HashSet<GridPosition> queuedPositions = new();
+            frontier.Enqueue(GridPosition.Zero);
+            queuedPositions.Add(GridPosition.Zero);
             int normalRoomsCreated = 0;
 
             while (normalRoomsCreated < targetNormalRoomCount)
             {
-                if (!TryCreateNormalRoom(dungeonMap, floorConfig, frontier))
+                if (frontier.Count == 0)
                 {
-                    Debug.LogWarning($"RoomGraphBuilder stopped early. Requested {targetNormalRoomCount} normal rooms, created {normalRoomsCreated}.");
-                    break;
+                    RefillFrontier(dungeonMap, frontier, queuedPositions);
+
+                    if (frontier.Count == 0)
+                    {
+                        failureReason = $"Expansion frontier exhausted at {normalRoomsCreated}/{targetNormalRoomCount} normal rooms.";
+                        return false;
+                    }
                 }
 
-                normalRoomsCreated++;
-            }
+                GridPosition sourcePosition = frontier.Dequeue();
+                queuedPositions.Remove(sourcePosition);
 
-            _distanceCalculator.CalculateDistances(dungeonMap, GridPosition.Zero);
-            _bossRoomAssigner.TryAssignBossRoom(dungeonMap);
-            _specialRoomAssigner.Assign(dungeonMap);
-            _distanceCalculator.CalculateDistances(dungeonMap, GridPosition.Zero);
-            _enemyWaveAssigner.Assign(dungeonMap);
-            _layoutResolver.ResolveAllLayouts(dungeonMap);
-
-            return dungeonMap;
-        }
-
-        private bool TryCreateNormalRoom(DungeonMap dungeonMap, FloorConfig floorConfig, List<GridPosition> frontier)
-        {
-            while (frontier.Count > 0)
-            {
-                int frontierIndex = Random.Range(0, frontier.Count);
-                GridPosition sourcePosition = frontier[frontierIndex];
-                int openNeighborCount = CountOpenNeighborSlots(dungeonMap, sourcePosition);
-
-                if (openNeighborCount == 0)
-                {
-                    RemoveAtSwapBack(frontier, frontierIndex);
-                    continue;
-                }
-
-                RoomDirection chosenDirection = SelectOpenDirection(dungeonMap, sourcePosition, openNeighborCount);
-                GridPosition nextPosition = sourcePosition + RoomDirectionUtility.ToOffset(chosenDirection);
-                RoomData normalRoomData = SelectRoomData(floorConfig, RoomType.Normal);
-                DungeonRoomNode nextRoomNode = new(RoomType.Normal, normalRoomData, nextPosition);
-
-                if (!dungeonMap.TryAddRoom(nextRoomNode))
+                if (!dungeonMap.TryGetRoom(sourcePosition, out DungeonRoomNode sourceRoom))
                 {
                     continue;
                 }
 
-                dungeonMap.ConnectRooms(sourcePosition, chosenDirection, nextPosition);
-                dungeonMap.ConnectRooms(nextPosition, RoomDirectionUtility.Opposite(chosenDirection), sourcePosition);
-                frontier.Add(nextPosition);
+                List<RoomDirection> validDirections = GatherValidExpansionDirections(dungeonMap, sourcePosition);
 
-                if (CountOpenNeighborSlots(dungeonMap, sourcePosition) == 0)
+                if (validDirections.Count == 0)
                 {
-                    RemoveAtSwapBack(frontier, frontierIndex);
+                    continue;
                 }
 
-                return true;
+                ShuffleDirections(validDirections);
+                int expansionCount = DetermineExpansionCount(sourceRoom, validDirections.Count, floorConfig);
+
+                for (int directionIndex = 0; directionIndex < expansionCount && normalRoomsCreated < targetNormalRoomCount; directionIndex++)
+                {
+                    RoomDirection direction = validDirections[directionIndex];
+                    GridPosition nextPosition = sourcePosition + RoomDirectionUtility.ToOffset(direction);
+                    RoomData normalRoomData = SelectRoomData(floorConfig, RoomType.Normal);
+
+                    if (normalRoomData == null)
+                    {
+                        failureReason = "Normal room pool was empty.";
+                        return false;
+                    }
+
+                    DungeonRoomNode nextRoomNode = new(RoomType.Normal, normalRoomData, nextPosition);
+
+                    if (!dungeonMap.TryAddRoom(nextRoomNode))
+                    {
+                        continue;
+                    }
+
+                    dungeonMap.ConnectRooms(sourcePosition, direction, nextPosition);
+                    dungeonMap.ConnectRooms(nextPosition, RoomDirectionUtility.Opposite(direction), sourcePosition);
+
+                    if (queuedPositions.Add(nextPosition))
+                    {
+                        frontier.Enqueue(nextPosition);
+                    }
+
+                    normalRoomsCreated++;
+                }
             }
 
-            return false;
+            return true;
         }
 
         private int ResolveTargetNormalRoomCount(FloorConfig floorConfig)
@@ -120,67 +166,121 @@ namespace CuteIssac.Dungeon
             return Random.Range(min, max + 1);
         }
 
-        private RoomDirection SelectOpenDirection(DungeonMap dungeonMap, GridPosition sourcePosition, int openNeighborCount)
+        private List<RoomDirection> GatherValidExpansionDirections(DungeonMap dungeonMap, GridPosition sourcePosition)
         {
-            int selectedOpenIndex = Random.Range(0, openNeighborCount);
-            int currentOpenIndex = 0;
+            List<RoomDirection> validDirections = new();
 
             foreach (RoomDirection direction in RoomDirectionUtility.Directions)
             {
                 GridPosition candidatePosition = sourcePosition + RoomDirectionUtility.ToOffset(direction);
 
-                if (dungeonMap.ContainsRoom(candidatePosition))
+                if (IsValidExpansionCandidate(dungeonMap, candidatePosition))
+                {
+                    validDirections.Add(direction);
+                }
+            }
+
+            return validDirections;
+        }
+
+        private bool IsValidExpansionCandidate(DungeonMap dungeonMap, GridPosition candidatePosition)
+        {
+            if (dungeonMap.ContainsRoom(candidatePosition))
+            {
+                return false;
+            }
+
+            int adjacentRoomCount = 0;
+
+            foreach (RoomDirection direction in RoomDirectionUtility.Directions)
+            {
+                GridPosition neighborPosition = candidatePosition + RoomDirectionUtility.ToOffset(direction);
+
+                if (!dungeonMap.ContainsRoom(neighborPosition))
                 {
                     continue;
                 }
 
-                if (currentOpenIndex == selectedOpenIndex)
+                adjacentRoomCount++;
+
+                if (adjacentRoomCount >= 2)
                 {
-                    return direction;
-                }
-
-                currentOpenIndex++;
-            }
-
-            return RoomDirection.Up;
-        }
-
-        private int CountOpenNeighborSlots(DungeonMap dungeonMap, GridPosition sourcePosition)
-        {
-            int openNeighborCount = 0;
-
-            foreach (RoomDirection direction in RoomDirectionUtility.Directions)
-            {
-                GridPosition candidatePosition = sourcePosition + RoomDirectionUtility.ToOffset(direction);
-
-                if (!dungeonMap.ContainsRoom(candidatePosition))
-                {
-                    openNeighborCount++;
+                    return false;
                 }
             }
 
-            return openNeighborCount;
+            return adjacentRoomCount == 1;
         }
 
         private RoomData SelectRoomData(FloorConfig floorConfig, RoomType roomType)
         {
-            _roomSelectionBuffer.Clear();
-            floorConfig.CollectCandidateRooms(roomType, _roomSelectionBuffer);
-
-            if (_roomSelectionBuffer.Count == 0)
-            {
-                return null;
-            }
-
-            int selectedIndex = Random.Range(0, _roomSelectionBuffer.Count);
-            return _roomSelectionBuffer[selectedIndex];
+            return RoomDataSelector.SelectWeighted(floorConfig, roomType, _roomSelectionBuffer);
         }
 
-        private static void RemoveAtSwapBack(List<GridPosition> frontier, int index)
+        private static int DetermineExpansionCount(DungeonRoomNode sourceRoom, int validDirectionCount, FloorConfig floorConfig)
         {
-            int lastIndex = frontier.Count - 1;
-            frontier[index] = frontier[lastIndex];
-            frontier.RemoveAt(lastIndex);
+            int expansionCount = 1;
+
+            if (sourceRoom != null && sourceRoom.RoomType == RoomType.Start)
+            {
+                expansionCount = floorConfig.StartRoomInitialBranchCount;
+            }
+            else if (validDirectionCount > 1 && Random.value < floorConfig.AdditionalBranchChance)
+            {
+                expansionCount++;
+            }
+
+            return Mathf.Clamp(expansionCount, 1, validDirectionCount);
+        }
+
+        private void RefillFrontier(DungeonMap dungeonMap, Queue<GridPosition> frontier, HashSet<GridPosition> queuedPositions)
+        {
+            _frontierRefillBuffer.Clear();
+
+            foreach (KeyValuePair<GridPosition, DungeonRoomNode> roomPair in dungeonMap.RoomsByPosition)
+            {
+                GridPosition position = roomPair.Key;
+
+                if (queuedPositions.Contains(position))
+                {
+                    continue;
+                }
+
+                if (GatherValidExpansionDirections(dungeonMap, position).Count > 0)
+                {
+                    _frontierRefillBuffer.Add(position);
+                }
+            }
+
+            ShufflePositions(_frontierRefillBuffer);
+
+            for (int i = 0; i < _frontierRefillBuffer.Count; i++)
+            {
+                GridPosition position = _frontierRefillBuffer[i];
+
+                if (queuedPositions.Add(position))
+                {
+                    frontier.Enqueue(position);
+                }
+            }
+        }
+
+        private static void ShuffleDirections(List<RoomDirection> directions)
+        {
+            for (int i = directions.Count - 1; i > 0; i--)
+            {
+                int swapIndex = Random.Range(0, i + 1);
+                (directions[i], directions[swapIndex]) = (directions[swapIndex], directions[i]);
+            }
+        }
+
+        private static void ShufflePositions(List<GridPosition> positions)
+        {
+            for (int i = positions.Count - 1; i > 0; i--)
+            {
+                int swapIndex = Random.Range(0, i + 1);
+                (positions[i], positions[swapIndex]) = (positions[swapIndex], positions[i]);
+            }
         }
     }
 }

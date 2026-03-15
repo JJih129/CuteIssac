@@ -107,7 +107,7 @@ namespace CuteIssac.Dungeon
                 Vector3 worldPosition = ToWorldPosition(roomNode.GridPosition);
                 RoomController roomInstance = Instantiate(layout.RoomPrefab, worldPosition, Quaternion.identity, targetRoot);
                 roomInstance.name = BuildRoomName(roomNode, layout);
-                ConfigureGeneratedRoom(roomInstance, roomNode);
+                ConfigureGeneratedRoom(roomInstance, roomNode, dungeonMap.FloorConfig);
                 result.RegisterRoom(roomNode.GridPosition, roomInstance, roomNode.RoomType == RoomType.Start);
             }
         }
@@ -164,7 +164,26 @@ namespace CuteIssac.Dungeon
                         continue;
                     }
 
+                    if (!dungeonMap.TryGetRoom(connection.TargetPosition, out DungeonRoomNode targetNode))
+                    {
+                        continue;
+                    }
+
+                    if (!ShouldWireConnection(dungeonMap, roomNode, targetNode))
+                    {
+                        continue;
+                    }
+
                     sourceDoor.SetConnection(targetRoom, targetDoor);
+                    sourceDoor.ConfigureEntryCost(
+                        targetNode.RoomData != null ? targetNode.RoomData.EntryKeyCost : 0,
+                        targetNode.RoomData != null && targetNode.RoomData.ConsumeEntryCostOnce);
+                    sourceDoor.ConfigureHealthEntryCost(
+                        ShouldRequireCurseHealthEntryCost(roomNode, targetNode) ? 1f : 0f,
+                        true,
+                        true);
+
+                    ConfigureSecretDoorAccess(roomNode, targetNode, sourceDoor);
                 }
             }
         }
@@ -203,32 +222,59 @@ namespace CuteIssac.Dungeon
             return transform.position + new Vector3(gridPosition.X * roomWorldSpacing.x, gridPosition.Y * roomWorldSpacing.y, 0f);
         }
 
-        private static void ConfigureGeneratedRoom(RoomController roomInstance, DungeonRoomNode roomNode)
+        private static void ConfigureGeneratedRoom(RoomController roomInstance, DungeonRoomNode roomNode, FloorConfig floorConfig)
         {
             if (roomInstance == null || roomNode == null)
             {
                 return;
             }
 
+            string runtimeRoomId = roomNode.RoomData != null && !string.IsNullOrWhiteSpace(roomNode.RoomData.RoomId)
+                ? roomNode.RoomData.RoomId
+                : roomInstance.RoomId;
+
+            roomInstance.ConfigureRuntimeMetadata(runtimeRoomId, roomNode.RoomType);
+
             RoomEnemySpawner roomEnemySpawner = roomInstance.GetComponent<RoomEnemySpawner>();
 
             if (roomEnemySpawner != null)
             {
-                roomEnemySpawner.ConfigureEncounter(roomNode.RoomType, roomNode.AssignedEnemyWave);
+                roomEnemySpawner.ConfigureEncounter(
+                    roomNode.RoomType,
+                    roomNode.AssignedEnemyWave,
+                    floorConfig != null ? floorConfig.GetEncounterPacing(roomNode.RoomType) : null);
             }
 
             RoomRewardSpawner roomRewardSpawner = roomInstance.GetComponent<RoomRewardSpawner>();
 
             if (roomRewardSpawner != null)
             {
-                roomRewardSpawner.ConfigureRoomType(roomNode.RoomType);
+                roomRewardSpawner.ConfigureFloorRewardPool(
+                    roomNode.RoomType,
+                    floorConfig != null ? floorConfig.GetRewardPool(roomNode.RoomType) : null);
+                roomRewardSpawner.ConfigureChallengeRewards(
+                    roomNode.RoomType,
+                    floorConfig != null ? floorConfig.ChallengeRewardSettings : null);
+                roomRewardSpawner.ConfigureSecretRewards(
+                    roomNode.RoomType,
+                    floorConfig != null ? floorConfig.SecretRoomRewardSettings : null);
+            }
+
+            RoomThemeController roomThemeController = roomInstance.GetComponent<RoomThemeController>();
+
+            if (roomThemeController != null)
+            {
+                roomThemeController.ApplyTheme(floorConfig != null ? floorConfig.RoomTheme : null);
             }
 
             RoomTypeContentController roomTypeContentController = roomInstance.GetComponent<RoomTypeContentController>();
 
             if (roomTypeContentController != null)
             {
-                roomTypeContentController.ConfigureRoom(roomNode.RoomType, roomNode.RoomData);
+                roomTypeContentController.ConfigureRoom(
+                    roomNode.RoomType,
+                    roomNode.RoomData,
+                    floorConfig != null ? floorConfig.GetItemPool(roomNode.RoomType) : null);
             }
         }
 
@@ -236,6 +282,90 @@ namespace CuteIssac.Dungeon
         {
             string layoutId = !string.IsNullOrWhiteSpace(layout.LayoutId) ? layout.LayoutId : "layout";
             return $"{roomNode.RoomType}_{layoutId}_{roomNode.GridPosition.X}_{roomNode.GridPosition.Y}";
+        }
+
+        private static void ConfigureSecretDoorAccess(DungeonRoomNode sourceNode, DungeonRoomNode targetNode, RoomDoor sourceDoor)
+        {
+            if (sourceNode == null || targetNode == null || sourceDoor == null)
+            {
+                return;
+            }
+
+            if (sourceNode.RoomType == RoomType.Secret || targetNode.RoomType != RoomType.Secret)
+            {
+                sourceDoor.ConfigureRevealRequirement(false, true);
+                return;
+            }
+
+            SecretDoorAccessController secretDoorAccessController = sourceDoor.GetComponent<SecretDoorAccessController>();
+
+            if (secretDoorAccessController == null)
+            {
+                secretDoorAccessController = sourceDoor.gameObject.AddComponent<SecretDoorAccessController>();
+            }
+
+            secretDoorAccessController.Configure(sourceDoor, SecretDoorRevealMode.BombOnly);
+        }
+
+        private static bool ShouldWireConnection(DungeonMap dungeonMap, DungeonRoomNode sourceNode, DungeonRoomNode targetNode)
+        {
+            if (dungeonMap == null || sourceNode == null || targetNode == null)
+            {
+                return false;
+            }
+
+            if (sourceNode.RoomType == RoomType.Treasure)
+            {
+                return IsPrimaryTreasureEntrance(dungeonMap, sourceNode, targetNode.GridPosition);
+            }
+
+            if (targetNode.RoomType == RoomType.Treasure)
+            {
+                return IsPrimaryTreasureEntrance(dungeonMap, targetNode, sourceNode.GridPosition);
+            }
+
+            return true;
+        }
+
+        private static bool ShouldRequireCurseHealthEntryCost(DungeonRoomNode sourceNode, DungeonRoomNode targetNode)
+        {
+            if (sourceNode == null || targetNode == null)
+            {
+                return false;
+            }
+
+            return sourceNode.RoomType != RoomType.Curse && targetNode.RoomType == RoomType.Curse;
+        }
+
+        private static bool IsPrimaryTreasureEntrance(DungeonMap dungeonMap, DungeonRoomNode treasureNode, GridPosition candidateNeighborPosition)
+        {
+            if (dungeonMap == null || treasureNode == null || treasureNode.RoomType != RoomType.Treasure)
+            {
+                return true;
+            }
+
+            GridPosition primaryNeighborPosition = candidateNeighborPosition;
+            bool hasPrimaryNeighbor = false;
+            int bestDistance = int.MaxValue;
+
+            for (int index = 0; index < treasureNode.Connections.Count; index++)
+            {
+                RoomConnection connection = treasureNode.Connections[index];
+
+                if (!dungeonMap.TryGetRoom(connection.TargetPosition, out DungeonRoomNode neighborNode) || neighborNode == null)
+                {
+                    continue;
+                }
+
+                if (!hasPrimaryNeighbor || neighborNode.DistanceFromStart < bestDistance)
+                {
+                    bestDistance = neighborNode.DistanceFromStart;
+                    primaryNeighborPosition = neighborNode.GridPosition;
+                    hasPrimaryNeighbor = true;
+                }
+            }
+
+            return !hasPrimaryNeighbor || primaryNeighborPosition.Equals(candidateNeighborPosition);
         }
     }
 }

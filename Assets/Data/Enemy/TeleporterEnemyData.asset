@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94da4ef6501841e98fb55e43df72c61e, type: 3}
+  m_Name: TeleporterEnemyData
+  m_EditorClassIdentifier: 
+  enemyId: teleporter
+  moveSpeed: 1.74
+  maxHealth: 8
+  contactDamage: 0.4
+  visualSet: {fileID: 11400000, guid: 3f6f65ce3b9f432188601896a3bbbe91, type: 2}
+  orbitRange: 2.05
+  orbitBlend: 0.4
+  surgeSpeedMultiplier: 1.16
+  teleportInterval: 2.85
+  teleportTelegraphDuration: 0.4
+  postTeleportPause: 0.18
+  minTeleportDistance: 2.7
+  maxTeleportDistance: 4.8
+  teleportCollisionCheckRadius: 0.32
+  teleportSampleCount: 8
+  teleportTelegraphColor: {r: 0.7, g: 0.5, b: 1, a: 1}

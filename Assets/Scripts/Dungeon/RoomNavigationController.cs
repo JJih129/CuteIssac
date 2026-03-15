@@ -1,4 +1,5 @@
 using System;
+using CuteIssac.Core.Audio;
 using CuteIssac.Player;
 using CuteIssac.Room;
 using UnityEngine;
@@ -23,12 +24,15 @@ namespace CuteIssac.Dungeon
         [SerializeField] private bool snapCameraOnTransition = true;
         [SerializeField] private bool hideNonCurrentRooms = true;
         [SerializeField] [Min(0f)] private float transitionCooldown = 0.15f;
+        [SerializeField] [Min(0f)] private float cameraLerpSpeed = 7.5f;
+        [SerializeField] private bool constrainCameraToRoomBounds = true;
 
         public event Action<RoomController> CurrentRoomChanged;
 
         public RoomController CurrentRoom { get; private set; }
 
         private float _lastTransitionTime = float.NegativeInfinity;
+        private Vector3 _cameraTargetPosition;
 
         private void Awake()
         {
@@ -106,6 +110,7 @@ namespace CuteIssac.Dungeon
             player.transform.position = nextPosition;
             nextRoom.EnterRoom();
             SnapCameraTo(nextRoom);
+            GameAudioEvents.Raise(GameAudioEventType.DoorTraversed, nextRoom.CameraFocusPosition);
             _lastTransitionTime = Time.unscaledTime;
             return true;
         }
@@ -126,6 +131,29 @@ namespace CuteIssac.Dungeon
             }
 
             startingRoom.EnterRoom();
+        }
+
+        public bool TryRestoreRoomState(RoomController targetRoom, Vector3 playerPosition, bool snapCamera = true)
+        {
+            if (targetRoom == null)
+            {
+                return false;
+            }
+
+            SetCurrentRoom(targetRoom);
+
+            if (playerController != null)
+            {
+                playerController.transform.position = playerPosition;
+            }
+
+            if (snapCamera)
+            {
+                SnapCameraTo(targetRoom);
+            }
+
+            _lastTransitionTime = Time.unscaledTime;
+            return true;
         }
 
         private void ApplyInitialRoomState()
@@ -154,7 +182,12 @@ namespace CuteIssac.Dungeon
             }
 
             CurrentRoom = startingRoom;
-            SnapCameraTo(startingRoom);
+            SetCameraTarget(startingRoom);
+
+            if (snapCameraOnTransition)
+            {
+                SnapCameraTo(startingRoom);
+            }
 
             if (playerController != null && movePlayerToStartingRoom)
             {
@@ -168,18 +201,23 @@ namespace CuteIssac.Dungeon
         {
             ReconcileCurrentRoomWithPlayerPosition();
 
-            if (!snapCameraOnTransition || CurrentRoom == null || targetCamera == null)
+            if (CurrentRoom == null || targetCamera == null)
             {
                 return;
             }
 
-            Vector3 expectedCameraPosition = CurrentRoom.CameraFocusPosition;
-            expectedCameraPosition.z = targetCamera.transform.position.z;
+            SetCameraTarget(CurrentRoom);
 
-            if ((targetCamera.transform.position - expectedCameraPosition).sqrMagnitude > 0.0001f)
+            if (cameraLerpSpeed <= 0f)
             {
-                targetCamera.transform.position = expectedCameraPosition;
+                targetCamera.transform.position = _cameraTargetPosition;
+                return;
             }
+
+            targetCamera.transform.position = Vector3.Lerp(
+                targetCamera.transform.position,
+                _cameraTargetPosition,
+                1f - Mathf.Exp(-cameraLerpSpeed * Time.unscaledDeltaTime));
         }
 
         private void ReconcileCurrentRoomWithPlayerPosition()
@@ -231,7 +269,13 @@ namespace CuteIssac.Dungeon
             }
 
             CurrentRoom = nextRoom;
-            SnapCameraTo(nextRoom);
+            SetCameraTarget(nextRoom);
+
+            if (snapCameraOnTransition)
+            {
+                SnapCameraTo(nextRoom);
+            }
+
             CurrentRoomChanged?.Invoke(nextRoom);
         }
 
@@ -280,14 +324,57 @@ namespace CuteIssac.Dungeon
 
         private void SnapCameraTo(RoomController roomController)
         {
-            if (!snapCameraOnTransition || roomController == null || targetCamera == null)
+            if (roomController == null || targetCamera == null)
             {
                 return;
             }
 
-            Vector3 cameraPosition = roomController.CameraFocusPosition;
-            cameraPosition.z = targetCamera.transform.position.z;
-            targetCamera.transform.position = cameraPosition;
+            SetCameraTarget(roomController);
+            targetCamera.transform.position = _cameraTargetPosition;
+        }
+
+        private void SetCameraTarget(RoomController roomController)
+        {
+            if (roomController == null || targetCamera == null)
+            {
+                return;
+            }
+
+            Vector3 desiredPosition = roomController.CameraFocusPosition;
+            desiredPosition.z = targetCamera.transform.position.z;
+            _cameraTargetPosition = constrainCameraToRoomBounds
+                ? ClampCameraPositionToRoom(roomController, desiredPosition)
+                : desiredPosition;
+        }
+
+        private Vector3 ClampCameraPositionToRoom(RoomController roomController, Vector3 desiredPosition)
+        {
+            Bounds roomBounds = roomController.RoomBounds;
+
+            if (!targetCamera.orthographic)
+            {
+                return desiredPosition;
+            }
+
+            float verticalExtent = targetCamera.orthographicSize;
+            float horizontalExtent = verticalExtent * targetCamera.aspect;
+            Vector3 clampedPosition = desiredPosition;
+            Vector3 roomCenter = roomBounds.center;
+
+            float minX = roomBounds.min.x + horizontalExtent;
+            float maxX = roomBounds.max.x - horizontalExtent;
+            clampedPosition.x = minX <= maxX
+                ? Mathf.Clamp(clampedPosition.x, minX, maxX)
+                : roomCenter.x;
+
+            float minY = roomBounds.min.y + verticalExtent;
+            float maxY = roomBounds.max.y - verticalExtent;
+            clampedPosition.y = minY <= maxY
+                ? Mathf.Clamp(clampedPosition.y, minY, maxY)
+                : roomCenter.y;
+
+            clampedPosition.z = desiredPosition.z;
+            return clampedPosition;
         }
     }
 }

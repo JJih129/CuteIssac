@@ -15,7 +15,12 @@ MonoBehaviour:
   itemId: runner_sigil
   displayName: Runner Sigil
   description: Lightweight test passive item that increases movement, damage, and rate of fire.
-  icon: {fileID: 21300000, guid: 96b04b3bdb7b4c0f9678b7db7e6fc79b, type: 3}
+  icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10010, type: 3}
+  rarity: 0
+  unlockedByDefault: 1
+  unlockKey: 
+  synergyTags:
+  - 0
   statModifiers:
   - statType: 1
     operation: 0
@@ -26,3 +31,14 @@ MonoBehaviour:
   - statType: 2
     operation: 0
     value: -0.05
+  projectileModifiers: []
+  gameplayEventEffects:
+  - triggerType: 1
+    effectType: 0
+    requirePlayerSource: 1
+    requireCombatEncounter: 1
+    coinAmount: 1
+    timedEffectDuration: 8
+    feedbackLabel: BOUNTY +1C
+    statModifiers: []
+    projectileModifiers: []

@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using CuteIssac.Core.Audio;
+using CuteIssac.Core.Gameplay;
+using CuteIssac.Data.Dungeon;
 using CuteIssac.Dungeon;
 using CuteIssac.Enemy;
 using CuteIssac.Player;
@@ -17,6 +20,7 @@ namespace CuteIssac.Room
     {
         [Header("Room Setup")]
         [SerializeField] private string roomId = "Room";
+        [SerializeField] private RoomType roomType = RoomType.Normal;
         [SerializeField] private Collider2D roomBoundsTrigger;
         [SerializeField] private RoomDoor[] roomDoors;
         [SerializeField] private List<EnemyHealth> initialEnemies = new();
@@ -33,21 +37,44 @@ namespace CuteIssac.Room
 
         public event Action<RoomController> CombatStarted;
         public event Action<RoomController> RoomEntered;
+        public event Action<RoomResolvedSignal> RoomResolved;
         public event Action<RoomController> RoomCleared;
+        public event Action<RoomController> NonCombatResolved;
+        public event Action<RoomController, int> RewardPhaseCompleted;
+        public event Action<RoomController, RoomState> StateChanged;
 
         public string RoomId => roomId;
+        public RoomType RoomType => roomType;
         public RoomState State { get; private set; } = RoomState.Idle;
+        public bool HasResolvedRoom => State == RoomState.Resolved || State == RoomState.Rewarded;
+        public int LastRewardSpawnCount { get; private set; }
+        public bool HasRewardContent => LastRewardSpawnCount > 0;
         public bool IsCurrentRoom { get; private set; }
         public int AliveEnemyCount { get; private set; }
+        public float CurrentCombatDuration => State == RoomState.Combat && _hasCombatStartTimestamp
+            ? Mathf.Max(0f, Time.time - _combatStartedAt)
+            : _lastCombatDuration;
+        public float LastCombatDuration => _lastCombatDuration;
         public int RegisteredEnemyCount => _registeredEnemies.Count;
         public IReadOnlyList<RoomDoor> RoomDoors => roomDoors;
         public Vector3 DefaultPlayerSpawnPosition => defaultPlayerSpawnPoint != null ? defaultPlayerSpawnPoint.position : transform.position;
-        public Vector3 CameraFocusPosition => cameraFocusPoint != null ? cameraFocusPoint.position : transform.position;
+        public Vector3 CameraFocusPosition => cameraFocusPoint != null
+            ? cameraFocusPoint.position
+            : roomBoundsTrigger != null
+                ? roomBoundsTrigger.bounds.center
+                : transform.position;
+        public Bounds RoomBounds => roomBoundsTrigger != null
+            ? roomBoundsTrigger.bounds
+            : new Bounds(transform.position, Vector3.zero);
 
         private readonly List<EnemyHealth> _registeredEnemies = new();
         private Vector3 _lastEnemyDeathPosition;
         private bool _hasLastEnemyDeathPosition;
         private bool _isShuttingDown;
+        private bool _hadCombatEncounter;
+        private float _combatStartedAt;
+        private float _lastCombatDuration;
+        private bool _hasCombatStartTimestamp;
 
         private void Awake()
         {
@@ -193,15 +220,22 @@ namespace CuteIssac.Room
                 return;
             }
 
+            SetState(RoomState.Entered);
+            LastRewardSpawnCount = 0;
             RoomEntered?.Invoke(this);
 
             if (roomEnemySpawner == null || !roomEnemySpawner.CanStartCombat())
             {
-                ClearRoom();
+                _hadCombatEncounter = false;
+                ResolveNonCombatRoom();
                 return;
             }
 
-            State = RoomState.Combat;
+            _hadCombatEncounter = true;
+            _combatStartedAt = Time.time;
+            _hasCombatStartTimestamp = true;
+            _lastCombatDuration = 0f;
+            SetState(RoomState.Combat);
             roomEnemySpawner.HandleCombatStarted(this);
 
             if (AliveEnemyCount <= 0)
@@ -217,15 +251,84 @@ namespace CuteIssac.Room
         [ContextMenu("Clear Room")]
         public void ClearRoom()
         {
-            if (_isShuttingDown || State == RoomState.Cleared)
+            if (_isShuttingDown || HasResolvedRoom)
             {
                 return;
             }
 
-            State = RoomState.Cleared;
+            FinalizeCombatDuration();
+            SetState(RoomState.Resolved);
             SetDoorsLocked(false);
-            roomRewardSpawner?.HandleRoomCleared(this);
+            RoomRewardPhaseSummary rewardSummary = roomRewardSpawner != null
+                ? roomRewardSpawner.HandleRoomCleared(this)
+                : default;
+            RoomResolvedSignal resolution = BuildResolutionSignal(true);
+            GameplayRuntimeEvents.RaiseRoomResolved(resolution);
+            GameAudioEvents.Raise(GameAudioEventType.RoomCleared, CameraFocusPosition);
+            GameplayRuntimeEvents.RaiseRoomCleared(new RoomClearSignal(this, _hadCombatEncounter));
+            RoomResolved?.Invoke(resolution);
             RoomCleared?.Invoke(this);
+            CompleteRewardPhase(rewardSummary);
+        }
+
+        public void ResolveNonCombatRoom()
+        {
+            if (_isShuttingDown || HasResolvedRoom)
+            {
+                return;
+            }
+
+            _lastCombatDuration = 0f;
+            _hasCombatStartTimestamp = false;
+            SetState(RoomState.Resolved);
+            SetDoorsLocked(false);
+            RoomRewardPhaseSummary rewardSummary = roomRewardSpawner != null
+                ? roomRewardSpawner.HandleRoomResolvedWithoutCombat(this)
+                : default;
+            RoomResolvedSignal resolution = BuildResolutionSignal(false);
+            GameplayRuntimeEvents.RaiseRoomResolved(resolution);
+            RoomResolved?.Invoke(resolution);
+            NonCombatResolved?.Invoke(this);
+            CompleteRewardPhase(rewardSummary);
+        }
+
+        public void ConfigureRuntimeMetadata(string runtimeRoomId, RoomType runtimeRoomType)
+        {
+            if (!string.IsNullOrWhiteSpace(runtimeRoomId))
+            {
+                roomId = runtimeRoomId;
+            }
+
+            roomType = runtimeRoomType;
+        }
+
+        public void DebugForceCombatState()
+        {
+            if (_isShuttingDown || State == RoomState.Combat || HasResolvedRoom)
+            {
+                return;
+            }
+
+            _hadCombatEncounter = true;
+            SetState(RoomState.Combat);
+            SetDoorsLocked(true);
+            CombatStarted?.Invoke(this);
+        }
+
+        public void ApplyRestoredResolvedState(bool hadRewardContent, bool hadCombatEncounter)
+        {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
+            _hadCombatEncounter = hadCombatEncounter;
+            LastRewardSpawnCount = hadRewardContent ? Mathf.Max(1, LastRewardSpawnCount) : 0;
+            _hasCombatStartTimestamp = false;
+            roomEnemySpawner?.RestoreEncounterResolvedState();
+            roomRewardSpawner?.RestoreRewardSpawnState(hadRewardContent);
+            SetDoorsLocked(false);
+            SetState(RoomState.Rewarded);
         }
 
         /// <summary>
@@ -236,6 +339,80 @@ namespace CuteIssac.Room
         {
             position = _lastEnemyDeathPosition;
             return _hasLastEnemyDeathPosition;
+        }
+
+        public int AliveChampionEnemyCount => CountAliveChampionEnemies();
+
+        public bool TryGetChampionEncounterSummary(out string variantLabel, out Color accentColor, out int aliveChampionCount)
+        {
+            variantLabel = string.Empty;
+            accentColor = Color.white;
+            aliveChampionCount = 0;
+
+            for (int i = 0; i < _registeredEnemies.Count; i++)
+            {
+                EnemyHealth enemyHealth = _registeredEnemies[i];
+                if (enemyHealth == null || enemyHealth.IsDead)
+                {
+                    continue;
+                }
+
+                ChampionEnemyModifier championModifier = enemyHealth.GetComponent<ChampionEnemyModifier>();
+                if (championModifier == null || !championModifier.IsChampion)
+                {
+                    continue;
+                }
+
+                aliveChampionCount++;
+                if (string.IsNullOrWhiteSpace(variantLabel))
+                {
+                    variantLabel = championModifier.VariantLabel;
+                    accentColor = championModifier.VariantAccentColor;
+                }
+            }
+
+            return aliveChampionCount > 0;
+        }
+
+        public bool TryGetUpcomingChallengeWaveThreat(
+            out int nextWaveNumber,
+            out int totalWaveCount,
+            out int enemyCount,
+            out int guaranteedChampionCount,
+            out float championChanceBonus)
+        {
+            nextWaveNumber = 0;
+            totalWaveCount = 0;
+            enemyCount = 0;
+            guaranteedChampionCount = 0;
+            championChanceBonus = 0f;
+
+            return roomEnemySpawner != null
+                && roomEnemySpawner.TryGetUpcomingChallengeWaveThreat(
+                    out nextWaveNumber,
+                    out totalWaveCount,
+                    out enemyCount,
+                    out guaranteedChampionCount,
+                    out championChanceBonus);
+        }
+
+        public bool TryGetChallengeRewardPressure(
+            out int totalWaveCount,
+            out int reinforcementEnemyCount,
+            out int guaranteedChampionCount,
+            out float championChanceBonus)
+        {
+            totalWaveCount = 0;
+            reinforcementEnemyCount = 0;
+            guaranteedChampionCount = 0;
+            championChanceBonus = 0f;
+
+            return roomEnemySpawner != null
+                && roomEnemySpawner.TryGetChallengeRewardPressure(
+                    out totalWaveCount,
+                    out reinforcementEnemyCount,
+                    out guaranteedChampionCount,
+                    out championChanceBonus);
         }
 
         /// <summary>
@@ -340,8 +517,35 @@ namespace CuteIssac.Room
 
             if (AliveEnemyCount <= 0)
             {
+                if (roomEnemySpawner != null && roomEnemySpawner.TryAdvanceChallengeWave(this))
+                {
+                    return;
+                }
+
                 ClearRoom();
             }
+        }
+
+        private int CountAliveChampionEnemies()
+        {
+            int aliveChampionCount = 0;
+
+            for (int i = 0; i < _registeredEnemies.Count; i++)
+            {
+                EnemyHealth enemyHealth = _registeredEnemies[i];
+                if (enemyHealth == null || enemyHealth.IsDead)
+                {
+                    continue;
+                }
+
+                ChampionEnemyModifier championModifier = enemyHealth.GetComponent<ChampionEnemyModifier>();
+                if (championModifier != null && championModifier.IsChampion)
+                {
+                    aliveChampionCount++;
+                }
+            }
+
+            return aliveChampionCount;
         }
 
         private void SetDoorsLocked(bool locked)
@@ -371,6 +575,42 @@ namespace CuteIssac.Room
                     roomDoors[i].BindOwner(this);
                 }
             }
+        }
+
+        private RoomResolvedSignal BuildResolutionSignal(bool hadCombatEncounter)
+        {
+            return new RoomResolvedSignal(this, roomType, hadCombatEncounter);
+        }
+
+        private void CompleteRewardPhase(RoomRewardPhaseSummary rewardSummary)
+        {
+            LastRewardSpawnCount = Mathf.Max(0, rewardSummary.RewardCount);
+            SetState(RoomState.Rewarded);
+            GameplayRuntimeEvents.RaiseRoomRewardPhaseCompleted(new RoomRewardPhaseSignal(this, roomType, rewardSummary));
+            RewardPhaseCompleted?.Invoke(this, LastRewardSpawnCount);
+        }
+
+        private void FinalizeCombatDuration()
+        {
+            if (!_hadCombatEncounter || !_hasCombatStartTimestamp)
+            {
+                _lastCombatDuration = 0f;
+                return;
+            }
+
+            _lastCombatDuration = Mathf.Max(0f, Time.time - _combatStartedAt);
+            _hasCombatStartTimestamp = false;
+        }
+
+        private void SetState(RoomState nextState)
+        {
+            if (State == nextState)
+            {
+                return;
+            }
+
+            State = nextState;
+            StateChanged?.Invoke(this, nextState);
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using CuteIssac.Core.Meta;
 using CuteIssac.Enemy;
 using UnityEngine;
 
@@ -17,6 +18,8 @@ namespace CuteIssac.Data.Enemy
         [SerializeField] [Min(0)] private int selectionWeight = 1;
         [SerializeField] [Min(1)] private int difficultyCost = 1;
         [SerializeField] [Min(1)] private int unlockFloor = 1;
+        [SerializeField] private bool unlockedByDefault = true;
+        [SerializeField] private string unlockKey;
 
         public string EnemyId => enemyId;
         public EnemyController EnemyPrefab => enemyPrefab;
@@ -24,10 +27,14 @@ namespace CuteIssac.Data.Enemy
         public int SelectionWeight => selectionWeight;
         public int DifficultyCost => difficultyCost;
         public int UnlockFloor => unlockFloor;
+        public bool UnlockedByDefault => unlockedByDefault;
+        public string UnlockKey => unlockKey;
 
         public bool IsAvailableForFloor(int floorIndex)
         {
-            return enemyPrefab != null && floorIndex >= unlockFloor;
+            return enemyPrefab != null
+                && floorIndex >= unlockFloor
+                && UnlockManager.IsUnlocked(unlockKey, unlockedByDefault);
         }
     }
 }

@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 971b35e7528a79a49ba40271396635ed, type: 3}
+  m_Name: T015_StarThread
+  m_EditorClassIdentifier: 
+  itemType: 2
+  itemCategory: 3
+  flavorText: The line keeps bending toward something alive.
+  sourcePools: 0000000003000000
+  eventFlags: 00000000
+  damageModifier: 0
+  tearsModifier: 0
+  speedModifier: 0
+  rangeModifier: 0
+  shotSpeedModifier: 0
+  luckModifier: 1
+  maxHealthModifier: 0
+  projectileFlags: 01000000
+  itemId: T015
+  displayName: Star Thread
+  description: Adds a light homing effect and some luck.
+  icon: {fileID: 0}
+  rarity: 3
+  unlockedByDefault: 1
+  unlockKey: 
+  itemTags: 05000000
+  statModifiers: []
+  projectileModifiers: []
+  gameplayEventEffects: []

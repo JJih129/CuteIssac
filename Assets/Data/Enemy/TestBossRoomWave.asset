@@ -15,7 +15,7 @@ MonoBehaviour:
   waveId: test_boss_room_wave
   encounterTier: 2
   entries:
-  - enemyId: chaser
-    enemyPrefab: {fileID: 930000106, guid: c7f3af65372d46ee83fd98579e23720d, type: 3}
-    count: 4
-    difficultyCost: 2
+  - enemyId: boss_chaser
+    enemyPrefab: {fileID: 930000106, guid: 63cae6d6439d4bff9874379459d0a0dd, type: 3}
+    count: 1
+    difficultyCost: 8

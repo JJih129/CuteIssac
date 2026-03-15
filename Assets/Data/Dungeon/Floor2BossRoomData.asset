@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f1c5fc325735ac41a2fe948be39d959, type: 3}
+  m_Name: Floor2BossRoomData
+  m_EditorClassIdentifier: 
+  roomId: floor2_boss_room
+  displayName: Floor 2 Boss Room
+  roomType: 4
+  widthInCells: 1
+  heightInCells: 1
+  generationWeight: 1
+  enemyWaveOverride: {fileID: 11400000, guid: 2b4eaa7a11c24f43a1e7d995fc540202, type: 2}
+  treasureItemOverride: {fileID: 0}
+  localLayouts: []

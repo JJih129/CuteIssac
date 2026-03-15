@@ -1,4 +1,6 @@
 using CuteIssac.Combat;
+using CuteIssac.Common.Combat;
+using CuteIssac.Data.Visual;
 using UnityEngine;
 
 namespace CuteIssac.Player
@@ -20,12 +22,18 @@ namespace CuteIssac.Player
         [Header("Logic References")]
         [Tooltip("Optional. Used to listen for damage and death signals without putting VFX code into PlayerHealth.")]
         [SerializeField] private PlayerHealth playerHealth;
+        [Tooltip("Optional. Used for hit knockback without moving combat logic into the visual component.")]
+        [SerializeField] private PlayerMovement playerMovement;
         [Tooltip("Optional. When assigned, the projectile spawner will use the muzzle anchor below as its spawn origin.")]
         [SerializeField] private ProjectileSpawner projectileSpawner;
+        [Tooltip("Optional. Handles camera or screen-space hit feedback when the player takes damage.")]
+        [SerializeField] private PlayerScreenFeedback screenFeedback;
 
         [Header("Presentation Roots")]
         [Tooltip("Optional root for all presentation-only children. Safe to leave empty when the root object already represents the visual hierarchy.")]
         [SerializeField] private Transform visualRoot;
+        [Tooltip("Optional root that receives hit punch offsets. When empty, the visual root is used if safe.")]
+        [SerializeField] private Transform hitFeedbackRoot;
         [Tooltip("Optional transform that rotates or flips to face the current look direction.")]
         [SerializeField] private Transform facingRoot;
         [Tooltip("Optional extra root for shadow sprites or accessory visuals.")]
@@ -36,6 +44,10 @@ namespace CuteIssac.Player
         [SerializeField] private SpriteRenderer bodySpriteRenderer;
         [Tooltip("Optional animator used only for presentation. Gameplay does not depend on it.")]
         [SerializeField] private Animator bodyAnimator;
+
+        [Header("Visual Set")]
+        [Tooltip("Optional visual asset set. Swap this in the inspector to replace prototype player art without touching logic.")]
+        [SerializeField] private PlayerVisualSet visualSet;
 
         [Header("Effect Anchors")]
         [Tooltip("Projectile, muzzle flash, and future fire VFX should use this anchor.")]
@@ -52,8 +64,13 @@ namespace CuteIssac.Player
 
         [Header("Feedback")]
         [SerializeField] private Color baseColor = Color.white;
+        [SerializeField] private Color hitFlashColor = new(1f, 1f, 1f, 1f);
         [SerializeField] private Color damagedColor = new(1f, 0.45f, 0.45f, 1f);
         [SerializeField] [Min(0f)] private float damagedFlashDuration = 0.08f;
+        [SerializeField] [Min(0f)] private float hitKnockbackImpulse = 4.75f;
+        [SerializeField] [Min(0f)] private float hitVisualPunchDistance = 0.14f;
+        [SerializeField] [Min(0f)] private float hitVisualRecoverSpeed = 1.4f;
+        [SerializeField] [Min(0f)] private float screenFeedbackScale = 1f;
         [SerializeField] private Color deadColor = new(1f, 1f, 1f, 0.55f);
 
         [Header("Optional Animator Parameters")]
@@ -75,26 +92,33 @@ namespace CuteIssac.Player
 
         private Vector2 _lastAimDirection = Vector2.right;
         private float _damagedFlashRemaining;
+        private float _damagedFlashTotalDuration;
         private bool _warnedMissingBodyRenderer;
         private Vector3 _initialMuzzleLocalPosition;
         private bool _hasInitialMuzzleLocalPosition;
+        private Vector3 _initialHitFeedbackLocalPosition;
+        private bool _hasInitialHitFeedbackLocalPosition;
+        private Vector3 _currentHitVisualOffset;
 
         private void Awake()
         {
             ResolveReferences();
+            ApplyConfiguredVisualSet();
             ApplySpawnOrigin();
             ApplyBodyColor(baseColor);
             CacheMuzzleAnchorLocalPosition();
+            CacheHitFeedbackLocalPosition();
             UpdateMuzzleAnchor(_lastAimDirection);
         }
 
         private void OnEnable()
         {
             ResolveReferences();
+            ApplyConfiguredVisualSet();
 
             if (playerHealth != null)
             {
-                playerHealth.Damaged += HandleDamaged;
+                playerHealth.DamagedWithInfo += HandleDamaged;
                 playerHealth.Died += HandleDied;
             }
         }
@@ -103,13 +127,17 @@ namespace CuteIssac.Player
         {
             if (playerHealth != null)
             {
-                playerHealth.Damaged -= HandleDamaged;
+                playerHealth.DamagedWithInfo -= HandleDamaged;
                 playerHealth.Died -= HandleDied;
             }
+
+            ResetHitFeedbackRootPosition();
         }
 
         private void Update()
         {
+            UpdateHitVisualOffset();
+
             if (_damagedFlashRemaining <= 0f)
             {
                 return;
@@ -117,10 +145,17 @@ namespace CuteIssac.Player
 
             _damagedFlashRemaining -= Time.deltaTime;
 
-            if (_damagedFlashRemaining <= 0f && playerHealth != null && !playerHealth.IsDead)
+            if (_damagedFlashRemaining <= 0f)
             {
-                ApplyBodyColor(baseColor);
+                if (playerHealth != null && !playerHealth.IsDead)
+                {
+                    ApplyBodyColor(baseColor);
+                }
+
+                return;
             }
+
+            UpdateHitFlashColor();
         }
 
         public void SetMoveInput(Vector2 moveInput)
@@ -152,11 +187,26 @@ namespace CuteIssac.Player
             SetAnimatorTrigger(firedTriggerParameter);
         }
 
-        public void HandleDamaged()
+        public void HandleDamaged(DamageInfo damageInfo)
         {
             _damagedFlashRemaining = damagedFlashDuration;
-            ApplyBodyColor(damagedColor);
+            _damagedFlashTotalDuration = Mathf.Max(0.01f, damagedFlashDuration);
+            ApplyBodyColor(hitFlashColor);
             SetAnimatorTrigger(damagedTriggerParameter);
+
+            Vector2 hitDirection = ResolveHitDirection(damageInfo.HitDirection);
+
+            if (playerMovement != null && hitKnockbackImpulse > 0f)
+            {
+                playerMovement.ApplyImpulse(hitDirection * hitKnockbackImpulse);
+            }
+
+            ApplyHitVisualPunch(hitDirection);
+
+            if (screenFeedback != null && screenFeedbackScale > 0f)
+            {
+                screenFeedback.PlayHitFeedback(screenFeedbackScale);
+            }
         }
 
         public void HandleDied()
@@ -164,6 +214,22 @@ namespace CuteIssac.Player
             _damagedFlashRemaining = 0f;
             ApplyBodyColor(deadColor);
             SetAnimatorBool(deadBoolParameter, true);
+            _currentHitVisualOffset = Vector3.zero;
+            ResetHitFeedbackRootPosition();
+        }
+
+        private void UpdateHitFlashColor()
+        {
+            if (_damagedFlashTotalDuration <= 0f || playerHealth == null || playerHealth.IsDead)
+            {
+                return;
+            }
+
+            float progress = 1f - Mathf.Clamp01(_damagedFlashRemaining / _damagedFlashTotalDuration);
+            Color nextColor = progress < 0.35f
+                ? Color.Lerp(hitFlashColor, damagedColor, progress / 0.35f)
+                : Color.Lerp(damagedColor, baseColor, (progress - 0.35f) / 0.65f);
+            ApplyBodyColor(nextColor);
         }
 
         private void ApplySpawnOrigin()
@@ -232,9 +298,19 @@ namespace CuteIssac.Player
                 TryGetComponent(out playerHealth);
             }
 
+            if (playerMovement == null)
+            {
+                TryGetComponent(out playerMovement);
+            }
+
             if (projectileSpawner == null)
             {
                 TryGetComponent(out projectileSpawner);
+            }
+
+            if (screenFeedback == null)
+            {
+                TryGetComponent(out screenFeedback);
             }
 
             if (visualRoot == null)
@@ -256,6 +332,57 @@ namespace CuteIssac.Player
             {
                 bodyAnimator = GetComponentInChildren<Animator>(true);
             }
+
+            if (hitFeedbackRoot == null)
+            {
+                hitFeedbackRoot = visualRoot != transform
+                    ? visualRoot
+                    : facingRoot != null
+                        ? facingRoot
+                        : bodySpriteRenderer != null
+                            ? bodySpriteRenderer.transform
+                            : null;
+            }
+        }
+
+        public void ApplyVisualSet(PlayerVisualSet nextVisualSet)
+        {
+            visualSet = nextVisualSet;
+            ApplyConfiguredVisualSet();
+        }
+
+        private void ApplyConfiguredVisualSet()
+        {
+            if (visualSet == null)
+            {
+                return;
+            }
+
+            if (bodySpriteRenderer != null && visualSet.BodySprite != null)
+            {
+                bodySpriteRenderer.sprite = visualSet.BodySprite;
+            }
+
+            if (bodyAnimator != null && visualSet.AnimatorController != null)
+            {
+                bodyAnimator.runtimeAnimatorController = visualSet.AnimatorController;
+            }
+
+            if (optionalShadowRoot != null &&
+                optionalShadowRoot.TryGetComponent(out SpriteRenderer shadowRenderer))
+            {
+                if (visualSet.ShadowSprite != null)
+                {
+                    shadowRenderer.sprite = visualSet.ShadowSprite;
+                }
+
+                shadowRenderer.color = visualSet.ShadowColor;
+            }
+
+            baseColor = visualSet.BaseColor;
+            hitFlashColor = visualSet.HitFlashColor;
+            damagedColor = visualSet.DamagedColor;
+            deadColor = visualSet.DeadColor;
         }
 
         private void CacheMuzzleAnchorLocalPosition()
@@ -267,6 +394,17 @@ namespace CuteIssac.Player
 
             _initialMuzzleLocalPosition = muzzleAnchor.localPosition;
             _hasInitialMuzzleLocalPosition = true;
+        }
+
+        private void CacheHitFeedbackLocalPosition()
+        {
+            if (hitFeedbackRoot == null || _hasInitialHitFeedbackLocalPosition)
+            {
+                return;
+            }
+
+            _initialHitFeedbackLocalPosition = hitFeedbackRoot.localPosition;
+            _hasInitialHitFeedbackLocalPosition = true;
         }
 
         private void UpdateMuzzleAnchor(Vector2 aimDirection)
@@ -291,6 +429,63 @@ namespace CuteIssac.Player
         private bool HasAimDirection()
         {
             return _lastAimDirection.sqrMagnitude > 0.0001f;
+        }
+
+        private Vector2 ResolveHitDirection(Vector2 hitDirection)
+        {
+            if (hitDirection.sqrMagnitude > 0.0001f)
+            {
+                return hitDirection.normalized;
+            }
+
+            if (_lastAimDirection.sqrMagnitude > 0.0001f)
+            {
+                return -_lastAimDirection.normalized;
+            }
+
+            return Vector2.down;
+        }
+
+        private void ApplyHitVisualPunch(Vector2 hitDirection)
+        {
+            CacheHitFeedbackLocalPosition();
+
+            if (!_hasInitialHitFeedbackLocalPosition || hitFeedbackRoot == null || hitVisualPunchDistance <= 0f)
+            {
+                return;
+            }
+
+            _currentHitVisualOffset = (Vector3)(hitDirection.normalized * hitVisualPunchDistance);
+            hitFeedbackRoot.localPosition = _initialHitFeedbackLocalPosition + _currentHitVisualOffset;
+        }
+
+        private void UpdateHitVisualOffset()
+        {
+            if (!_hasInitialHitFeedbackLocalPosition || hitFeedbackRoot == null || _currentHitVisualOffset.sqrMagnitude <= 0.000001f)
+            {
+                return;
+            }
+
+            _currentHitVisualOffset = Vector3.MoveTowards(
+                _currentHitVisualOffset,
+                Vector3.zero,
+                hitVisualRecoverSpeed * Time.deltaTime);
+
+            hitFeedbackRoot.localPosition = _initialHitFeedbackLocalPosition + _currentHitVisualOffset;
+
+            if (_currentHitVisualOffset.sqrMagnitude <= 0.000001f)
+            {
+                _currentHitVisualOffset = Vector3.zero;
+                ResetHitFeedbackRootPosition();
+            }
+        }
+
+        private void ResetHitFeedbackRootPosition()
+        {
+            if (_hasInitialHitFeedbackLocalPosition && hitFeedbackRoot != null)
+            {
+                hitFeedbackRoot.localPosition = _initialHitFeedbackLocalPosition;
+            }
         }
 
         private void ApplyBodyColor(Color color)
@@ -343,12 +538,15 @@ namespace CuteIssac.Player
         {
             ResolveReferences();
             CacheMuzzleAnchorLocalPosition();
+            CacheHitFeedbackLocalPosition();
         }
 
         private void OnValidate()
         {
             ResolveReferences();
+            ApplyConfiguredVisualSet();
             CacheMuzzleAnchorLocalPosition();
+            CacheHitFeedbackLocalPosition();
         }
     }
 }

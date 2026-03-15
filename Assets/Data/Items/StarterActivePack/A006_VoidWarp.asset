@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d9dc04b60744be6af8d0d25b510a611, type: 3}
+  m_Name: A006_VoidWarp
+  m_EditorClassIdentifier: 
+  itemId: active_void_warp
+  displayName: Void Warp
+  description: Slip to the safest spot in the room.
+  icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000a, type: 3}
+  chargeRule: 0
+  maxCharge: 4
+  chargePerRoomClear: 1
+  chargePerEnemyKill: 1
+  startFullyCharged: 0
+  effect: {fileID: 11400000, guid: 07b764f7700c489ba5cc76384f96d654, type: 2}

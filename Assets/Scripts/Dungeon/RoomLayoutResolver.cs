@@ -14,11 +14,14 @@ namespace CuteIssac.Dungeon
         private readonly List<RoomLayoutData> _exactMatchBuffer = new();
         private readonly List<RoomLayoutData> _supersetMatchBuffer = new();
 
-        public void ResolveAllLayouts(DungeonMap dungeonMap)
+        public bool TryResolveAllLayouts(DungeonMap dungeonMap, out string failureReason)
         {
+            failureReason = null;
+
             if (dungeonMap == null)
             {
-                return;
+                failureReason = "DungeonMap was null.";
+                return false;
             }
 
             foreach (KeyValuePair<GridPosition, DungeonRoomNode> roomPair in dungeonMap.RoomsByPosition)
@@ -26,7 +29,16 @@ namespace CuteIssac.Dungeon
                 DungeonRoomNode roomNode = roomPair.Value;
                 RoomLayoutData resolvedLayout = ResolveLayout(dungeonMap.FloorConfig, roomNode);
                 roomNode.SetResolvedLayout(resolvedLayout);
+
+                if (resolvedLayout == null)
+                {
+                    RoomDoorMask requiredDoors = RoomDirectionUtility.ToDoorMask(roomNode.Connections);
+                    failureReason = $"No compatible layout for {roomNode.RoomType} at {roomNode.GridPosition} with required doors {requiredDoors}.";
+                    return false;
+                }
             }
+
+            return true;
         }
 
         public RoomLayoutData ResolveLayout(FloorConfig floorConfig, DungeonRoomNode roomNode)
@@ -51,14 +63,6 @@ namespace CuteIssac.Dungeon
             floorConfig?.CollectCandidateLayouts(roomNode.RoomType, _candidateBuffer);
 
             RoomLayoutData sharedLayout = SelectBestCompatibleLayout(_candidateBuffer, roomNode.RoomType, requiredDoors);
-
-            if (sharedLayout == null)
-            {
-                Debug.LogWarning(
-                    $"RoomLayoutResolver could not find a compatible layout for {roomNode.RoomType} at {roomNode.GridPosition} " +
-                    $"with required doors {requiredDoors}.",
-                    roomNode.RoomData);
-            }
 
             return sharedLayout;
         }

@@ -1,0 +1,162 @@
+using UnityEngine;
+
+namespace CuteIssac.Room
+{
+    [DisallowMultipleComponent]
+    public sealed class FloorExitVisual : MonoBehaviour
+    {
+        [Header("Optional References")]
+        [SerializeField] private SpriteRenderer baseRenderer;
+        [SerializeField] private SpriteRenderer glowRenderer;
+        [SerializeField] private SpriteRenderer promptRenderer;
+        [SerializeField] private TextMesh promptLabelText;
+
+        [Header("Animation")]
+        [SerializeField] [Min(0.1f)] private float pulseSpeed = 3.2f;
+        [SerializeField] [Min(0f)] private float glowScaleAmplitude = 0.08f;
+
+        private Color _accentColor = new(0.66f, 0.9f, 1f, 1f);
+        private Vector3 _baseGlowScale = Vector3.one;
+        private static Sprite _fallbackSprite;
+
+        private void Awake()
+        {
+            ResolveReferences();
+        }
+
+        private void Update()
+        {
+            if (glowRenderer == null)
+            {
+                return;
+            }
+
+            float pulse = 0.5f + Mathf.Sin(Time.time * pulseSpeed) * 0.5f;
+            Color glowColor = _accentColor;
+            glowColor.a = Mathf.Lerp(0.18f, 0.44f, pulse);
+            glowRenderer.color = glowColor;
+            glowRenderer.transform.localScale = _baseGlowScale * (1f + pulse * glowScaleAmplitude);
+        }
+
+        public void Configure(int targetFloorIndex, Color accentColor)
+        {
+            ResolveReferences();
+            _accentColor = accentColor;
+
+            if (baseRenderer != null)
+            {
+                Color baseColor = accentColor * 0.9f;
+                baseColor.a = 1f;
+                baseRenderer.color = baseColor;
+            }
+
+            if (promptRenderer != null)
+            {
+                promptRenderer.color = Color.white;
+            }
+
+            if (promptLabelText != null)
+            {
+                promptLabelText.text = $"{targetFloorIndex}층 이동\nE / Shift";
+                promptLabelText.color = Color.white;
+            }
+
+            SetPromptVisible(false);
+        }
+
+        public void SetPromptVisible(bool visible)
+        {
+            if (promptRenderer != null)
+            {
+                promptRenderer.enabled = visible;
+            }
+
+            if (promptLabelText != null)
+            {
+                promptLabelText.gameObject.SetActive(visible);
+            }
+        }
+
+        public void PlayActivateFeedback()
+        {
+            if (baseRenderer != null)
+            {
+                Color activatedColor = Color.white;
+                activatedColor.a = 1f;
+                baseRenderer.color = activatedColor;
+            }
+        }
+
+        private void ResolveReferences()
+        {
+            EnsureFallbackVisuals();
+            _baseGlowScale = glowRenderer != null ? glowRenderer.transform.localScale : Vector3.one;
+        }
+
+        private void EnsureFallbackVisuals()
+        {
+            Sprite sprite = GetFallbackSprite();
+
+            if (baseRenderer == null)
+            {
+                baseRenderer = CreateRenderer("Base", sprite, new Vector2(0f, -0.35f), new Vector2(1.4f, 0.36f), 0);
+            }
+
+            if (glowRenderer == null)
+            {
+                glowRenderer = CreateRenderer("Glow", sprite, new Vector2(0f, -0.18f), new Vector2(1.8f, 0.9f), -1);
+            }
+
+            if (promptRenderer == null)
+            {
+                promptRenderer = CreateRenderer("Prompt", sprite, new Vector2(0f, 1.15f), new Vector2(1.24f, 0.18f), 1);
+                Color promptColor = Color.white;
+                promptColor.a = 0.88f;
+                promptRenderer.color = promptColor;
+            }
+
+            if (promptLabelText == null)
+            {
+                GameObject promptTextObject = new("PromptLabel");
+                promptTextObject.transform.SetParent(transform, false);
+                promptTextObject.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+                promptLabelText = promptTextObject.AddComponent<TextMesh>();
+                promptLabelText.anchor = TextAnchor.MiddleCenter;
+                promptLabelText.alignment = TextAlignment.Center;
+                promptLabelText.fontSize = 64;
+                promptLabelText.characterSize = 0.14f;
+                promptLabelText.color = Color.white;
+                promptLabelText.gameObject.SetActive(false);
+            }
+        }
+
+        private SpriteRenderer CreateRenderer(string name, Sprite sprite, Vector2 localPosition, Vector2 localScale, int order)
+        {
+            GameObject rendererObject = new(name);
+            rendererObject.transform.SetParent(transform, false);
+            rendererObject.transform.localPosition = localPosition;
+            rendererObject.transform.localScale = new Vector3(localScale.x, localScale.y, 1f);
+
+            SpriteRenderer spriteRenderer = rendererObject.AddComponent<SpriteRenderer>();
+            spriteRenderer.sprite = sprite;
+            spriteRenderer.sortingOrder = order;
+            spriteRenderer.drawMode = SpriteDrawMode.Simple;
+            return spriteRenderer;
+        }
+
+        private static Sprite GetFallbackSprite()
+        {
+            if (_fallbackSprite != null)
+            {
+                return _fallbackSprite;
+            }
+
+            _fallbackSprite = Sprite.Create(
+                Texture2D.whiteTexture,
+                new Rect(0f, 0f, Texture2D.whiteTexture.width, Texture2D.whiteTexture.height),
+                new Vector2(0.5f, 0.5f),
+                100f);
+            return _fallbackSprite;
+        }
+    }
+}

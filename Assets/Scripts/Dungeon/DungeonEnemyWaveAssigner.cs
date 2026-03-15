@@ -8,7 +8,7 @@ namespace CuteIssac.Dungeon
 {
     /// <summary>
     /// Assigns simple enemy wave plans to generated rooms.
-    /// The current prototype only auto-builds normal room encounters from the floor pool while leaving authored override hooks for other room types.
+    /// Normal rooms auto-build from the normal pool, while miniboss rooms auto-build from the elite pool.
     /// </summary>
     public sealed class DungeonEnemyWaveAssigner
     {
@@ -44,37 +44,72 @@ namespace CuteIssac.Dungeon
                 case RoomType.Treasure:
                 case RoomType.Shop:
                 case RoomType.Secret:
+                case RoomType.Trap:
+                case RoomType.Curse:
                     return null;
                 case RoomType.Boss:
                     return overrideWave != null
                         ? overrideWave.BuildAssignment(roomNode.DistanceFromStart, floorConfig.GetEnemyBudget(EnemyEncounterTier.Boss))
                         : null;
+                case RoomType.MiniBoss:
+                    if (overrideWave != null)
+                    {
+                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite));
+                    }
+
+                    return BuildGeneratedEncounterWave(
+                        floorConfig,
+                        roomNode,
+                        EnemyEncounterTier.Elite,
+                        "generated-miniboss",
+                        floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite));
+                case RoomType.Challenge:
+                    if (overrideWave != null)
+                    {
+                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite));
+                    }
+
+                    return BuildGeneratedEncounterWave(
+                        floorConfig,
+                        roomNode,
+                        EnemyEncounterTier.Elite,
+                        "generated-challenge",
+                        floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite));
                 case RoomType.Normal:
                     if (overrideWave != null)
                     {
                         return overrideWave.BuildAssignment(roomNode.DistanceFromStart, ResolveNormalRoomBudget(floorConfig, roomNode));
                     }
 
-                    return BuildGeneratedNormalWave(floorConfig, roomNode);
+                    return BuildGeneratedEncounterWave(
+                        floorConfig,
+                        roomNode,
+                        EnemyEncounterTier.Normal,
+                        "generated-normal",
+                        ResolveNormalRoomBudget(floorConfig, roomNode));
                 default:
                     return null;
             }
         }
 
-        private EnemyWaveAssignment BuildGeneratedNormalWave(FloorConfig floorConfig, DungeonRoomNode roomNode)
+        private EnemyWaveAssignment BuildGeneratedEncounterWave(
+            FloorConfig floorConfig,
+            DungeonRoomNode roomNode,
+            EnemyEncounterTier encounterTier,
+            string assignmentPrefix,
+            int targetBudget)
         {
             _candidateBuffer.Clear();
-            floorConfig.CollectEnemySpawnEntries(EnemyEncounterTier.Normal, _candidateBuffer);
+            floorConfig.CollectEnemySpawnEntries(encounterTier, _candidateBuffer);
 
             if (_candidateBuffer.Count == 0)
             {
                 return null;
             }
 
-            int targetBudget = ResolveNormalRoomBudget(floorConfig, roomNode);
             EnemyWaveAssignment assignment = new(
-                $"generated-normal-{roomNode.GridPosition.X}-{roomNode.GridPosition.Y}",
-                EnemyEncounterTier.Normal,
+                $"{assignmentPrefix}-{roomNode.GridPosition.X}-{roomNode.GridPosition.Y}",
+                encounterTier,
                 roomNode.DistanceFromStart,
                 targetBudget);
 

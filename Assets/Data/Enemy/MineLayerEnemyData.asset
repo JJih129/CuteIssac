@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29ddb48a584d408fb74ff6de64d1f95e, type: 3}
+  m_Name: MineLayerEnemyData
+  m_EditorClassIdentifier: 
+  enemyId: mine_layer
+  moveSpeed: 1.74
+  maxHealth: 8
+  contactDamage: 0.4
+  visualSet: {fileID: 11400000, guid: 20953148186043538b3832eb06ef7ca5, type: 2}
+  layInterval: 2.65
+  telegraphDuration: 0.28
+  preferredRange: 5.3
+  retreatRange: 2.8
+  strafeBlend: 0.4
+  strafeSwapInterval: 1.16
+  moveSpeedWhileTelegraphing: 0.1
+  telegraphColor: {r: 0.92, g: 0.94, b: 0.3, a: 1}
+  minePrefab: {fileID: 980000102, guid: 7fd8a89be1ef4227aff4592390e4012c, type: 3}
+  mineSpawnReusePolicy: 1
+  minePrewarmCount: 4
+  mineDropOffset: {x: 0, y: -0.08}
+  mineArmDelay: 0.55
+  mineTriggerRange: 1.15
+  mineTriggerWindupSeconds: 0.42
+  mineExplosionRadius: 1.45
+  mineExplosionDamage: 1.35
+  mineExplosionKnockback: 6

@@ -14,8 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: treasure_relic
   displayName: Treasure Relic
-  description: Test treasure-room passive item that boosts damage and movement enough to be noticeable on pickup.
-  icon: {fileID: 21300000, guid: 96b04b3bdb7b4c0f9678b7db7e6fc79b, type: 3}
+  description: Treasure passive item that adds an extra shot and slightly larger tears for immediate build variety.
+  icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10010, type: 3}
+  rarity: 1
+  unlockedByDefault: 1
+  unlockKey: 
+  synergyTags:
+  - 3
+  - 2
   statModifiers:
   - statType: 1
     operation: 0
@@ -23,3 +29,29 @@ MonoBehaviour:
   - statType: 0
     operation: 0
     value: 2
+  projectileModifiers:
+  - modifierType: 3
+    operation: 0
+    value: 1
+  - modifierType: 2
+    operation: 0
+    value: 0.2
+  gameplayEventEffects:
+  - triggerType: 3
+    effectType: 1
+    requirePlayerSource: 1
+    requireCombatEncounter: 1
+    coinAmount: 0
+    timedEffectDuration: 12
+    feedbackLabel: CLEAR SURGE
+    statModifiers:
+    - statType: 0
+      operation: 0
+      value: 1
+    - statType: 1
+      operation: 0
+      value: 1
+    projectileModifiers:
+    - modifierType: 0
+      operation: 0
+      value: 2

@@ -14,6 +14,8 @@ namespace CuteIssac.Room
         [SerializeField] private RoomController roomController;
         [SerializeField] private EnemyHealth enemyHealth;
 
+        public RoomController AssignedRoom => roomController;
+
         private void Awake()
         {
             if (enemyHealth == null)
@@ -22,14 +24,14 @@ namespace CuteIssac.Room
             }
         }
 
-        private void Start()
+        private void OnEnable()
         {
-            roomController?.RegisterEnemy(enemyHealth);
+            RegisterToAssignedRoom();
         }
 
-        private void OnDestroy()
+        private void OnDisable()
         {
-            roomController?.UnregisterEnemy(enemyHealth);
+            UnregisterFromAssignedRoom();
         }
 
         public void AssignRoom(RoomController room)
@@ -39,9 +41,29 @@ namespace CuteIssac.Room
                 return;
             }
 
-            roomController?.UnregisterEnemy(enemyHealth);
+            UnregisterFromAssignedRoom();
             roomController = room;
-            roomController?.RegisterEnemy(enemyHealth);
+            RegisterToAssignedRoom();
+        }
+
+        private void RegisterToAssignedRoom()
+        {
+            if (roomController == null || enemyHealth == null || !isActiveAndEnabled)
+            {
+                return;
+            }
+
+            roomController.RegisterEnemy(enemyHealth);
+        }
+
+        private void UnregisterFromAssignedRoom()
+        {
+            if (roomController == null || enemyHealth == null)
+            {
+                return;
+            }
+
+            roomController.UnregisterEnemy(enemyHealth);
         }
     }
 }

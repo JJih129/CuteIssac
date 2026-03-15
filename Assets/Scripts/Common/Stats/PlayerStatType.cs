@@ -8,6 +8,12 @@ namespace CuteIssac.Common.Stats
     {
         Damage = 0,
         MoveSpeed = 1,
-        FireInterval = 2
+        FireInterval = 2,
+        ProjectileSpeed = 3,
+        Range = 4,
+        Luck = 5,
+        ProjectileCount = 6,
+        Knockback = 7,
+        MaxHealth = 8
     }
 }

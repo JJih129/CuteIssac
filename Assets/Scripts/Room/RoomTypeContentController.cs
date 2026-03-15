@@ -1,5 +1,8 @@
+using CuteIssac.Core.Audio;
 using CuteIssac.Data.Dungeon;
+using CuteIssac.Data.Item;
 using CuteIssac.Data.Room;
+using CuteIssac.Item;
 using UnityEngine;
 
 namespace CuteIssac.Room
@@ -16,6 +19,8 @@ namespace CuteIssac.Room
         [SerializeField] private RoomController roomController;
         [Tooltip("Optional reward spawner that can receive room-type-specific reward table overrides.")]
         [SerializeField] private RoomRewardSpawner roomRewardSpawner;
+        [Tooltip("Optional treasure-only spawner. Keeps treasure-room item spawning outside the generic content path.")]
+        [SerializeField] private TreasureRoomSpawner treasureRoomSpawner;
         [Tooltip("Catalog that defines what each RoomType should look and feel like.")]
         [SerializeField] private RoomTypeContentCatalog contentCatalog;
         [Tooltip("Optional spawn anchor for non-combat room content such as treasure pickups or shop placeholders.")]
@@ -30,6 +35,7 @@ namespace CuteIssac.Room
         private RoomType _runtimeRoomType = RoomType.Normal;
         private RoomData _runtimeRoomData;
         private RoomTypeContentEntry _resolvedEntry;
+        private ItemPoolData _runtimeFloorItemPool;
         private bool _hasSpawnedEntryContent;
 
         private void Awake()
@@ -54,10 +60,11 @@ namespace CuteIssac.Room
         /// Generated dungeon flow injects runtime room metadata here.
         /// This is the single handoff point from data-only generation into room-type-specific world content.
         /// </summary>
-        public void ConfigureRoom(RoomType roomType, RoomData roomData)
+        public void ConfigureRoom(RoomType roomType, RoomData roomData, ItemPoolData floorItemPoolOverride = null)
         {
             _runtimeRoomType = roomType;
             _runtimeRoomData = roomData;
+            _runtimeFloorItemPool = floorItemPoolOverride;
             _hasSpawnedEntryContent = false;
 
             if (contentCatalog != null && contentCatalog.TryGetEntry(roomType, out RoomTypeContentEntry entry))
@@ -72,8 +79,17 @@ namespace CuteIssac.Room
             if (roomRewardSpawner != null)
             {
                 roomRewardSpawner.ConfigureRewardRules(roomType, _resolvedEntry != null ? _resolvedEntry.RewardTableOverride : null);
+                roomRewardSpawner.ConfigureItemRewardPool(
+                    roomType,
+                    ResolveItemPoolOverride(),
+                    _resolvedEntry != null ? _resolvedEntry.ItemPickupPrefabOverride : null);
             }
 
+            treasureRoomSpawner?.ConfigureRoom(
+                roomType,
+                roomData,
+                ResolveItemPoolOverride(),
+                _resolvedEntry != null ? _resolvedEntry.ItemPickupPrefabOverride : null);
             ApplyRoomTint();
         }
 
@@ -84,7 +100,12 @@ namespace CuteIssac.Room
                 return;
             }
 
-            if (!_resolvedEntry.SpawnContentOnFirstEntry)
+            if (!_resolvedEntry.SpawnContentOnFirstEntry && _runtimeRoomType != RoomType.Curse)
+            {
+                return;
+            }
+
+            if (_runtimeRoomType == RoomType.Treasure && treasureRoomSpawner != null && treasureRoomSpawner.CanHandleRoomType(_runtimeRoomType))
             {
                 return;
             }
@@ -93,6 +114,7 @@ namespace CuteIssac.Room
 
             if (entryContentPrefab == null)
             {
+                TrySpawnFallbackCurseEntryContent();
                 return;
             }
 
@@ -108,6 +130,42 @@ namespace CuteIssac.Room
             }
 
             spawnedContent.name = $"{_runtimeRoomType}_{entryContentPrefab.name}";
+
+            if (_runtimeRoomType == RoomType.Shop
+                && ResolveItemPoolOverride() != null
+                && spawnedContent.TryGetComponent(out ShopInventory shopInventory))
+            {
+                shopInventory.ConfigureFromItemPool(ResolveItemPoolOverride());
+            }
+
+            if (_runtimeRoomType == RoomType.Shop)
+            {
+                GameAudioEvents.Raise(GameAudioEventType.ShopEntered, spawnPosition);
+            }
+
+            _hasSpawnedEntryContent = true;
+        }
+
+        private void TrySpawnFallbackCurseEntryContent()
+        {
+            if (_runtimeRoomType != RoomType.Curse)
+            {
+                return;
+            }
+
+            Transform parent = spawnedContentParent != null ? spawnedContentParent : transform;
+            Vector3 spawnPosition = contentSpawnAnchor != null ? contentSpawnAnchor.position : transform.position;
+            Quaternion spawnRotation = contentSpawnAnchor != null ? contentSpawnAnchor.rotation : Quaternion.identity;
+
+            GameObject fallbackContent = new("Curse_FallbackEntryContent");
+            fallbackContent.transform.SetParent(parent, false);
+            fallbackContent.transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+
+            CurseRoomEntryVisual curseRoomEntryVisual = fallbackContent.AddComponent<CurseRoomEntryVisual>();
+            Color accentColor = _resolvedEntry != null && _resolvedEntry.ApplyRoomTint
+                ? _resolvedEntry.RoomTintColor
+                : new Color(0.72f, 0.16f, 0.28f, 1f);
+            curseRoomEntryVisual.Configure(roomController, accentColor);
             _hasSpawnedEntryContent = true;
         }
 
@@ -129,6 +187,21 @@ namespace CuteIssac.Room
             }
         }
 
+        private ItemPoolData ResolveItemPoolOverride()
+        {
+            if (_runtimeRoomData != null && _runtimeRoomData.TreasureItemPoolOverride != null && _runtimeRoomType == RoomType.Treasure)
+            {
+                return _runtimeRoomData.TreasureItemPoolOverride;
+            }
+
+            if (_runtimeFloorItemPool != null)
+            {
+                return _runtimeFloorItemPool;
+            }
+
+            return _resolvedEntry != null ? _resolvedEntry.ItemPoolOverride : null;
+        }
+
         private void ResolveReferences()
         {
             if (roomController == null)
@@ -139,6 +212,11 @@ namespace CuteIssac.Room
             if (roomRewardSpawner == null)
             {
                 roomRewardSpawner = GetComponent<RoomRewardSpawner>();
+            }
+
+            if (treasureRoomSpawner == null)
+            {
+                treasureRoomSpawner = GetComponent<TreasureRoomSpawner>();
             }
         }
 

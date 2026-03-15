@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a25fc725d8646b6aa24afed72212270, type: 3}
+  m_Name: BurstShooterEnemyData
+  m_EditorClassIdentifier: 
+  enemyId: burst_shooter
+  moveSpeed: 1.72
+  maxHealth: 7
+  contactDamage: 0.4
+  visualSet: {fileID: 11400000, guid: 4d51c1d1d8604fb79d234f60ea30d93f, type: 2}
+  fireInterval: 2.05
+  telegraphDuration: 0.34
+  preferredRange: 5.8
+  retreatRange: 2.8
+  strafeBlend: 0.34
+  strafeSwapInterval: 1.18
+  moveSpeedWhileTelegraphing: 0.12
+  burstProjectileCount: 5
+  burstSpreadAngle: 42
+  telegraphColor: {r: 1, g: 0.6, b: 0.22, a: 1}

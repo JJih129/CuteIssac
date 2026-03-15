@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CuteIssac.Common.Input;
+using CuteIssac.Core.Gameplay;
 using CuteIssac.Dungeon;
 using UnityEngine;
 
@@ -175,6 +176,19 @@ namespace CuteIssac.UI
             }
 
             minimapPanelView.RenderRooms(_roomBuffer);
+        }
+
+        /// <summary>
+        /// Exposes the current exploration snapshot to non-UI systems such as save data writers.
+        /// </summary>
+        public void CopyExplorationSnapshot(List<RoomExplorationSaveRecord> buffer)
+        {
+            _explorationTracker.BuildSaveData(buffer);
+        }
+
+        public void ApplyExplorationSnapshot(IReadOnlyList<RoomExplorationSaveRecord> records)
+        {
+            _explorationTracker.ApplySaveData(records);
         }
     }
 }

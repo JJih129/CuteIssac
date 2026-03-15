@@ -1,19 +1,25 @@
+using System.Collections.Generic;
 using UnityEngine;
+using CuteIssac.Core.Pooling;
 
 namespace CuteIssac.Combat
 {
     /// <summary>
-    /// Central projectile factory. Instantiation lives here so future pooling can replace it in one place.
+    /// Central projectile factory.
+    /// Combat systems request projectiles here so pooling stays isolated from firing logic.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ProjectileSpawner : MonoBehaviour
     {
         [Header("Spawn Origin")]
         [SerializeField] private Transform spawnOrigin;
+        [SerializeField] [Min(0)] private int prewarmCount = 24;
+
+        private readonly HashSet<GameObject> _prewarmedPrefabs = new();
 
         public Transform SpawnOrigin => spawnOrigin;
 
-        public ProjectileController Spawn(in ProjectileSpawnRequest request)
+        public ProjectileLogic Spawn(in ProjectileSpawnRequest request)
         {
             if (request.ProjectilePrefab == null)
             {
@@ -21,8 +27,13 @@ namespace CuteIssac.Combat
                 return null;
             }
 
+            if (prewarmCount > 0 && _prewarmedPrefabs.Add(request.ProjectilePrefab.gameObject))
+            {
+                PrefabPoolService.Prewarm(request.ProjectilePrefab.gameObject, prewarmCount);
+            }
+
             Quaternion rotation = Quaternion.FromToRotation(Vector3.right, request.Direction);
-            ProjectileController projectileInstance = Instantiate(request.ProjectilePrefab, request.Position, rotation);
+            ProjectileLogic projectileInstance = PrefabPoolService.Spawn(request.ProjectilePrefab, request.Position, rotation);
             projectileInstance.Initialize(request);
             return projectileInstance;
         }

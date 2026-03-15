@@ -1,0 +1,2646 @@
+using System.Collections.Generic;
+using CuteIssac.Core.Feedback;
+using CuteIssac.Data.Dungeon;
+using CuteIssac.Data.Item;
+using CuteIssac.Dungeon;
+using CuteIssac.Room;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace CuteIssac.UI
+{
+    /// <summary>
+    /// Renders a data-driven minimap onto the HUD canvas.
+    /// The view owns layout, colors, icons, and centering, while exploration logic lives elsewhere.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class MinimapPanelView : MonoBehaviour
+    {
+        [Header("Optional Root")]
+        [SerializeField] private GameObject panelRoot;
+
+        [Header("Skinnable Elements")]
+        [SerializeField] private Image backgroundImage;
+        [SerializeField] private Image frameImage;
+        [SerializeField] private RectTransform viewportRoot;
+        [SerializeField] private RectTransform contentRoot;
+        [SerializeField] private Text placeholderText;
+        [SerializeField] private Image roomTypeBadgeImage;
+        [SerializeField] private Image roomTypeIconImage;
+        [SerializeField] private Text roomTypeLabelText;
+        [SerializeField] private Image roomStatusCardImage;
+        [SerializeField] private Image roomStatusAccentImage;
+        [SerializeField] private Image roomDetailCardImage;
+        [SerializeField] private Image roomDetailAccentImage;
+        [SerializeField] private Text roomStatusText;
+        [SerializeField] private Text roomDetailText;
+
+        [Header("Node Presentation")]
+        [SerializeField] private MinimapNodeView nodeTemplate;
+        [SerializeField] private Vector2 nodeSpacing = new(46f, 46f);
+        [SerializeField] private Vector2 baseNodeSize = new(26f, 26f);
+        [SerializeField] [Min(0f)] private float connectionThickness = 6f;
+        [SerializeField] private Vector2 currentRoomFocusOffset;
+        [SerializeField] private bool hideHiddenRooms = true;
+
+        [Header("Top Bar Layout")]
+        [SerializeField] private Vector2 compactNodeSpacing = new(28f, 28f);
+        [SerializeField] private Vector2 compactBaseNodeSize = new(18f, 18f);
+        [SerializeField] private Vector2 compactContentSize = new(156f, 64f);
+        [SerializeField] private Vector2 compactPlaceholderSize = new(132f, 24f);
+        [SerializeField] private Vector2 compactPlaceholderOffset = new(0f, 0f);
+        [SerializeField] [Min(0f)] private float compactConnectionThickness = 4f;
+        [SerializeField] [Min(0)] private int compactPlaceholderFontSize = 18;
+        [SerializeField] private Vector2 compactViewportOffsetMin = new(8f, 8f);
+        [SerializeField] private Vector2 compactViewportOffsetMax = new(-8f, -24f);
+        [SerializeField] private Vector2 expandedViewportOffsetMin = new(10f, 10f);
+        [SerializeField] private Vector2 expandedViewportOffsetMax = new(-10f, -28f);
+
+        [Header("Status Card Layout")]
+        [SerializeField] private Vector2 roomTypeBadgePosition = new(10f, -8f);
+        [SerializeField] private Vector2 roomTypeBadgeSize = new(128f, 28f);
+        [SerializeField] private Vector2 roomTypeIconPosition = new(18f, -14f);
+        [SerializeField] private Vector2 roomTypeIconSize = new(16f, 16f);
+        [SerializeField] private Vector2 roomTypeLabelPosition = new(40f, -11f);
+        [SerializeField] private Vector2 roomTypeLabelSize = new(92f, 18f);
+        [SerializeField] private Vector2 roomStatusCardPosition = new(10f, -40f);
+        [SerializeField] private Vector2 roomStatusCardSize = new(216f, 56f);
+        [SerializeField] private Vector2 roomStatusAccentPosition = new(10f, -40f);
+        [SerializeField] private Vector2 roomStatusAccentSize = new(6f, 56f);
+        [SerializeField] private Vector2 roomStatusTextPosition = new(18f, -46f);
+        [SerializeField] private Vector2 roomStatusTextSize = new(200f, 46f);
+        [SerializeField] private Vector2 roomDetailCardPosition = new(10f, -102f);
+        [SerializeField] private Vector2 roomDetailCardSize = new(252f, 58f);
+        [SerializeField] private Vector2 roomDetailAccentPosition = new(10f, -102f);
+        [SerializeField] private Vector2 roomDetailAccentSize = new(4f, 58f);
+        [SerializeField] private Vector2 roomDetailTextPosition = new(18f, -110f);
+        [SerializeField] private Vector2 roomDetailTextSize = new(236f, 42f);
+        [SerializeField] private Vector2 challengeBaselineRoomStatusCardSize = new(220f, 58f);
+        [SerializeField] private Vector2 challengePaceRoomStatusCardSize = new(224f, 62f);
+        [SerializeField] private Vector2 eliteWarningRoomStatusCardSize = new(228f, 66f);
+        [SerializeField] private Vector2 challengeBaselineRoomStatusTextSize = new(202f, 48f);
+        [SerializeField] private Vector2 challengePaceRoomStatusTextSize = new(206f, 52f);
+        [SerializeField] private Vector2 eliteWarningRoomStatusTextSize = new(210f, 56f);
+        [SerializeField] private Vector2 challengeBaselineRoomDetailCardSize = new(256f, 60f);
+        [SerializeField] private Vector2 challengePaceRoomDetailCardSize = new(260f, 64f);
+        [SerializeField] private Vector2 eliteWarningRoomDetailCardSize = new(264f, 68f);
+        [SerializeField] private Vector2 challengeBaselineRoomDetailTextSize = new(238f, 44f);
+        [SerializeField] private Vector2 challengePaceRoomDetailTextSize = new(242f, 48f);
+        [SerializeField] private Vector2 eliteWarningRoomDetailTextSize = new(246f, 52f);
+        [SerializeField] private Vector2 compactRoomTypeBadgePosition = new(6f, -4f);
+        [SerializeField] private Vector2 compactRoomTypeBadgeSize = new(88f, 20f);
+        [SerializeField] private Vector2 compactRoomTypeIconPosition = new(10f, -9f);
+        [SerializeField] private Vector2 compactRoomTypeIconSize = new(9f, 9f);
+        [SerializeField] private Vector2 compactRoomTypeLabelPosition = new(24f, -7f);
+        [SerializeField] private Vector2 compactRoomTypeLabelSize = new(62f, 12f);
+        [SerializeField] private bool hideStatusCardsInTopBar = true;
+        [SerializeField] private bool hideRoomTypeBadgeInTopBar = true;
+        [SerializeField] private Vector2 compactRoomStatusCardPosition = new(6f, -28f);
+        [SerializeField] private Vector2 compactRoomStatusCardSize = new(152f, 24f);
+        [SerializeField] private Vector2 compactRoomStatusAccentPosition = new(6f, -32f);
+        [SerializeField] private Vector2 compactRoomStatusAccentSize = new(4f, 24f);
+        [SerializeField] private Vector2 compactRoomStatusTextPosition = new(14f, -35f);
+        [SerializeField] private Vector2 compactRoomStatusTextSize = new(138f, 16f);
+        [SerializeField] private Vector2 challengeBaselineCompactRoomStatusCardSize = new(154f, 26f);
+        [SerializeField] private Vector2 challengePaceCompactRoomStatusCardSize = new(156f, 28f);
+        [SerializeField] private Vector2 eliteWarningCompactRoomStatusCardSize = new(158f, 30f);
+        [SerializeField] private Vector2 challengeBaselineCompactRoomStatusTextSize = new(140f, 18f);
+        [SerializeField] private Vector2 challengePaceCompactRoomStatusTextSize = new(142f, 20f);
+        [SerializeField] private Vector2 eliteWarningCompactRoomStatusTextSize = new(144f, 22f);
+        [SerializeField] [Min(0f)] private float challengeBaselineRoomStatusContentShiftX = 4f;
+        [SerializeField] [Min(0f)] private float challengePaceRoomStatusContentShiftX = 6f;
+        [SerializeField] [Min(0f)] private float eliteWarningRoomStatusContentShiftX = 8f;
+        [SerializeField] [Min(0f)] private float challengeBaselineCompactRoomStatusContentShiftX = 3f;
+        [SerializeField] [Min(0f)] private float challengePaceCompactRoomStatusContentShiftX = 4f;
+        [SerializeField] [Min(0f)] private float eliteWarningCompactRoomStatusContentShiftX = 5f;
+        [SerializeField] [Min(0f)] private float challengeBaselineRoomDetailContentShiftX = 4f;
+        [SerializeField] [Min(0f)] private float challengePaceRoomDetailContentShiftX = 6f;
+        [SerializeField] [Min(0f)] private float eliteWarningRoomDetailContentShiftX = 8f;
+        [SerializeField] [Min(0f)] private float challengeBaselineRoomStatusTextWidthTrim = 8f;
+        [SerializeField] [Min(0f)] private float challengePaceRoomStatusTextWidthTrim = 12f;
+        [SerializeField] [Min(0f)] private float eliteWarningRoomStatusTextWidthTrim = 16f;
+        [SerializeField] [Min(0f)] private float challengeBaselineCompactRoomStatusTextWidthTrim = 6f;
+        [SerializeField] [Min(0f)] private float challengePaceCompactRoomStatusTextWidthTrim = 8f;
+        [SerializeField] [Min(0f)] private float eliteWarningCompactRoomStatusTextWidthTrim = 10f;
+        [SerializeField] [Min(0f)] private float challengeBaselineRoomDetailTextWidthTrim = 10f;
+        [SerializeField] [Min(0f)] private float challengePaceRoomDetailTextWidthTrim = 14f;
+        [SerializeField] [Min(0f)] private float eliteWarningRoomDetailTextWidthTrim = 18f;
+
+        [Header("Status Text Styling")]
+        [SerializeField] private Color placeholderTextColor = new(0.9f, 0.94f, 1f, 0.85f);
+        [SerializeField] private Color roomTypeBadgeBaseColor = new(0.1f, 0.15f, 0.22f, 0.92f);
+        [SerializeField] private Color roomTypeLabelColor = new(0.95f, 0.98f, 1f, 0.96f);
+        [SerializeField] private Color roomStatusCardColor = new(0.08f, 0.12f, 0.18f, 0.86f);
+        [SerializeField] private Color roomDetailCardColor = new(0.08f, 0.12f, 0.18f, 0.72f);
+        [SerializeField] private Color roomStatusLabelColor = new(0.7f, 0.8f, 0.95f, 0.9f);
+        [SerializeField] private Color roomDetailColor = new(0.76f, 0.82f, 0.92f, 0.96f);
+        [SerializeField] [Min(0)] private int roomTypeFontSize = 15;
+        [SerializeField] [Min(0)] private int roomStatusFontSize = 24;
+        [SerializeField] [Min(0)] private int roomDetailFontSize = 18;
+        [SerializeField] [Min(0)] private int compactRoomStatusFontSize = 15;
+        [SerializeField] [Min(0)] private int compactRoomTypeFontSize = 11;
+        [SerializeField] [Min(0)] private int roomStatusEyebrowFontSize = 12;
+        [SerializeField] [Min(0)] private int roomDetailEyebrowFontSize = 11;
+        [SerializeField] [Min(0)] private int challengeBaselineStatusEyebrowFontSize = 12;
+        [SerializeField] [Min(0)] private int challengePaceStatusEyebrowFontSize = 13;
+        [SerializeField] [Min(0)] private int eliteWarningStatusEyebrowFontSize = 14;
+        [SerializeField] [Min(0)] private int challengeBaselineDetailEyebrowFontSize = 11;
+        [SerializeField] [Min(0)] private int challengePaceDetailEyebrowFontSize = 12;
+        [SerializeField] [Min(0)] private int eliteWarningDetailEyebrowFontSize = 13;
+        [SerializeField] [Min(0)] private int challengeBaselineDetailFontSize = 18;
+        [SerializeField] [Min(0)] private int challengePaceDetailFontSize = 19;
+        [SerializeField] [Min(0)] private int eliteWarningDetailFontSize = 20;
+        [SerializeField] [Min(0)] private int challengeBaselineCompactTagFontSize = 12;
+        [SerializeField] [Min(0)] private int challengePaceCompactTagFontSize = 13;
+        [SerializeField] [Min(0)] private int eliteWarningCompactTagFontSize = 14;
+        [SerializeField] [Min(0.5f)] private float challengeBaselineStatusLineSpacing = 0.98f;
+        [SerializeField] [Min(0.5f)] private float challengePaceStatusLineSpacing = 0.94f;
+        [SerializeField] [Min(0.5f)] private float eliteWarningStatusLineSpacing = 0.9f;
+        [SerializeField] [Min(0.5f)] private float challengeBaselineCompactStatusLineSpacing = 0.96f;
+        [SerializeField] [Min(0.5f)] private float challengePaceCompactStatusLineSpacing = 0.92f;
+        [SerializeField] [Min(0.5f)] private float eliteWarningCompactStatusLineSpacing = 0.88f;
+        [SerializeField] [Min(0.5f)] private float challengeBaselineDetailLineSpacing = 1f;
+        [SerializeField] [Min(0.5f)] private float challengePaceDetailLineSpacing = 0.96f;
+        [SerializeField] [Min(0.5f)] private float eliteWarningDetailLineSpacing = 0.92f;
+        [SerializeField] [Min(80f)] private float roomTypeBadgeMinWidth = 104f;
+        [SerializeField] [Min(100f)] private float roomTypeBadgeMaxWidth = 164f;
+        [SerializeField] [Min(4f)] private float roomTypeBadgeCharacterWidth = 11f;
+        [SerializeField] [Min(72f)] private float compactRoomTypeBadgeMinWidth = 76f;
+        [SerializeField] [Min(84f)] private float compactRoomTypeBadgeMaxWidth = 112f;
+        [SerializeField] [Min(4f)] private float compactRoomTypeBadgeCharacterWidth = 8f;
+        [SerializeField] [Range(0f, 1f)] private float accentRailOpacity = 0.92f;
+        [SerializeField] [Min(12)] private int roomDetailMaxCharacters = 92;
+        [SerializeField] [Min(10)] private int compactRoomStatusMaxCharacters = 22;
+
+        [Header("Status Emphasis")]
+        [SerializeField] [Min(0f)] private float statusEmphasisPulseSpeed = 3.2f;
+        [SerializeField] [Range(0f, 0.6f)] private float statusEmphasisTintStrength = 0.22f;
+        [SerializeField] [Range(0f, 0.4f)] private float statusEmphasisTextBoost = 0.16f;
+        [SerializeField] [Range(0.2f, 1f)] private float topBarStatusEmphasisDamping = 0.62f;
+        [SerializeField] private Color curseAlertBadgeColor = new(0.42f, 0.08f, 0.14f, 0.96f);
+        [SerializeField] private Color curseAlertStatusCardColor = new(0.3f, 0.06f, 0.1f, 0.92f);
+        [SerializeField] private Color curseAlertDetailCardColor = new(0.2f, 0.05f, 0.09f, 0.82f);
+        [SerializeField] private Color curseAlertDetailTextColor = new(1f, 0.84f, 0.9f, 0.98f);
+        [SerializeField] private Color curseAltarReadyBadgeColor = new(0.46f, 0.14f, 0.08f, 0.98f);
+        [SerializeField] private Color curseAltarReadyStatusCardColor = new(0.34f, 0.1f, 0.08f, 0.94f);
+        [SerializeField] private Color curseAltarReadyDetailCardColor = new(0.26f, 0.09f, 0.08f, 0.86f);
+        [SerializeField] private Color curseAltarReadyDetailTextColor = new(1f, 0.92f, 0.8f, 1f);
+        [SerializeField] private Color challengeThreatBadgeColor = new(0.42f, 0.12f, 0.06f, 0.96f);
+        [SerializeField] private Color challengeBaselineBadgeColor = new(0.42f, 0.22f, 0.08f, 0.96f);
+        [SerializeField] private Color challengeBaselineStatusCardColor = new(0.24f, 0.13f, 0.06f, 0.92f);
+        [SerializeField] private Color challengeBaselineDetailCardColor = new(0.2f, 0.11f, 0.06f, 0.84f);
+        [SerializeField] private Color challengeBaselineDetailTextColor = new(1f, 0.92f, 0.8f, 0.98f);
+        [SerializeField] private Color challengeBaselineLabelColor = new(1f, 0.94f, 0.82f, 0.98f);
+        [SerializeField] private Color challengeRewardReadyBadgeColor = new(0.48f, 0.2f, 0.08f, 0.97f);
+        [SerializeField] private Color challengeRewardReadyLabelColor = new(1f, 0.93f, 0.78f, 1f);
+        [SerializeField] private Color challengeCompletedBadgeColor = new(0.42f, 0.3f, 0.08f, 0.97f);
+        [SerializeField] private Color challengeCompletedLabelColor = new(1f, 0.96f, 0.72f, 1f);
+        [SerializeField] private Color challengeFinaleBadgeColor = new(0.52f, 0.34f, 0.08f, 0.98f);
+        [SerializeField] private Color challengeFinaleLabelColor = new(1f, 0.98f, 0.8f, 1f);
+        [SerializeField] private Color challengeRewardReadyCompactTagColor = new(1f, 0.9f, 0.56f, 1f);
+        [SerializeField] private Color challengeCompletedCompactTagColor = new(0.84f, 1f, 0.78f, 1f);
+        [SerializeField] private Color challengeFinaleCompactTagColor = new(1f, 0.96f, 0.7f, 1f);
+        [SerializeField] private Color challengeThreatStatusCardColor = new(0.3f, 0.1f, 0.06f, 0.92f);
+        [SerializeField] private Color challengeThreatDetailCardColor = new(0.24f, 0.09f, 0.06f, 0.84f);
+        [SerializeField] private Color challengeThreatDetailTextColor = new(1f, 0.9f, 0.78f, 0.98f);
+        [SerializeField] private Color challengeThreatEyebrowColor = new(1f, 0.84f, 0.66f, 0.98f);
+        [SerializeField] private Color challengeThreatCompactTagColor = new(1f, 0.92f, 0.76f, 1f);
+        [SerializeField] [Range(0f, 1f)] private float challengeThreatAccentRailBoost = 0.24f;
+        [SerializeField] [Range(0f, 1f)] private float challengeThreatEyebrowBoost = 0.28f;
+        [SerializeField] private Color curseRareRewardThemeColor = new(0.56f, 0.76f, 1f, 1f);
+        [SerializeField] private Color curseLegendaryRewardThemeColor = new(1f, 0.68f, 0.24f, 1f);
+        [SerializeField] private Color curseRelicRewardThemeColor = new(1f, 0.88f, 0.44f, 1f);
+        [SerializeField] private Color curseBossRewardThemeColor = new(1f, 0.42f, 0.36f, 1f);
+
+        [Header("State Colors")]
+        [SerializeField] private Color hiddenFillColor = new(1f, 1f, 1f, 0f);
+        [SerializeField] private Color discoveredFillColor = new(0.18f, 0.22f, 0.28f, 0.55f);
+        [SerializeField] private Color visitedFillColor = new(0.32f, 0.38f, 0.48f, 0.88f);
+        [SerializeField] private Color clearedFillColor = new(0.29f, 0.54f, 0.35f, 0.95f);
+        [SerializeField] private Color currentFillColor = new(0.50f, 0.72f, 0.98f, 1f);
+        [SerializeField] private Color currentMarkerColor = new(1f, 1f, 1f, 0.92f);
+        [SerializeField] private Color clearedMarkerColor = new(1f, 1f, 1f, 0.92f);
+        [SerializeField] private Color rewardMarkerColor = new(1f, 0.84f, 0.3f, 0.98f);
+        [SerializeField] private Color collectedRewardMarkerColor = new(0.52f, 1f, 0.72f, 0.98f);
+        [SerializeField] private Color secretRewardMarkerColor = new(1f, 0.9f, 0.52f, 1f);
+        [SerializeField] private Color challengeCompletedRewardMarkerColor = new(1f, 0.9f, 0.46f, 1f);
+        [SerializeField] private Color challengeCompletedClearedMarkerColor = new(1f, 0.96f, 0.72f, 0.98f);
+        [SerializeField] private Color challengeCompletedFillColor = new(0.4f, 0.32f, 0.12f, 0.98f);
+
+        [Header("Type Colors")]
+        [SerializeField] private Color startFrameColor = new(0.85f, 0.92f, 1f, 1f);
+        [SerializeField] private Color normalFrameColor = new(0.88f, 0.88f, 0.88f, 1f);
+        [SerializeField] private Color bossFrameColor = new(0.95f, 0.35f, 0.35f, 1f);
+        [SerializeField] private Color miniBossFrameColor = new(0.9f, 0.46f, 0.9f, 1f);
+        [SerializeField] private Color treasureFrameColor = new(1f, 0.85f, 0.28f, 1f);
+        [SerializeField] private Color shopFrameColor = new(0.35f, 0.95f, 0.85f, 1f);
+        [SerializeField] private Color secretFrameColor = new(0.82f, 0.55f, 1f, 1f);
+        [SerializeField] private Color secretConnectionColor = new(0.92f, 0.74f, 1f, 1f);
+        [SerializeField] private Color secretLinkCurrentRoomPulseColor = new(0.94f, 0.82f, 1f, 1f);
+        [SerializeField] private Color secretRewardNodePulseColor = new(1f, 0.9f, 0.56f, 1f);
+        [SerializeField] private Color curseAltarReadyNodePulseColor = new(1f, 0.78f, 0.34f, 1f);
+        [SerializeField] private Color challengeThreatNodePulseColor = new(1f, 0.58f, 0.24f, 1f);
+        [SerializeField] private Color challengeThreatHeavyNodePulseColor = new(1f, 0.36f, 0.22f, 1f);
+        [SerializeField] private Color challengeFrameColor = new(1f, 0.64f, 0.22f, 1f);
+        [SerializeField] private Color trapFrameColor = new(1f, 0.45f, 0.3f, 1f);
+        [SerializeField] private Color curseFrameColor = new(0.86f, 0.32f, 0.66f, 1f);
+
+        [Header("Node Pulse Profiles")]
+        [SerializeField] [Min(0f)] private float secretLinkNodePulseSpeed = 2.4f;
+        [SerializeField] [Range(0f, 0.35f)] private float secretLinkNodePulseTintStrength = 0.18f;
+        [SerializeField] [Min(1f)] private float secretLinkNodePulseScaleAmplitude = 1.05f;
+        [SerializeField] [Min(0f)] private float secretRewardNodePulseSpeed = 3.4f;
+        [SerializeField] [Range(0f, 0.35f)] private float secretRewardNodePulseTintStrength = 0.24f;
+        [SerializeField] [Min(1f)] private float secretRewardNodePulseScaleAmplitude = 1.08f;
+        [SerializeField] [Min(0f)] private float curseAltarReadyNodePulseSpeed = 2.9f;
+        [SerializeField] [Range(0f, 0.35f)] private float curseAltarReadyNodePulseTintStrength = 0.22f;
+        [SerializeField] [Min(1f)] private float curseAltarReadyNodePulseScaleAmplitude = 1.1f;
+        [SerializeField] [Min(0f)] private float challengeThreatNodePulseSpeed = 3.05f;
+        [SerializeField] [Range(0f, 0.35f)] private float challengeThreatNodePulseTintStrength = 0.2f;
+        [SerializeField] [Min(1f)] private float challengeThreatNodePulseScaleAmplitude = 1.1f;
+        [SerializeField] private Color challengeCompletedNodePulseColor = new(1f, 0.88f, 0.38f, 1f);
+        [SerializeField] [Min(0f)] private float challengeCompletedNodePulseSpeed = 2.15f;
+        [SerializeField] [Range(0f, 0.35f)] private float challengeCompletedNodePulseTintStrength = 0.14f;
+        [SerializeField] [Min(1f)] private float challengeCompletedNodePulseScaleAmplitude = 1.06f;
+        [SerializeField] [Min(0f)] private float challengeThreatTransitionFlashDuration = 0.9f;
+        [SerializeField] private Color challengeThreatTransitionFlashColor = new(1f, 0.86f, 0.52f, 1f);
+        [SerializeField] [Min(0f)] private float challengeThreatTransitionPulseSpeedBonus = 0.7f;
+        [SerializeField] [Range(0f, 0.2f)] private float challengeThreatTransitionPulseTintBoost = 0.08f;
+        [SerializeField] [Min(0f)] private float challengeThreatTransitionPulseScaleBoost = 0.05f;
+
+        [Header("Type Icons")]
+        [SerializeField] private Sprite startRoomIcon;
+        [SerializeField] private Sprite bossRoomIcon;
+        [SerializeField] private Sprite miniBossRoomIcon;
+        [SerializeField] private Sprite treasureRoomIcon;
+        [SerializeField] private Sprite shopRoomIcon;
+        [SerializeField] private Sprite secretRoomIcon;
+        [SerializeField] private Sprite challengeRoomIcon;
+        [SerializeField] private Sprite trapRoomIcon;
+        [SerializeField] private Sprite curseRoomIcon;
+
+        [Header("Markers")]
+        [SerializeField] private Sprite clearedMarkerSprite;
+        [SerializeField] private Sprite rewardMarkerSprite;
+        [SerializeField] private Sprite collectedRewardMarkerSprite;
+        [SerializeField] private Sprite connectionSprite;
+
+        private readonly List<MinimapNodeView> _spawnedNodes = new();
+        private bool _isVisible = true;
+        private bool _compactMode;
+        private bool _topBarLayoutActive;
+        private bool _warnedMissingContentRoot;
+        private Vector2 _defaultNodeSpacing;
+        private Vector2 _defaultBaseNodeSize;
+        private float _defaultConnectionThickness;
+        private Vector2 _defaultContentSize;
+        private Vector2 _defaultPlaceholderSize;
+        private Vector2 _defaultPlaceholderOffset;
+        private int _defaultPlaceholderFontSize;
+        private bool _cachedDefaultLayoutValues;
+        private bool _statusEmphasisActive;
+        private Color _statusEmphasisAccentColor;
+        private Color _baseRoomTypeBadgeColor;
+        private Color _baseRoomStatusCardColor;
+        private Color _baseRoomDetailCardColor;
+        private Color _baseRoomStatusAccentColor;
+        private Color _baseRoomDetailAccentColor;
+        private Color _baseRoomStatusTextColor;
+        private Color _baseRoomDetailTextColor;
+        private Color _baseRoomTypeIconColor;
+        private float _statusEmphasisPulseFrequencyScale = 1f;
+        private float _statusEmphasisPulseAmplitudeScale = 1f;
+        private RoomType _currentRoomType = RoomType.Normal;
+        private string _currentHeadline = "현재 방";
+        private string _currentDetail = string.Empty;
+        private Color _currentAccentColor = Color.white;
+        private bool _currentStatusEmphasize;
+        private readonly List<MinimapRoomViewData> _lastRenderedRooms = new();
+        private bool _hasChallengeThreatNodeState;
+        private int _challengeThreatWaveNumber;
+        private int _challengeThreatGuaranteedChampionCount;
+        private float _challengeThreatChampionChanceBonus;
+        private float _challengeThreatTransitionFlashExpiresAt;
+        private bool _hasChallengeThreatStatusTheme;
+        private Color _challengeThreatStatusAccentColor = Color.white;
+        private string _challengeThreatBadgeLabel = string.Empty;
+        private string _explicitRoomStatusBadgeLabel = string.Empty;
+        private string _explicitRoomStatusEyebrow = string.Empty;
+        private string _explicitRoomStatusCompactTag = string.Empty;
+        private string _explicitRoomStatusDetailEyebrow = string.Empty;
+        private string _challengeThreatStatusEyebrow = string.Empty;
+        private string _challengeThreatDetailEyebrow = string.Empty;
+        private string _challengeThreatCompactTag = string.Empty;
+        private ChallengeThreatStage _challengeThreatStage = ChallengeThreatStage.Baseline;
+
+        public RectTransform ContentRoot => contentRoot;
+        public Color SecretRewardThemeColor => Color.Lerp(secretRewardMarkerColor, secretRewardNodePulseColor, 0.5f);
+        public Color CurseAlertThemeColor => Color.Lerp(curseAlertBadgeColor, curseFrameColor, 0.45f);
+        public Color CurseAltarRewardThemeColor => Color.Lerp(curseAltarReadyBadgeColor, curseAltarReadyNodePulseColor, 0.52f);
+        public float StatusEmphasisPulseSpeed => Mathf.Max(0f, statusEmphasisPulseSpeed);
+        public float StatusEmphasisTintStrength => Mathf.Clamp01(statusEmphasisTintStrength);
+
+        public Color GetCurseRewardThemeColor(ItemRarity rarity)
+        {
+            return rarity switch
+            {
+                ItemRarity.Rare => curseRareRewardThemeColor,
+                ItemRarity.Legendary => curseLegendaryRewardThemeColor,
+                ItemRarity.Relic => curseRelicRewardThemeColor,
+                ItemRarity.Boss => curseBossRewardThemeColor,
+                _ => CurseAltarRewardThemeColor
+            };
+        }
+
+        private void Update()
+        {
+            if (_statusEmphasisActive)
+            {
+                float pulseDamping = _topBarLayoutActive ? topBarStatusEmphasisDamping : 1f;
+                float pulseSpeed = Mathf.Max(0f, statusEmphasisPulseSpeed) * Mathf.Lerp(1f, _statusEmphasisPulseFrequencyScale, pulseDamping);
+                float pulse = 0.5f + (0.5f * Mathf.Sin(Time.unscaledTime * pulseSpeed));
+                ApplyStatusEmphasisVisuals(pulse, pulseDamping);
+            }
+
+            if (_challengeThreatTransitionFlashExpiresAt > 0f && Time.unscaledTime >= _challengeThreatTransitionFlashExpiresAt)
+            {
+                _challengeThreatTransitionFlashExpiresAt = 0f;
+                RefreshRenderedRooms();
+            }
+        }
+
+        public void ConfigureDebugView(Text placeholder, RectTransform minimapContent = null)
+        {
+            placeholderText = placeholder;
+            contentRoot = minimapContent;
+            panelRoot = placeholder != null && placeholder.transform.parent != null
+                ? placeholder.transform.parent.gameObject
+                : panelRoot;
+        }
+
+        public void ShowPlaceholder()
+        {
+            EnsureStatusLabels();
+            EnsureViewportHierarchy();
+            _currentRoomType = RoomType.Normal;
+            _currentHeadline = "현재 방";
+            _currentDetail = "던전이 생성되면 탐험 정보가 여기에 표시됩니다.";
+            _currentAccentColor = placeholderTextColor;
+            _currentStatusEmphasize = false;
+            _explicitRoomStatusBadgeLabel = string.Empty;
+            _explicitRoomStatusEyebrow = string.Empty;
+            _explicitRoomStatusCompactTag = string.Empty;
+            _explicitRoomStatusDetailEyebrow = string.Empty;
+            _currentHeadline = string.Empty;
+            _currentDetail = string.Empty;
+
+            if (placeholderText != null)
+            {
+                placeholderText.gameObject.SetActive(true);
+                placeholderText.text = _compactMode ? string.Empty : "MAP READY";
+                placeholderText.color = placeholderTextColor;
+                bool showPlaceholder = !_compactMode;
+                placeholderText.gameObject.SetActive(showPlaceholder);
+                placeholderText.text = showPlaceholder ? "MAP READY" : string.Empty;
+            }
+            ApplyPlaceholderStatusPresentation();
+
+            HideUnusedNodes(0);
+            ApplyPanelVisibility();
+        }
+
+        public void SetRoomStatus(RoomType roomType, string headline, string detail, Color accentColor, bool emphasize = false, string explicitBadgeLabel = null, string explicitStatusEyebrow = null, string explicitCompactTag = null, string explicitDetailEyebrow = null)
+        {
+            EnsureStatusLabels();
+            bool useCurseAlertTheme = emphasize && roomType == RoomType.Curse;
+            bool useCurseAltarReadyTheme = emphasize && ShouldUseCurseAltarReadyTheme(roomType, headline);
+            Color resolvedAccentColor = useCurseAlertTheme
+                ? CurseAlertThemeColor
+                : useCurseAltarReadyTheme
+                    ? CurseAltarRewardThemeColor
+                    : accentColor;
+            _currentRoomType = roomType;
+            _currentHeadline = NormalizeStatusHeadline(headline);
+            _currentDetail = NormalizeStatusDetail(detail);
+            _currentAccentColor = resolvedAccentColor;
+            _currentStatusEmphasize = emphasize;
+            _explicitRoomStatusBadgeLabel = string.IsNullOrWhiteSpace(explicitBadgeLabel)
+                ? string.Empty
+                : CollapseWhitespace(explicitBadgeLabel);
+            _explicitRoomStatusEyebrow = string.IsNullOrWhiteSpace(explicitStatusEyebrow)
+                ? string.Empty
+                : CollapseWhitespace(explicitStatusEyebrow);
+            _explicitRoomStatusCompactTag = string.IsNullOrWhiteSpace(explicitCompactTag)
+                ? string.Empty
+                : CollapseWhitespace(explicitCompactTag);
+            _explicitRoomStatusDetailEyebrow = string.IsNullOrWhiteSpace(explicitDetailEyebrow)
+                ? string.Empty
+                : CollapseWhitespace(explicitDetailEyebrow);
+
+            RefreshCurrentStatusVisualState();
+        }
+
+        public void SetCompactMode(bool compactMode)
+        {
+            _compactMode = compactMode;
+            ApplyTopBarLayout(compactMode);
+            RefreshCurrentStatusVisualState();
+            if (placeholderText != null)
+            {
+                placeholderText.gameObject.SetActive(false);
+            }
+
+            if (placeholderText != null && placeholderText.gameObject.activeSelf)
+            {
+                placeholderText.text = compactMode ? string.Empty : "MAP READY";
+            }
+        }
+
+        public void SetChallengeThreatStatusTheme(bool active, Color accentColor, string badgeLabel, string statusEyebrow, string detailEyebrow, string compactTag, ChallengeThreatStage stage)
+        {
+            Color resolvedAccentColor = active ? accentColor : Color.white;
+            string resolvedBadgeLabel = active ? badgeLabel ?? string.Empty : string.Empty;
+            string resolvedStatusEyebrow = active ? statusEyebrow ?? string.Empty : string.Empty;
+            string resolvedDetailEyebrow = active ? detailEyebrow ?? string.Empty : string.Empty;
+            string resolvedCompactTag = active ? compactTag ?? string.Empty : string.Empty;
+            ChallengeThreatStage resolvedStage = active ? stage : ChallengeThreatStage.Baseline;
+            if (_hasChallengeThreatStatusTheme == active
+                && (!_hasChallengeThreatStatusTheme
+                    || (ColorsApproximatelyEqual(_challengeThreatStatusAccentColor, resolvedAccentColor)
+                        && _challengeThreatBadgeLabel == resolvedBadgeLabel
+                        && _challengeThreatStatusEyebrow == resolvedStatusEyebrow
+                        && _challengeThreatDetailEyebrow == resolvedDetailEyebrow
+                        && _challengeThreatCompactTag == resolvedCompactTag
+                        && _challengeThreatStage == resolvedStage)))
+            {
+                return;
+            }
+
+            _hasChallengeThreatStatusTheme = active;
+            _challengeThreatStatusAccentColor = resolvedAccentColor;
+            _challengeThreatBadgeLabel = resolvedBadgeLabel;
+            _challengeThreatStatusEyebrow = resolvedStatusEyebrow;
+            _challengeThreatDetailEyebrow = resolvedDetailEyebrow;
+            _challengeThreatCompactTag = resolvedCompactTag;
+            _challengeThreatStage = resolvedStage;
+
+            if (_currentRoomType == RoomType.Challenge)
+            {
+                RefreshCurrentStatusVisualState();
+            }
+        }
+
+        public void ApplyTopBarLayout(bool compactMode)
+        {
+            _topBarLayoutActive = true;
+            CacheDefaultLayoutValues();
+
+            RectTransform rootRect = panelRoot != null
+                ? panelRoot.transform as RectTransform
+                : transform as RectTransform;
+
+            if (rootRect == null)
+            {
+                return;
+            }
+
+            EnsureViewportHierarchy();
+
+            if (backgroundImage != null)
+            {
+                RectTransform backgroundRect = backgroundImage.rectTransform;
+                backgroundRect.anchorMin = Vector2.zero;
+                backgroundRect.anchorMax = Vector2.one;
+                backgroundRect.offsetMin = Vector2.zero;
+                backgroundRect.offsetMax = Vector2.zero;
+            }
+
+            if (frameImage != null && frameImage != backgroundImage)
+            {
+                RectTransform frameRect = frameImage.rectTransform;
+                frameRect.anchorMin = Vector2.zero;
+                frameRect.anchorMax = Vector2.one;
+                frameRect.offsetMin = Vector2.zero;
+                frameRect.offsetMax = Vector2.zero;
+            }
+
+            nodeSpacing = compactMode ? compactNodeSpacing : _defaultNodeSpacing;
+            baseNodeSize = compactMode ? compactBaseNodeSize : _defaultBaseNodeSize;
+            connectionThickness = compactMode ? compactConnectionThickness : _defaultConnectionThickness;
+
+            if (contentRoot != null)
+            {
+                contentRoot.anchorMin = new Vector2(0.5f, 0.5f);
+                contentRoot.anchorMax = new Vector2(0.5f, 0.5f);
+                contentRoot.pivot = new Vector2(0.5f, 0.5f);
+                contentRoot.anchoredPosition = Vector2.zero;
+                contentRoot.sizeDelta = compactMode ? compactContentSize : _defaultContentSize;
+            }
+
+            if (viewportRoot != null)
+            {
+                viewportRoot.anchorMin = Vector2.zero;
+                viewportRoot.anchorMax = Vector2.one;
+                viewportRoot.offsetMin = compactMode ? compactViewportOffsetMin : expandedViewportOffsetMin;
+                viewportRoot.offsetMax = compactMode ? compactViewportOffsetMax : expandedViewportOffsetMax;
+            }
+
+            if (placeholderText != null)
+            {
+                RectTransform placeholderRect = placeholderText.rectTransform;
+                placeholderRect.anchorMin = new Vector2(0.5f, 0.5f);
+                placeholderRect.anchorMax = new Vector2(0.5f, 0.5f);
+                placeholderRect.pivot = new Vector2(0.5f, 0.5f);
+                placeholderRect.anchoredPosition = compactMode ? compactPlaceholderOffset : _defaultPlaceholderOffset;
+                placeholderRect.sizeDelta = compactMode ? compactPlaceholderSize : _defaultPlaceholderSize;
+                placeholderText.fontSize = compactMode
+                    ? Mathf.Max(_defaultPlaceholderFontSize, compactPlaceholderFontSize)
+                    : _defaultPlaceholderFontSize;
+                placeholderText.alignment = TextAnchor.MiddleCenter;
+                placeholderText.color = placeholderTextColor;
+            }
+
+            ApplyStatusLayout(compactMode);
+        }
+
+        public void RenderRooms(IReadOnlyList<MinimapRoomViewData> roomStates)
+        {
+            if (!TryEnsureContentRoot())
+            {
+                return;
+            }
+
+            if (roomStates == null || roomStates.Count == 0)
+            {
+                _lastRenderedRooms.Clear();
+                ShowPlaceholder();
+                return;
+            }
+
+            _lastRenderedRooms.Clear();
+            for (int index = 0; index < roomStates.Count; index++)
+            {
+                _lastRenderedRooms.Add(roomStates[index]);
+            }
+
+            EnsureNodeCapacity(roomStates.Count);
+
+            Vector2 currentRoomPosition = Vector2.zero;
+            bool hasCurrentRoom = false;
+
+            for (int index = 0; index < roomStates.Count; index++)
+            {
+                MinimapRoomViewData roomState = roomStates[index];
+                MinimapNodeView nodeView = _spawnedNodes[index];
+                Vector2 anchoredPosition = new(
+                    roomState.GridPosition.X * nodeSpacing.x,
+                    roomState.GridPosition.Y * nodeSpacing.y);
+                bool visible = !hideHiddenRooms || roomState.ExplorationState != RoomExplorationState.Hidden;
+
+                nodeView.SetAnchoredPosition(anchoredPosition);
+                nodeView.SetVisible(visible);
+
+                if (!visible)
+                {
+                    continue;
+                }
+
+                nodeView.Present(BuildPresentation(roomState));
+
+                if (roomState.ExplorationState == RoomExplorationState.Current)
+                {
+                    currentRoomPosition = anchoredPosition;
+                    hasCurrentRoom = true;
+                }
+            }
+
+            HideUnusedNodes(roomStates.Count);
+
+            if (placeholderText != null)
+            {
+                placeholderText.gameObject.SetActive(false);
+            }
+
+            contentRoot.anchoredPosition = hasCurrentRoom
+                ? currentRoomFocusOffset - currentRoomPosition
+                : currentRoomFocusOffset;
+
+            ApplyPanelVisibility();
+        }
+
+        public void SetChallengeThreatNodeState(bool active, int nextWaveNumber, int guaranteedChampionCount, float championChanceBonus)
+        {
+            int resolvedWaveNumber = active ? Mathf.Max(0, nextWaveNumber) : 0;
+            int resolvedGuaranteedChampionCount = active ? Mathf.Max(0, guaranteedChampionCount) : 0;
+            float resolvedChampionChanceBonus = active ? Mathf.Max(0f, championChanceBonus) : 0f;
+            bool shouldTriggerTransitionFlash = active
+                && _hasChallengeThreatNodeState
+                && _challengeThreatWaveNumber > 0
+                && resolvedWaveNumber > 0
+                && resolvedWaveNumber != _challengeThreatWaveNumber;
+            bool stateChanged = _hasChallengeThreatNodeState != active
+                || _challengeThreatWaveNumber != resolvedWaveNumber
+                || _challengeThreatGuaranteedChampionCount != resolvedGuaranteedChampionCount
+                || !Mathf.Approximately(_challengeThreatChampionChanceBonus, resolvedChampionChanceBonus);
+
+            if (!stateChanged)
+            {
+                return;
+            }
+
+            _hasChallengeThreatNodeState = active;
+            _challengeThreatWaveNumber = resolvedWaveNumber;
+            _challengeThreatGuaranteedChampionCount = resolvedGuaranteedChampionCount;
+            _challengeThreatChampionChanceBonus = resolvedChampionChanceBonus;
+            _challengeThreatTransitionFlashExpiresAt = shouldTriggerTransitionFlash
+                ? Time.unscaledTime + Mathf.Max(0.05f, challengeThreatTransitionFlashDuration)
+                : active
+                    ? _challengeThreatTransitionFlashExpiresAt
+                    : 0f;
+            RefreshRenderedRooms();
+        }
+
+        private void RefreshCurrentStatusVisualState()
+        {
+            bool useCurseAlertTheme = _currentStatusEmphasize && _currentRoomType == RoomType.Curse && _currentHeadline.Contains("경고");
+            bool useCurseAltarReadyTheme = ShouldUseCurseAltarReadyTheme(_currentRoomType, _currentHeadline);
+            bool useChallengeThreatTheme = ShouldUseChallengeThreatTheme(_currentRoomType);
+            ApplyCurrentStatusPresentation(useCurseAlertTheme, useCurseAltarReadyTheme, useChallengeThreatTheme);
+            ApplySpecialStatusTheme(_currentRoomType, useCurseAlertTheme, useCurseAltarReadyTheme, useChallengeThreatTheme);
+            CacheStatusVisualBaseline(_currentAccentColor);
+            SetStatusEmphasis(_currentStatusEmphasize, _currentAccentColor);
+        }
+
+        public void SetVisible(bool visible)
+        {
+            _isVisible = visible;
+            ApplyPanelVisibility();
+        }
+
+        private void CacheDefaultLayoutValues()
+        {
+            if (_cachedDefaultLayoutValues)
+            {
+                return;
+            }
+
+            _defaultNodeSpacing = nodeSpacing;
+            _defaultBaseNodeSize = baseNodeSize;
+            _defaultConnectionThickness = connectionThickness;
+            _defaultContentSize = contentRoot != null ? contentRoot.sizeDelta : compactContentSize;
+            _defaultPlaceholderSize = placeholderText != null ? placeholderText.rectTransform.sizeDelta : compactPlaceholderSize;
+            _defaultPlaceholderOffset = placeholderText != null ? placeholderText.rectTransform.anchoredPosition : new Vector2(0f, 14f);
+            _defaultPlaceholderFontSize = placeholderText != null ? placeholderText.fontSize : compactPlaceholderFontSize;
+            _cachedDefaultLayoutValues = true;
+        }
+
+        private bool TryEnsureContentRoot()
+        {
+            if (contentRoot != null)
+            {
+                EnsureViewportHierarchy();
+                EnsureContentRootLayout();
+                EnsureViewportMask();
+                return true;
+            }
+
+            if (!_warnedMissingContentRoot)
+            {
+                Debug.LogWarning("MinimapPanelView requires a contentRoot RectTransform to render room nodes.", this);
+                _warnedMissingContentRoot = true;
+            }
+
+            return false;
+        }
+
+        private void EnsureContentRootLayout()
+        {
+            if (contentRoot == null)
+            {
+                return;
+            }
+
+            contentRoot.anchorMin = new Vector2(0.5f, 0.5f);
+            contentRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            contentRoot.pivot = new Vector2(0.5f, 0.5f);
+        }
+
+        private void EnsureViewportHierarchy()
+        {
+            RectTransform panelRect = ResolvePanelRect();
+
+            if (panelRect == null)
+            {
+                return;
+            }
+
+            if (viewportRoot == null)
+            {
+                viewportRoot = CreateViewportRoot(panelRect);
+            }
+            else if (viewportRoot.parent != panelRect)
+            {
+                viewportRoot.SetParent(panelRect, false);
+            }
+
+            viewportRoot.SetAsFirstSibling();
+            ReparentViewportChild(contentRoot);
+
+            if (placeholderText != null)
+            {
+                ReparentViewportChild(placeholderText.rectTransform);
+            }
+        }
+
+        private void EnsureViewportMask()
+        {
+            RectTransform viewportRect = viewportRoot != null ? viewportRoot : ResolvePanelRect();
+
+            if (viewportRect == null)
+            {
+                return;
+            }
+
+            if (viewportRect.GetComponent<RectMask2D>() == null)
+            {
+                viewportRect.gameObject.AddComponent<RectMask2D>();
+            }
+        }
+
+        private void EnsureStatusLabels()
+        {
+            RectTransform rootRect = ResolvePanelRect();
+
+            if (rootRect == null)
+            {
+                return;
+            }
+
+            if (roomTypeLabelText == null)
+            {
+                roomTypeBadgeImage = CreateStatusCard(
+                    "RoomTypeBadge",
+                    rootRect,
+                    roomTypeBadgePosition,
+                    roomTypeBadgeSize,
+                    roomTypeBadgeBaseColor);
+                roomTypeIconImage = CreateStatusIcon(
+                    "RoomTypeIcon",
+                    rootRect,
+                    roomTypeIconPosition,
+                    roomTypeIconSize);
+                roomTypeLabelText = CreateStatusText(
+                    "RoomTypeLabel",
+                    rootRect,
+                    roomTypeLabelPosition,
+                    roomTypeLabelSize,
+                    TextAnchor.MiddleLeft,
+                    roomTypeFontSize,
+                    FontStyle.Bold);
+            }
+
+            if (roomStatusText == null)
+            {
+                roomStatusCardImage = CreateStatusCard(
+                    "RoomStatusCard",
+                    rootRect,
+                    roomStatusCardPosition,
+                    roomStatusCardSize,
+                    roomStatusCardColor);
+                roomStatusAccentImage = CreateStatusCard(
+                    "RoomStatusAccent",
+                    rootRect,
+                    roomStatusAccentPosition,
+                    roomStatusAccentSize,
+                    new Color(1f, 1f, 1f, accentRailOpacity));
+                roomStatusText = CreateStatusText(
+                    "RoomStatus",
+                    rootRect,
+                    roomStatusTextPosition,
+                    roomStatusTextSize,
+                    TextAnchor.UpperLeft,
+                    roomStatusFontSize,
+                    FontStyle.Bold);
+            }
+
+            if (roomDetailText == null)
+            {
+                roomDetailCardImage = CreateStatusCard(
+                    "RoomDetailCard",
+                    rootRect,
+                    roomDetailCardPosition,
+                    roomDetailCardSize,
+                    roomDetailCardColor);
+                roomDetailAccentImage = CreateStatusCard(
+                    "RoomDetailAccent",
+                    rootRect,
+                    roomDetailAccentPosition,
+                    roomDetailAccentSize,
+                    new Color(1f, 1f, 1f, accentRailOpacity * 0.8f));
+                roomDetailText = CreateStatusText(
+                    "RoomDetail",
+                    rootRect,
+                    roomDetailTextPosition,
+                    roomDetailTextSize,
+                    TextAnchor.UpperLeft,
+                    roomDetailFontSize,
+                    FontStyle.Normal);
+                roomDetailText.color = roomDetailColor;
+            }
+
+            if (roomTypeBadgeImage != null)
+            {
+                roomTypeBadgeImage.color = roomTypeBadgeBaseColor;
+            }
+
+            if (roomTypeLabelText != null)
+            {
+                roomTypeLabelText.supportRichText = true;
+                roomTypeLabelText.color = roomTypeLabelColor;
+            }
+
+            if (roomStatusCardImage != null)
+            {
+                roomStatusCardImage.color = roomStatusCardColor;
+            }
+
+            if (roomStatusAccentImage != null)
+            {
+                roomStatusAccentImage.color = new Color(1f, 1f, 1f, accentRailOpacity);
+            }
+
+            if (roomDetailCardImage != null)
+            {
+                roomDetailCardImage.color = roomDetailCardColor;
+            }
+
+            if (roomDetailAccentImage != null)
+            {
+                roomDetailAccentImage.color = new Color(1f, 1f, 1f, accentRailOpacity * 0.8f);
+            }
+
+            ApplyStatusLayout(_compactMode);
+        }
+
+        private RectTransform ResolvePanelRect()
+        {
+            if (panelRoot == null)
+            {
+                panelRoot = gameObject;
+            }
+
+            if (panelRoot != null && panelRoot.transform is RectTransform panelRect)
+            {
+                return panelRect;
+            }
+
+            return transform as RectTransform;
+        }
+
+        private void EnsureNodeCapacity(int requiredCount)
+        {
+            while (_spawnedNodes.Count < requiredCount)
+            {
+                _spawnedNodes.Add(CreateNodeInstance(_spawnedNodes.Count));
+            }
+        }
+
+        private MinimapNodeView CreateNodeInstance(int index)
+        {
+            if (nodeTemplate != null)
+            {
+                MinimapNodeView instance = Instantiate(nodeTemplate, contentRoot);
+                instance.gameObject.name = $"{nodeTemplate.name}_{index}";
+                instance.gameObject.SetActive(true);
+                return instance;
+            }
+
+            GameObject nodeRoot = new($"MinimapNode_{index}");
+            nodeRoot.layer = contentRoot.gameObject.layer;
+            RectTransform rootRect = nodeRoot.AddComponent<RectTransform>();
+            rootRect.SetParent(contentRoot, false);
+            rootRect.anchorMin = new Vector2(0.5f, 0.5f);
+            rootRect.anchorMax = new Vector2(0.5f, 0.5f);
+            rootRect.pivot = new Vector2(0.5f, 0.5f);
+            rootRect.sizeDelta = baseNodeSize;
+
+            Image upConnection = CreateConnectionImage("UpConnection", rootRect, new Vector2(0.5f, 1f), new Vector2(0.5f, 0f));
+            Image downConnection = CreateConnectionImage("DownConnection", rootRect, new Vector2(0.5f, 0f), new Vector2(0.5f, 1f));
+            Image leftConnection = CreateConnectionImage("LeftConnection", rootRect, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f));
+            Image rightConnection = CreateConnectionImage("RightConnection", rootRect, new Vector2(1f, 0.5f), new Vector2(0f, 0.5f));
+
+            Image baseImage = CreateNodeImage("RoomBase", rootRect, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            Image fillImage = CreateNodeImage("RoomFill", rootRect, new Vector2(0.16f, 0.16f), new Vector2(0.84f, 0.84f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            Image currentMarker = CreateNodeImage("CurrentMarker", rootRect, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            Image specialIcon = CreateNodeImage("SpecialIcon", rootRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, baseNodeSize * 0.56f);
+            Image clearedMark = CreateNodeImage("ClearedMark", rootRect, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), Vector2.zero, baseNodeSize * 0.28f);
+            clearedMark.rectTransform.anchoredPosition = new Vector2(2f, 2f);
+            Image rewardMark = CreateNodeImage("RewardMark", rootRect, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, baseNodeSize * 0.24f);
+            rewardMark.rectTransform.anchoredPosition = new Vector2(-2f, -2f);
+
+            MinimapNodeView nodeView = nodeRoot.AddComponent<MinimapNodeView>();
+            nodeView.ConfigureFallback(
+                rootRect,
+                baseImage,
+                fillImage,
+                currentMarker,
+                specialIcon,
+                clearedMark,
+                rewardMark,
+                upConnection,
+                downConnection,
+                leftConnection,
+                rightConnection);
+            return nodeView;
+        }
+
+        private void HideUnusedNodes(int usedCount)
+        {
+            for (int index = usedCount; index < _spawnedNodes.Count; index++)
+            {
+                if (_spawnedNodes[index] != null)
+                {
+                    _spawnedNodes[index].SetVisible(false);
+                }
+            }
+        }
+
+        private MinimapNodeView.MinimapNodePresentation BuildPresentation(MinimapRoomViewData roomState)
+        {
+            RoomExplorationState explorationState = roomState.ExplorationState;
+            bool isChallengeCompletionNode = roomState.RoomType == RoomType.Challenge
+                && roomState.IsCleared
+                && roomState.HasCollectedRewardContent;
+            Vector2 nodeSize = explorationState == RoomExplorationState.Current
+                ? baseNodeSize * 1.18f
+                : baseNodeSize;
+            float longestSpacing = Mathf.Max(nodeSpacing.x, nodeSpacing.y);
+            float longestSize = Mathf.Max(nodeSize.x, nodeSize.y);
+            float connectionLength = Mathf.Max(6f, ((longestSpacing - longestSize) * 0.5f) + 2f);
+            Sprite rewardSprite = roomState.HasCollectedRewardContent && collectedRewardMarkerSprite != null
+                ? collectedRewardMarkerSprite
+                : rewardMarkerSprite;
+            bool pulseRewardMarker = roomState.RoomType == RoomType.Secret
+                && roomState.HasRewardContent
+                && !roomState.HasCollectedRewardContent;
+            Color resolvedRewardMarkerColor = isChallengeCompletionNode
+                ? challengeCompletedRewardMarkerColor
+                : roomState.HasCollectedRewardContent
+                ? collectedRewardMarkerColor
+                : pulseRewardMarker
+                    ? secretRewardMarkerColor
+                    : rewardMarkerColor;
+            bool pulseSecretRewardNode = roomState.RoomType == RoomType.Secret
+                && roomState.HasRewardContent
+                && !roomState.HasCollectedRewardContent;
+            bool pulseCurrentCurseAltarNode = roomState.RoomType == RoomType.Curse
+                && roomState.HasRewardContent
+                && !roomState.HasCollectedRewardContent
+                && explorationState == RoomExplorationState.Current;
+            bool pulseCurrentSecretLinkNode = explorationState == RoomExplorationState.Current
+                && (roomState.HasUpSecretConnection
+                    || roomState.HasDownSecretConnection
+                    || roomState.HasLeftSecretConnection
+                    || roomState.HasRightSecretConnection);
+            bool pulseCurrentChallengeThreatNode = explorationState == RoomExplorationState.Current
+                && roomState.RoomType == RoomType.Challenge
+                && _hasChallengeThreatNodeState;
+            bool pulseChallengeCompletionNode = isChallengeCompletionNode;
+            bool pulseNode = pulseSecretRewardNode || pulseCurrentCurseAltarNode || pulseCurrentSecretLinkNode || pulseCurrentChallengeThreatNode || pulseChallengeCompletionNode;
+            Color nodePulseColor = pulseSecretRewardNode
+                ? secretRewardNodePulseColor
+                : pulseCurrentCurseAltarNode
+                    ? curseAltarReadyNodePulseColor
+                    : pulseCurrentChallengeThreatNode
+                        ? ResolveChallengeThreatNodePulseColor()
+                        : pulseChallengeCompletionNode
+                            ? challengeCompletedNodePulseColor
+                        : secretLinkCurrentRoomPulseColor;
+            float nodePulseSpeed = pulseSecretRewardNode
+                ? secretRewardNodePulseSpeed
+                : pulseCurrentCurseAltarNode
+                    ? curseAltarReadyNodePulseSpeed
+                    : pulseCurrentChallengeThreatNode
+                        ? ResolveChallengeThreatNodePulseSpeed()
+                        : pulseChallengeCompletionNode
+                            ? challengeCompletedNodePulseSpeed
+                        : secretLinkNodePulseSpeed;
+            float nodePulseTintStrength = pulseSecretRewardNode
+                ? secretRewardNodePulseTintStrength
+                : pulseCurrentCurseAltarNode
+                    ? curseAltarReadyNodePulseTintStrength
+                    : pulseCurrentChallengeThreatNode
+                        ? ResolveChallengeThreatNodePulseTintStrength()
+                        : pulseChallengeCompletionNode
+                            ? challengeCompletedNodePulseTintStrength
+                        : secretLinkNodePulseTintStrength;
+            float nodePulseScaleAmplitude = pulseSecretRewardNode
+                ? secretRewardNodePulseScaleAmplitude
+                : pulseCurrentCurseAltarNode
+                    ? curseAltarReadyNodePulseScaleAmplitude
+                    : pulseCurrentChallengeThreatNode
+                        ? ResolveChallengeThreatNodePulseScaleAmplitude()
+                        : pulseChallengeCompletionNode
+                            ? challengeCompletedNodePulseScaleAmplitude
+                        : secretLinkNodePulseScaleAmplitude;
+            Color resolvedFrameColor = isChallengeCompletionNode
+                ? Color.Lerp(challengeFrameColor, challengeCompletedNodePulseColor, 0.34f)
+                : GetTypeFrameColor(roomState.RoomType);
+            Color resolvedFillColor = isChallengeCompletionNode
+                ? Color.Lerp(GetStateFillColor(explorationState), challengeCompletedFillColor, 0.72f)
+                : GetStateFillColor(explorationState);
+            Color resolvedClearedMarkColor = isChallengeCompletionNode
+                ? challengeCompletedClearedMarkerColor
+                : clearedMarkerColor;
+
+            return new MinimapNodeView.MinimapNodePresentation(
+                nodeSize,
+                connectionLength,
+                connectionThickness,
+                resolvedFrameColor,
+                resolvedFillColor,
+                pulseNode,
+                nodePulseColor,
+                nodePulseSpeed,
+                nodePulseTintStrength,
+                nodePulseScaleAmplitude,
+                GetConnectionColor(explorationState),
+                secretConnectionColor,
+                connectionSprite,
+                GetSpecialIcon(roomState.RoomType, explorationState),
+                resolvedFrameColor,
+                explorationState == RoomExplorationState.Current,
+                currentMarkerColor,
+                true,
+                roomState.IsCleared,
+                clearedMarkerSprite,
+                resolvedClearedMarkColor,
+                roomState.HasRewardContent,
+                rewardSprite,
+                resolvedRewardMarkerColor,
+                pulseRewardMarker,
+                roomState.HasUpConnection,
+                roomState.HasUpSecretConnection,
+                roomState.HasDownConnection,
+                roomState.HasDownSecretConnection,
+                roomState.HasLeftConnection,
+                roomState.HasLeftSecretConnection,
+                roomState.HasRightConnection,
+                roomState.HasRightSecretConnection);
+        }
+
+        private void RefreshRenderedRooms()
+        {
+            if (_lastRenderedRooms.Count == 0 || !TryEnsureContentRoot())
+            {
+                return;
+            }
+
+            EnsureNodeCapacity(_lastRenderedRooms.Count);
+
+            for (int index = 0; index < _lastRenderedRooms.Count; index++)
+            {
+                MinimapRoomViewData roomState = _lastRenderedRooms[index];
+                MinimapNodeView nodeView = _spawnedNodes[index];
+                bool visible = !hideHiddenRooms || roomState.ExplorationState != RoomExplorationState.Hidden;
+                nodeView.SetVisible(visible);
+
+                if (!visible)
+                {
+                    continue;
+                }
+
+                nodeView.Present(BuildPresentation(roomState));
+            }
+        }
+
+        private Color ResolveChallengeThreatNodePulseColor()
+        {
+            Color themeAccent = ResolveChallengeThreatThemeAccent();
+            float nodePulseScale = ResolveChallengeThreatNodePulseScaleFactor();
+            Color baseColor = Color.Lerp(
+                Color.Lerp(challengeThreatNodePulseColor, themeAccent, 0.58f),
+                challengeThreatHeavyNodePulseColor,
+                Mathf.Clamp01((_challengeThreatGuaranteedChampionCount >= 2
+                    ? 1f
+                    : Mathf.InverseLerp(0.08f, 0.22f, _challengeThreatChampionChanceBonus)) * nodePulseScale));
+            float flashStrength = EvaluateChallengeThreatTransitionFlashStrength();
+            return flashStrength <= 0f
+                ? baseColor
+                : Color.Lerp(baseColor, challengeThreatTransitionFlashColor, 0.42f * flashStrength);
+        }
+
+        private float ResolveChallengeThreatNodePulseSpeed()
+        {
+            float baseSpeed = challengeThreatNodePulseSpeed
+                + (_challengeThreatGuaranteedChampionCount * 0.3f)
+                + Mathf.Lerp(0f, 0.22f, Mathf.InverseLerp(0.08f, 0.22f, _challengeThreatChampionChanceBonus));
+            baseSpeed *= ResolveChallengeThreatNodePulseScaleFactor();
+            return baseSpeed + (challengeThreatTransitionPulseSpeedBonus * EvaluateChallengeThreatTransitionFlashStrength());
+        }
+
+        private float ResolveChallengeThreatNodePulseTintStrength()
+        {
+            float baseTintStrength = Mathf.Clamp(
+                challengeThreatNodePulseTintStrength
+                + (_challengeThreatGuaranteedChampionCount * 0.03f)
+                + Mathf.Lerp(0f, 0.03f, Mathf.InverseLerp(0.08f, 0.22f, _challengeThreatChampionChanceBonus)),
+                0f,
+                0.35f);
+            baseTintStrength = Mathf.Clamp(baseTintStrength * Mathf.Lerp(0.92f, 1.2f, Mathf.InverseLerp(1f, 1.3f, ResolveChallengeThreatNodePulseScaleFactor())), 0f, 0.35f);
+            return Mathf.Clamp(
+                baseTintStrength + (challengeThreatTransitionPulseTintBoost * EvaluateChallengeThreatTransitionFlashStrength()),
+                0f,
+                0.35f);
+        }
+
+        private float ResolveChallengeThreatNodePulseScaleAmplitude()
+        {
+            return challengeThreatNodePulseScaleAmplitude
+                + (_challengeThreatGuaranteedChampionCount * 0.025f)
+                + Mathf.Lerp(0f, 0.02f, Mathf.InverseLerp(0.08f, 0.22f, _challengeThreatChampionChanceBonus))
+                + ((ResolveChallengeThreatNodePulseScaleFactor() - 1f) * 0.05f)
+                + (challengeThreatTransitionPulseScaleBoost * EvaluateChallengeThreatTransitionFlashStrength());
+        }
+
+        private float ResolveChallengeThreatNodePulseScaleFactor()
+        {
+            return ChallengeThreatPresentationResolver.ResolveNodePulseScale(_challengeThreatStage);
+        }
+
+        private float EvaluateChallengeThreatTransitionFlashStrength()
+        {
+            if (_challengeThreatTransitionFlashExpiresAt <= 0f)
+            {
+                return 0f;
+            }
+
+            float remaining = _challengeThreatTransitionFlashExpiresAt - Time.unscaledTime;
+            if (remaining <= 0f)
+            {
+                return 0f;
+            }
+
+            float duration = Mathf.Max(0.05f, challengeThreatTransitionFlashDuration);
+            return Mathf.Clamp01(remaining / duration);
+        }
+
+        private Color GetStateFillColor(RoomExplorationState explorationState)
+        {
+            return explorationState switch
+            {
+                RoomExplorationState.Current => currentFillColor,
+                RoomExplorationState.Cleared => clearedFillColor,
+                RoomExplorationState.Visited => visitedFillColor,
+                RoomExplorationState.Discovered => discoveredFillColor,
+                _ => hiddenFillColor
+            };
+        }
+
+        private Color GetConnectionColor(RoomExplorationState explorationState)
+        {
+            Color fillColor = GetStateFillColor(explorationState);
+            return new Color(fillColor.r, fillColor.g, fillColor.b, Mathf.Max(0.35f, fillColor.a));
+        }
+
+        private Color GetTypeFrameColor(RoomType roomType)
+        {
+            return roomType switch
+            {
+                RoomType.Start => startFrameColor,
+                RoomType.Boss => bossFrameColor,
+                RoomType.MiniBoss => miniBossFrameColor,
+                RoomType.Treasure => treasureFrameColor,
+                RoomType.Shop => shopFrameColor,
+                RoomType.Secret => secretFrameColor,
+                RoomType.Challenge => challengeFrameColor,
+                RoomType.Trap => trapFrameColor,
+                RoomType.Curse => curseFrameColor,
+                _ => normalFrameColor
+            };
+        }
+
+        private Sprite GetSpecialIcon(RoomType roomType, RoomExplorationState explorationState)
+        {
+            if (explorationState == RoomExplorationState.Hidden)
+            {
+                return null;
+            }
+
+            return roomType switch
+            {
+                RoomType.Start => startRoomIcon,
+                RoomType.Boss => bossRoomIcon,
+                RoomType.MiniBoss => miniBossRoomIcon != null ? miniBossRoomIcon : bossRoomIcon,
+                RoomType.Treasure => treasureRoomIcon,
+                RoomType.Shop => shopRoomIcon,
+                RoomType.Secret => secretRoomIcon,
+                RoomType.Challenge => challengeRoomIcon,
+                RoomType.Trap => trapRoomIcon,
+                RoomType.Curse => curseRoomIcon != null ? curseRoomIcon : secretRoomIcon,
+                _ => null
+            };
+        }
+
+        private void ApplyPanelVisibility()
+        {
+            if (panelRoot != null)
+            {
+                panelRoot.SetActive(_isVisible);
+            }
+        }
+
+        private static Image CreateConnectionImage(string name, RectTransform parent, Vector2 anchor, Vector2 pivot)
+        {
+            GameObject imageObject = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            imageObject.transform.SetParent(parent, false);
+            RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
+            rectTransform.anchorMin = anchor;
+            rectTransform.anchorMax = anchor;
+            rectTransform.pivot = pivot;
+
+            Image image = imageObject.GetComponent<Image>();
+            image.raycastTarget = false;
+            image.gameObject.SetActive(false);
+            return image;
+        }
+
+        private static Image CreateNodeImage(
+            string name,
+            RectTransform parent,
+            Vector2 anchorMin,
+            Vector2 anchorMax,
+            Vector2 pivot,
+            Vector2 anchoredPosition,
+            Vector2 sizeDelta)
+        {
+            GameObject imageObject = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            imageObject.transform.SetParent(parent, false);
+            RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
+            rectTransform.anchorMin = anchorMin;
+            rectTransform.anchorMax = anchorMax;
+            rectTransform.pivot = pivot;
+            rectTransform.anchoredPosition = anchoredPosition;
+            rectTransform.sizeDelta = sizeDelta;
+
+            Image image = imageObject.GetComponent<Image>();
+            image.raycastTarget = false;
+            return image;
+        }
+
+        private static Text CreateStatusText(
+            string name,
+            RectTransform parent,
+            Vector2 anchoredPosition,
+            Vector2 size,
+            TextAnchor anchor,
+            int fontSize,
+            FontStyle style)
+        {
+            GameObject textObject = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            textObject.transform.SetParent(parent, false);
+            RectTransform rectTransform = textObject.GetComponent<RectTransform>();
+            rectTransform.anchorMin = new Vector2(0f, 1f);
+            rectTransform.anchorMax = new Vector2(0f, 1f);
+            rectTransform.pivot = new Vector2(0f, 1f);
+            rectTransform.anchoredPosition = anchoredPosition;
+            rectTransform.sizeDelta = size;
+
+            Text text = textObject.GetComponent<Text>();
+            LocalizedUiFontProvider.Apply(text);
+            text.fontSize = fontSize;
+            text.fontStyle = style;
+            text.alignment = anchor;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            return text;
+        }
+
+        private static Image CreateStatusCard(
+            string name,
+            RectTransform parent,
+            Vector2 anchoredPosition,
+            Vector2 size,
+            Color color)
+        {
+            GameObject imageObject = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            imageObject.transform.SetParent(parent, false);
+            RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
+            rectTransform.anchorMin = new Vector2(0f, 1f);
+            rectTransform.anchorMax = new Vector2(0f, 1f);
+            rectTransform.pivot = new Vector2(0f, 1f);
+            rectTransform.anchoredPosition = anchoredPosition;
+            rectTransform.sizeDelta = size;
+
+            Image image = imageObject.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        private static Image CreateStatusIcon(
+            string name,
+            RectTransform parent,
+            Vector2 anchoredPosition,
+            Vector2 size)
+        {
+            GameObject imageObject = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            imageObject.transform.SetParent(parent, false);
+            RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
+            rectTransform.anchorMin = new Vector2(0f, 1f);
+            rectTransform.anchorMax = new Vector2(0f, 1f);
+            rectTransform.pivot = new Vector2(0f, 1f);
+            rectTransform.anchoredPosition = anchoredPosition;
+            rectTransform.sizeDelta = size;
+
+            Image image = imageObject.GetComponent<Image>();
+            image.raycastTarget = false;
+            return image;
+        }
+
+        private static RectTransform CreateViewportRoot(RectTransform parent)
+        {
+            GameObject viewportObject = new("ViewportRoot", typeof(RectTransform));
+            viewportObject.layer = parent.gameObject.layer;
+            RectTransform viewportRect = viewportObject.GetComponent<RectTransform>();
+            viewportRect.SetParent(parent, false);
+            viewportRect.anchorMin = Vector2.zero;
+            viewportRect.anchorMax = Vector2.one;
+            viewportRect.offsetMin = Vector2.zero;
+            viewportRect.offsetMax = Vector2.zero;
+            return viewportRect;
+        }
+
+        private void ReparentViewportChild(RectTransform child)
+        {
+            if (child == null || viewportRoot == null || child == viewportRoot)
+            {
+                return;
+            }
+
+            if (child.parent != viewportRoot)
+            {
+                child.SetParent(viewportRoot, false);
+            }
+        }
+
+        private void ApplyStatusCardVisibility(bool showStatusCard, bool showDetailCard)
+        {
+            if (roomStatusCardImage != null)
+            {
+                roomStatusCardImage.gameObject.SetActive(showStatusCard);
+            }
+
+            if (roomStatusAccentImage != null)
+            {
+                roomStatusAccentImage.gameObject.SetActive(showStatusCard);
+            }
+
+            if (roomDetailCardImage != null)
+            {
+                roomDetailCardImage.gameObject.SetActive(showDetailCard);
+            }
+
+            if (roomDetailAccentImage != null)
+            {
+                roomDetailAccentImage.gameObject.SetActive(showDetailCard);
+            }
+        }
+
+        private void ApplyStatusLayout(bool compactMode)
+        {
+            ChallengeBannerLayoutProfile layoutProfile = ResolveCurrentChallengeLayoutProfile();
+            Vector2 resolvedStatusCardSize = ResolveRoomStatusCardSize(layoutProfile, compactMode);
+            Vector2 resolvedStatusTextSize = ResolveRoomStatusTextSize(layoutProfile, compactMode);
+            resolvedStatusTextSize = new Vector2(
+                Mathf.Max(24f, resolvedStatusTextSize.x - ResolveRoomStatusTextWidthTrim(layoutProfile, compactMode)),
+                resolvedStatusTextSize.y);
+            Vector2 resolvedStatusAccentSize = ResolveAccentSizeForCard(compactMode ? compactRoomStatusAccentSize : roomStatusAccentSize, resolvedStatusCardSize.y);
+            float statusHeightDelta = compactMode
+                ? resolvedStatusCardSize.y - compactRoomStatusCardSize.y
+                : resolvedStatusCardSize.y - roomStatusCardSize.y;
+            Vector2 expandedStatusTextPosition = roomStatusTextPosition + new Vector2(ResolveRoomStatusContentShiftX(layoutProfile, false), 0f);
+            Vector2 compactStatusTextPosition = compactRoomStatusTextPosition + new Vector2(ResolveRoomStatusContentShiftX(layoutProfile, true), 0f);
+
+            Vector2 detailCardPosition = roomDetailCardPosition + new Vector2(0f, -Mathf.Max(0f, statusHeightDelta * 0.7f));
+            Vector2 detailAccentPosition = roomDetailAccentPosition + new Vector2(0f, -Mathf.Max(0f, statusHeightDelta * 0.7f));
+            Vector2 detailTextPosition = roomDetailTextPosition
+                + new Vector2(ResolveRoomDetailContentShiftX(layoutProfile), -Mathf.Max(0f, statusHeightDelta * 0.7f));
+            Vector2 resolvedDetailCardSize = ResolveRoomDetailCardSize(layoutProfile);
+            Vector2 resolvedDetailTextSize = ResolveRoomDetailTextSize(layoutProfile);
+            resolvedDetailTextSize = new Vector2(
+                Mathf.Max(36f, resolvedDetailTextSize.x - ResolveRoomDetailTextWidthTrim(layoutProfile)),
+                resolvedDetailTextSize.y);
+            Vector2 resolvedDetailAccentSize = ResolveAccentSizeForCard(roomDetailAccentSize, resolvedDetailCardSize.y);
+
+            ApplyStatusElementLayout(roomTypeBadgeImage, roomTypeBadgePosition, roomTypeBadgeSize, compactRoomTypeBadgePosition, compactRoomTypeBadgeSize, compactMode, false);
+            ApplyStatusElementLayout(roomTypeIconImage, roomTypeIconPosition, roomTypeIconSize, compactRoomTypeIconPosition, compactRoomTypeIconSize, compactMode, false);
+            ApplyStatusElementLayout(roomTypeLabelText, roomTypeLabelPosition, roomTypeLabelSize, compactRoomTypeLabelPosition, compactRoomTypeLabelSize, compactMode, false);
+            ApplyStatusElementLayout(roomStatusCardImage, roomStatusCardPosition, resolvedStatusCardSize, compactRoomStatusCardPosition, resolvedStatusCardSize, compactMode, true);
+            ApplyStatusElementLayout(roomStatusAccentImage, roomStatusAccentPosition, resolvedStatusAccentSize, compactRoomStatusAccentPosition, resolvedStatusAccentSize, compactMode, true);
+            ApplyStatusElementLayout(roomStatusText, expandedStatusTextPosition, resolvedStatusTextSize, compactStatusTextPosition, resolvedStatusTextSize, compactMode, true);
+            ApplyStatusElementLayout(roomDetailCardImage, detailCardPosition, resolvedDetailCardSize, detailCardPosition, resolvedDetailCardSize, compactMode, true);
+            ApplyStatusElementLayout(roomDetailAccentImage, detailAccentPosition, resolvedDetailAccentSize, detailAccentPosition, resolvedDetailAccentSize, compactMode, true);
+            ApplyStatusElementLayout(roomDetailText, detailTextPosition, resolvedDetailTextSize, detailTextPosition, resolvedDetailTextSize, compactMode, true);
+
+            if (roomStatusText != null)
+            {
+                roomStatusText.alignment = compactMode ? TextAnchor.MiddleLeft : TextAnchor.UpperLeft;
+                roomStatusText.fontSize = compactMode ? compactRoomStatusFontSize : roomStatusFontSize;
+                roomStatusText.supportRichText = true;
+                roomStatusText.lineSpacing = ResolveRoomStatusLineSpacing();
+                roomStatusText.horizontalOverflow = compactMode ? HorizontalWrapMode.Overflow : HorizontalWrapMode.Wrap;
+                roomStatusText.verticalOverflow = compactMode ? VerticalWrapMode.Truncate : VerticalWrapMode.Overflow;
+                roomStatusText.alignByGeometry = true;
+            }
+
+            if (roomDetailText != null)
+            {
+                roomDetailText.alignment = TextAnchor.UpperLeft;
+                roomDetailText.fontSize = roomDetailFontSize;
+                roomDetailText.supportRichText = true;
+                roomDetailText.lineSpacing = ResolveRoomDetailLineSpacing();
+                roomDetailText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                roomDetailText.verticalOverflow = VerticalWrapMode.Overflow;
+                roomDetailText.alignByGeometry = true;
+            }
+
+            if (roomTypeLabelText != null)
+            {
+                roomTypeLabelText.alignment = TextAnchor.MiddleLeft;
+                roomTypeLabelText.fontSize = compactMode ? compactRoomTypeFontSize : roomTypeFontSize;
+                roomTypeLabelText.supportRichText = true;
+            }
+        }
+
+        private static void ApplyStatusElementLayout(
+            Graphic graphic,
+            Vector2 anchoredPosition,
+            Vector2 size,
+            Vector2 compactAnchoredPosition,
+            Vector2 compactSize,
+            bool compactMode,
+            bool hideInCompact)
+        {
+            if (graphic == null)
+            {
+                return;
+            }
+
+            RectTransform rectTransform = graphic.rectTransform;
+            rectTransform.anchorMin = new Vector2(0f, 1f);
+            rectTransform.anchorMax = new Vector2(0f, 1f);
+            rectTransform.pivot = new Vector2(0f, 1f);
+            rectTransform.anchoredPosition = compactMode ? compactAnchoredPosition : anchoredPosition;
+            rectTransform.sizeDelta = compactMode ? compactSize : size;
+
+            if (compactMode && hideInCompact)
+            {
+                graphic.gameObject.SetActive(false);
+            }
+        }
+
+        private void ApplyRoomTypeBadge(RoomType roomType, Color accentColor, bool visible)
+        {
+            bool hideBadgeForTopBar = (_topBarLayoutActive && hideRoomTypeBadgeInTopBar)
+                || ShouldSuppressCompactChallengeAuxiliaryCopy();
+            Sprite badgeIcon = GetSpecialIcon(roomType, RoomExplorationState.Visited);
+            string label = ResolveRoomTypeBadgeLabel(roomType);
+            bool showBadge = !hideBadgeForTopBar && visible && (!string.IsNullOrWhiteSpace(label) || badgeIcon != null);
+            ApplyDynamicBadgeLayout(label, badgeIcon != null);
+            Color badgeBackgroundColor = ResolveUnifiedRoomTypeBadgeBackgroundColor(roomType, accentColor);
+            Color badgeIconColor = ResolveUnifiedRoomTypeBadgeIconColor(roomType, accentColor);
+
+            if (roomTypeBadgeImage != null)
+            {
+                roomTypeBadgeImage.gameObject.SetActive(showBadge);
+                roomTypeBadgeImage.color = badgeBackgroundColor;
+            }
+
+            if (roomTypeIconImage != null)
+            {
+                roomTypeIconImage.gameObject.SetActive(showBadge && badgeIcon != null);
+
+                if (showBadge && badgeIcon != null)
+                {
+                    roomTypeIconImage.sprite = badgeIcon;
+                    roomTypeIconImage.color = badgeIconColor;
+                }
+            }
+
+            if (roomTypeLabelText != null)
+            {
+                roomTypeLabelText.gameObject.SetActive(showBadge);
+                int fontSize = _compactMode ? compactRoomTypeFontSize : roomTypeFontSize;
+                roomTypeLabelText.text = $"<size={fontSize}><b>{label}</b></size>";
+                roomTypeLabelText.color = ResolveUnifiedRoomTypeBadgeLabelColor(roomType);
+            }
+        }
+
+        private void CacheStatusVisualBaseline(Color accentColor)
+        {
+            _statusEmphasisAccentColor = accentColor;
+            _baseRoomTypeBadgeColor = roomTypeBadgeImage != null ? roomTypeBadgeImage.color : roomTypeBadgeBaseColor;
+            _baseRoomStatusCardColor = roomStatusCardImage != null ? roomStatusCardImage.color : roomStatusCardColor;
+            _baseRoomDetailCardColor = roomDetailCardImage != null ? roomDetailCardImage.color : roomDetailCardColor;
+            _baseRoomStatusAccentColor = roomStatusAccentImage != null ? roomStatusAccentImage.color : new Color(accentColor.r, accentColor.g, accentColor.b, accentRailOpacity);
+            _baseRoomDetailAccentColor = roomDetailAccentImage != null ? roomDetailAccentImage.color : new Color(accentColor.r, accentColor.g, accentColor.b, accentRailOpacity * 0.8f);
+            _baseRoomStatusTextColor = roomStatusText != null ? roomStatusText.color : accentColor;
+            _baseRoomDetailTextColor = roomDetailText != null ? roomDetailText.color : roomDetailColor;
+            _baseRoomTypeIconColor = roomTypeIconImage != null ? roomTypeIconImage.color : accentColor;
+
+            if (roomStatusAccentImage != null)
+            {
+                roomStatusAccentImage.color = _baseRoomStatusAccentColor;
+            }
+
+            if (roomDetailAccentImage != null)
+            {
+                roomDetailAccentImage.color = _baseRoomDetailAccentColor;
+            }
+        }
+
+        private bool ShouldUseCurseAltarReadyTheme(RoomType roomType, string headline)
+        {
+            return roomType == RoomType.Curse
+                && !string.IsNullOrWhiteSpace(headline)
+                && (headline.Contains("제단 개방") || headline.Contains("대가 개방"));
+        }
+
+        private bool ShouldUseChallengeThreatTheme(RoomType roomType)
+        {
+            return roomType == RoomType.Challenge && _hasChallengeThreatStatusTheme;
+        }
+
+        private bool UsesChallengeBaselineTheme()
+        {
+            return _hasChallengeThreatStatusTheme && string.Equals(_challengeThreatBadgeLabel, "챌린지");
+        }
+
+        private Color ResolveChallengeThreatThemeAccent()
+        {
+            if (_hasChallengeThreatStatusTheme)
+            {
+                return _challengeThreatStatusAccentColor;
+            }
+
+            ChallengeThreatPresentation presentation = ChallengeThreatPresentationResolver.Build(
+                Mathf.Max(1, _challengeThreatWaveNumber),
+                1,
+                0,
+                _challengeThreatGuaranteedChampionCount,
+                _challengeThreatChampionChanceBonus);
+            return presentation.AccentColor;
+        }
+
+        private Color ResolveStatusEyebrowColor(bool useChallengeThreatTheme)
+        {
+            if (!useChallengeThreatTheme && TryResolveExplicitChallengeBadgeLabelColor(out Color explicitLabelColor))
+            {
+                return explicitLabelColor;
+            }
+
+            if (!useChallengeThreatTheme)
+            {
+                return roomStatusLabelColor;
+            }
+
+            float themeStrength = ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage);
+            float blend = Mathf.Clamp01(0.22f + (challengeThreatEyebrowBoost * themeStrength));
+            return Color.Lerp(roomStatusLabelColor, challengeThreatEyebrowColor, blend);
+        }
+
+        private Color ResolveDetailEyebrowColor(bool useChallengeThreatTheme)
+        {
+            if (!useChallengeThreatTheme && TryResolveExplicitChallengeBadgeLabelColor(out Color explicitLabelColor))
+            {
+                return Color.Lerp(explicitLabelColor, Color.white, 0.12f);
+            }
+
+            if (!useChallengeThreatTheme)
+            {
+                return roomStatusLabelColor;
+            }
+
+            float themeStrength = ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage);
+            float blend = Mathf.Clamp01(0.18f + (challengeThreatEyebrowBoost * 0.8f * themeStrength));
+            return Color.Lerp(roomStatusLabelColor, Color.Lerp(challengeThreatEyebrowColor, Color.white, 0.1f), blend);
+        }
+
+        private Color ResolveCompactChallengeThreatTagColor()
+        {
+            float themeStrength = ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage);
+            float blend = Mathf.Clamp01(0.26f + (challengeThreatEyebrowBoost * themeStrength));
+            return Color.Lerp(
+                Color.Lerp(_currentAccentColor, Color.white, 0.22f),
+                challengeThreatCompactTagColor,
+                blend);
+        }
+
+        private void ApplySpecialStatusTheme(RoomType roomType, bool useCurseAlertTheme, bool useCurseAltarReadyTheme, bool useChallengeThreatTheme)
+        {
+            Color challengeThemeAccent = ResolveChallengeThreatThemeAccent();
+            float challengeThemeStrength = ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage);
+            float badgeBlend = Mathf.Clamp01(0.46f * challengeThemeStrength);
+            float statusBlend = Mathf.Clamp01(0.26f * challengeThemeStrength);
+            float detailBlend = Mathf.Clamp01(0.18f * challengeThemeStrength);
+            float detailTextBlend = Mathf.Clamp01(0.18f * challengeThemeStrength);
+
+            if (roomTypeBadgeImage != null)
+            {
+                roomTypeBadgeImage.color = useCurseAlertTheme
+                    ? curseAlertBadgeColor
+                    : useCurseAltarReadyTheme
+                        ? curseAltarReadyBadgeColor
+                        : useChallengeThreatTheme
+                            ? ResolveChallengeThemeBadgeColor(challengeThemeAccent, badgeBlend)
+                        : roomTypeBadgeImage.color;
+            }
+
+            if (roomStatusCardImage != null)
+            {
+                roomStatusCardImage.color = useCurseAlertTheme
+                    ? curseAlertStatusCardColor
+                    : useCurseAltarReadyTheme
+                        ? curseAltarReadyStatusCardColor
+                        : useChallengeThreatTheme
+                            ? ResolveChallengeThemeStatusCardColor(challengeThemeAccent, statusBlend)
+                        : roomStatusCardColor;
+            }
+
+            if (roomDetailCardImage != null)
+            {
+                roomDetailCardImage.color = useCurseAlertTheme
+                    ? curseAlertDetailCardColor
+                    : useCurseAltarReadyTheme
+                        ? curseAltarReadyDetailCardColor
+                        : useChallengeThreatTheme
+                            ? ResolveChallengeThemeDetailCardColor(challengeThemeAccent, detailBlend)
+                        : roomDetailCardColor;
+            }
+
+            if (roomDetailText != null)
+            {
+                roomDetailText.color = useCurseAlertTheme
+                    ? curseAlertDetailTextColor
+                    : useCurseAltarReadyTheme
+                        ? curseAltarReadyDetailTextColor
+                        : useChallengeThreatTheme
+                            ? ResolveChallengeThemeDetailTextColor(challengeThemeAccent, detailTextBlend)
+                            : roomDetailColor;
+            }
+
+            if (useChallengeThreatTheme)
+            {
+                if (roomStatusAccentImage != null)
+                {
+                    float railBlend = Mathf.Clamp01(0.32f + (challengeThreatAccentRailBoost * challengeThemeStrength));
+                    roomStatusAccentImage.color = Color.Lerp(
+                        new Color(challengeThemeAccent.r, challengeThemeAccent.g, challengeThemeAccent.b, accentRailOpacity),
+                        Color.Lerp(challengeThemeAccent, Color.white, 0.18f),
+                        railBlend);
+                }
+
+                if (roomDetailAccentImage != null)
+                {
+                    float railBlend = Mathf.Clamp01(0.18f + (challengeThreatAccentRailBoost * 0.82f * challengeThemeStrength));
+                    roomDetailAccentImage.color = Color.Lerp(
+                        new Color(challengeThemeAccent.r, challengeThemeAccent.g, challengeThemeAccent.b, accentRailOpacity * 0.86f),
+                        Color.Lerp(challengeThemeAccent, Color.white, 0.12f),
+                        railBlend);
+                }
+            }
+        }
+
+        private string ResolveRoomTypeBadgeLabel(RoomType roomType)
+        {
+            if (!string.IsNullOrWhiteSpace(_explicitRoomStatusBadgeLabel))
+            {
+                return _explicitRoomStatusBadgeLabel;
+            }
+
+            if (ShouldUseChallengeThreatTheme(roomType) && !string.IsNullOrWhiteSpace(_challengeThreatBadgeLabel))
+            {
+                return _challengeThreatBadgeLabel;
+            }
+
+            return GetRoomTypeLabel(roomType);
+        }
+
+        private Color ResolveUnifiedRoomTypeBadgeBackgroundColor(RoomType roomType, Color accentColor)
+        {
+            if (TryResolveExplicitChallengeBadgeBackgroundColor(out Color explicitBadgeColor))
+            {
+                return explicitBadgeColor;
+            }
+
+            return Color.Lerp(roomTypeBadgeBaseColor, accentColor, 0.22f);
+        }
+
+        private Color ResolveUnifiedRoomTypeBadgeIconColor(RoomType roomType, Color accentColor)
+        {
+            if (TryResolveExplicitChallengeBadgeLabelColor(out Color explicitLabelColor))
+            {
+                return explicitLabelColor;
+            }
+
+            return ShouldUseChallengeThreatTheme(roomType)
+                ? ResolveUnifiedRoomTypeBadgeLabelColor(roomType)
+                : accentColor;
+        }
+
+        private Color ResolveUnifiedRoomTypeBadgeLabelColor(RoomType roomType)
+        {
+            if (TryResolveExplicitChallengeBadgeLabelColor(out Color explicitLabelColor))
+            {
+                return explicitLabelColor;
+            }
+
+            if (!ShouldUseChallengeThreatTheme(roomType))
+            {
+                return roomTypeLabelColor;
+            }
+
+            Color baseLabelColor = IsChallengeBaselineBadgeLabel(_challengeThreatBadgeLabel)
+                ? challengeBaselineLabelColor
+                : roomTypeLabelColor;
+            Color accentTarget = Color.Lerp(ResolveChallengeThreatThemeAccent(), Color.white, 0.3f);
+            float themeStrength = ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage);
+            float blend = Mathf.Clamp01(0.12f + (0.16f * themeStrength));
+            return Color.Lerp(baseLabelColor, accentTarget, blend);
+        }
+
+        private bool TryResolveExplicitChallengeBadgeBackgroundColor(out Color color)
+        {
+            if (IsChallengeRewardReadyStatus())
+            {
+                color = IsChallengeFinaleStatus()
+                    ? challengeFinaleBadgeColor
+                    : challengeRewardReadyBadgeColor;
+                return true;
+            }
+
+            if (IsChallengeCompletedStatus())
+            {
+                color = IsChallengeFinaleStatus()
+                    ? challengeFinaleBadgeColor
+                    : challengeCompletedBadgeColor;
+                return true;
+            }
+
+            color = default;
+            return false;
+        }
+
+        private bool TryResolveExplicitChallengeBadgeLabelColor(out Color color)
+        {
+            if (IsChallengeRewardReadyStatus())
+            {
+                color = IsChallengeFinaleStatus()
+                    ? challengeFinaleLabelColor
+                    : challengeRewardReadyLabelColor;
+                return true;
+            }
+
+            if (IsChallengeCompletedStatus())
+            {
+                color = IsChallengeFinaleStatus()
+                    ? challengeFinaleLabelColor
+                    : challengeCompletedLabelColor;
+                return true;
+            }
+
+            if (IsChallengeBaselineBadgeLabel(_explicitRoomStatusBadgeLabel))
+            {
+                color = challengeBaselineLabelColor;
+                return true;
+            }
+
+            color = default;
+            return false;
+        }
+
+        private bool IsChallengeRewardReadyStatus()
+        {
+            return _currentRoomType == RoomType.Challenge
+                && IsChallengeRewardReadyBadgeLabel(_explicitRoomStatusBadgeLabel);
+        }
+
+        private bool IsChallengeCompletedStatus()
+        {
+            return _currentRoomType == RoomType.Challenge
+                && IsChallengeCompletedBadgeLabel(_explicitRoomStatusBadgeLabel);
+        }
+
+        private bool IsChallengeFinaleStatus()
+        {
+            return _currentRoomType == RoomType.Challenge
+                && !string.IsNullOrWhiteSpace(_currentHeadline)
+                && (_currentHeadline.Contains("\uC644\uC804 \uC81C\uC555")
+                    || _currentHeadline.Contains("\uCD5C\uC885"));
+        }
+
+        private bool ShouldSuppressCompactChallengeAuxiliaryCopy()
+        {
+            return _compactMode
+                && _topBarLayoutActive
+                && _currentRoomType == RoomType.Challenge
+                && !string.IsNullOrWhiteSpace(_explicitRoomStatusCompactTag);
+        }
+
+        private static bool IsChallengeBaselineBadgeLabel(string label)
+        {
+            return string.Equals(CollapseWhitespace(label), "\uCC4C\uB9B0\uC9C0", System.StringComparison.Ordinal);
+        }
+
+        private static bool IsChallengeRewardReadyBadgeLabel(string label)
+        {
+            return string.Equals(CollapseWhitespace(label), "\uB3C4\uC804 \uBCF4\uC0C1", System.StringComparison.Ordinal);
+        }
+
+        private static bool IsChallengeCompletedBadgeLabel(string label)
+        {
+            return string.Equals(CollapseWhitespace(label), "\uB3C4\uC804 \uC644\uB8CC", System.StringComparison.Ordinal);
+        }
+
+        private Color ResolveRoomTypeBadgeLabelColor(RoomType roomType)
+        {
+            return ResolveUnifiedRoomTypeBadgeLabelColor(roomType);
+        }
+
+                if (string.Equals(_explicitRoomStatusBadgeLabel, "도전 페이스"))
+                {
+                    return Color.Lerp(challengeBaselineLabelColor, Color.white, 0.08f);
+                }
+
+                if (string.Equals(_explicitRoomStatusBadgeLabel, "엘리트 경보"))
+                {
+                    Color explicitAccentTarget = Color.Lerp(ResolveChallengeThreatThemeAccent(), Color.white, 0.3f);
+                    float explicitThemeStrength = ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage);
+                    float explicitBlend = Mathf.Clamp01(0.12f + (0.16f * explicitThemeStrength));
+                    return Color.Lerp(roomTypeLabelColor, explicitAccentTarget, explicitBlend);
+                }
+            }
+
+            if (!ShouldUseChallengeThreatTheme(roomType))
+            {
+                return roomTypeLabelColor;
+            }
+
+            Color baseLabelColor = UsesChallengeBaselineTheme() ? challengeBaselineLabelColor : roomTypeLabelColor;
+            Color accentTarget = Color.Lerp(ResolveChallengeThreatThemeAccent(), Color.white, 0.3f);
+            float themeStrength = ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage);
+            float blend = Mathf.Clamp01(0.12f + (0.16f * themeStrength));
+            return Color.Lerp(baseLabelColor, accentTarget, blend);
+        }
+
+        private Color ResolveChallengeThemeBadgeColor(Color challengeThemeAccent, float badgeBlend)
+        {
+            Color baseColor = UsesChallengeBaselineTheme() ? challengeBaselineBadgeColor : challengeThreatBadgeColor;
+            return Color.Lerp(baseColor, challengeThemeAccent, badgeBlend);
+        }
+
+        private Color ResolveChallengeThemeStatusCardColor(Color challengeThemeAccent, float statusBlend)
+        {
+            Color baseColor = UsesChallengeBaselineTheme() ? challengeBaselineStatusCardColor : challengeThreatStatusCardColor;
+            return Color.Lerp(baseColor, challengeThemeAccent, statusBlend);
+        }
+
+        private Color ResolveChallengeThemeDetailCardColor(Color challengeThemeAccent, float detailBlend)
+        {
+            Color baseColor = UsesChallengeBaselineTheme() ? challengeBaselineDetailCardColor : challengeThreatDetailCardColor;
+            return Color.Lerp(baseColor, challengeThemeAccent, detailBlend);
+        }
+
+        private Color ResolveChallengeThemeDetailTextColor(Color challengeThemeAccent, float detailTextBlend)
+        {
+            Color baseColor = UsesChallengeBaselineTheme() ? challengeBaselineDetailTextColor : challengeThreatDetailTextColor;
+            return Color.Lerp(baseColor, Color.Lerp(challengeThemeAccent, Color.white, 0.4f), detailTextBlend);
+        }
+
+        private void SetStatusEmphasis(bool active, Color accentColor)
+        {
+            _statusEmphasisActive = active;
+            _statusEmphasisAccentColor = accentColor;
+            _statusEmphasisPulseFrequencyScale = ResolveStatusEmphasisPulseFrequencyScale();
+            _statusEmphasisPulseAmplitudeScale = ResolveStatusEmphasisPulseAmplitudeScale();
+
+            if (!_statusEmphasisActive)
+            {
+                ResetStatusEmphasisVisuals();
+                return;
+            }
+
+            ApplyStatusEmphasisVisuals(0f, _topBarLayoutActive ? topBarStatusEmphasisDamping : 1f);
+        }
+
+        private void ResetStatusEmphasisVisuals()
+        {
+            if (roomTypeBadgeImage != null)
+            {
+                roomTypeBadgeImage.color = _baseRoomTypeBadgeColor;
+            }
+
+            if (roomStatusCardImage != null)
+            {
+                roomStatusCardImage.color = _baseRoomStatusCardColor;
+            }
+
+            if (roomDetailCardImage != null)
+            {
+                roomDetailCardImage.color = _baseRoomDetailCardColor;
+            }
+
+            if (roomStatusAccentImage != null)
+            {
+                roomStatusAccentImage.color = _baseRoomStatusAccentColor;
+            }
+
+            if (roomDetailAccentImage != null)
+            {
+                roomDetailAccentImage.color = _baseRoomDetailAccentColor;
+            }
+
+            if (roomStatusText != null)
+            {
+                roomStatusText.color = _baseRoomStatusTextColor;
+            }
+
+            if (roomDetailText != null)
+            {
+                roomDetailText.color = _baseRoomDetailTextColor;
+            }
+
+            if (roomTypeIconImage != null)
+            {
+                roomTypeIconImage.color = _baseRoomTypeIconColor;
+            }
+        }
+
+        private void ApplyStatusEmphasisVisuals(float pulse, float pulseDamping = 1f)
+        {
+            float dampedAmplitudeScale = Mathf.Lerp(1f, _statusEmphasisPulseAmplitudeScale, pulseDamping);
+            float tintBlend = Mathf.Lerp(0.08f, statusEmphasisTintStrength * dampedAmplitudeScale * pulseDamping, pulse);
+            float textBlend = Mathf.Lerp(0.04f, statusEmphasisTextBoost * Mathf.Lerp(1f, 1.14f, dampedAmplitudeScale - 1f) * pulseDamping, pulse);
+            Color brightAccent = Color.Lerp(_statusEmphasisAccentColor, Color.white, 0.18f + (0.18f * pulse));
+
+            if (roomTypeBadgeImage != null)
+            {
+                roomTypeBadgeImage.color = Color.Lerp(_baseRoomTypeBadgeColor, _statusEmphasisAccentColor, tintBlend);
+            }
+
+            if (roomStatusCardImage != null)
+            {
+                roomStatusCardImage.color = Color.Lerp(_baseRoomStatusCardColor, _statusEmphasisAccentColor, tintBlend * 0.48f);
+            }
+
+            if (roomDetailCardImage != null)
+            {
+                roomDetailCardImage.color = Color.Lerp(_baseRoomDetailCardColor, _statusEmphasisAccentColor, tintBlend * 0.28f);
+            }
+
+            if (roomStatusAccentImage != null)
+            {
+                roomStatusAccentImage.color = Color.Lerp(_baseRoomStatusAccentColor, brightAccent, tintBlend * 0.9f);
+            }
+
+            if (roomDetailAccentImage != null)
+            {
+                roomDetailAccentImage.color = Color.Lerp(_baseRoomDetailAccentColor, brightAccent, tintBlend * 0.55f);
+            }
+
+            if (roomStatusText != null)
+            {
+                roomStatusText.color = Color.Lerp(_baseRoomStatusTextColor, brightAccent, textBlend);
+            }
+
+            if (roomDetailText != null)
+            {
+                roomDetailText.color = Color.Lerp(_baseRoomDetailTextColor, Color.white, textBlend * 0.35f);
+            }
+
+            if (roomTypeIconImage != null)
+            {
+                roomTypeIconImage.color = Color.Lerp(_baseRoomTypeIconColor, brightAccent, textBlend);
+            }
+        }
+
+        private float ResolveStatusEmphasisPulseFrequencyScale()
+        {
+            if (!ShouldUseChallengeThreatTheme(_currentRoomType))
+            {
+                return 1f;
+            }
+
+            return ChallengeThreatPresentationResolver.ResolveFeedbackPulseFrequencyScale(_challengeThreatBadgeLabel, _challengeThreatStage);
+        }
+
+        private float ResolveStatusEmphasisPulseAmplitudeScale()
+        {
+            if (!ShouldUseChallengeThreatTheme(_currentRoomType))
+            {
+                return 1f;
+            }
+
+            return ChallengeThreatPresentationResolver.ResolveFeedbackPulseAmplitudeScale(_challengeThreatBadgeLabel, _challengeThreatStage);
+        }
+
+        private string BuildStatusHeadlineMarkup(string eyebrow, string headline)
+        {
+            int eyebrowFontSize = ResolveRoomStatusEyebrowFontSize();
+            return
+                $"<size={eyebrowFontSize}><color=#{ColorUtility.ToHtmlStringRGBA(roomStatusLabelColor)}><b>{eyebrow}</b></color></size>\n" +
+                $"<size={roomStatusFontSize}><b>{headline}</b></size>";
+        }
+
+        private string BuildStatusHeadlineMarkup(string eyebrow, string headline, Color eyebrowColor)
+        {
+            int eyebrowFontSize = ResolveRoomStatusEyebrowFontSize();
+            return
+                $"<size={eyebrowFontSize}><color=#{ColorUtility.ToHtmlStringRGBA(eyebrowColor)}><b>{eyebrow}</b></color></size>\n" +
+                $"<size={roomStatusFontSize}><b>{headline}</b></size>";
+        }
+
+        private string BuildCompactStatusHeadlineMarkup(string headline)
+        {
+            return $"<size={compactRoomStatusFontSize}><b>{headline}</b></size>";
+        }
+
+        private string BuildStatusDetailMarkup(string eyebrow, string detail)
+        {
+            int eyebrowFontSize = ResolveRoomDetailEyebrowFontSize();
+            int detailFontSize = ResolveRoomDetailFontSize();
+            return
+                $"<size={eyebrowFontSize}><color=#{ColorUtility.ToHtmlStringRGBA(roomStatusLabelColor)}><b>{eyebrow}</b></color></size>\n" +
+                $"<size={detailFontSize}>{detail}</size>";
+        }
+
+        private string BuildStatusDetailMarkup(string eyebrow, string detail, Color eyebrowColor)
+        {
+            int eyebrowFontSize = ResolveRoomDetailEyebrowFontSize();
+            int detailFontSize = ResolveRoomDetailFontSize();
+            return
+                $"<size={eyebrowFontSize}><color=#{ColorUtility.ToHtmlStringRGBA(eyebrowColor)}><b>{eyebrow}</b></color></size>\n" +
+                $"<size={detailFontSize}>{detail}</size>";
+        }
+
+        private string NormalizeStatusHeadline(string headline)
+        {
+            string normalizedHeadline = CollapseWhitespace(headline);
+            return string.IsNullOrWhiteSpace(normalizedHeadline) ? "현재 방" : normalizedHeadline;
+        }
+
+        private string NormalizeStatusDetail(string detail)
+        {
+            string normalizedDetail = CollapseWhitespace(detail);
+            if (string.IsNullOrWhiteSpace(normalizedDetail))
+            {
+                return string.Empty;
+            }
+
+            if (normalizedDetail.Length <= roomDetailMaxCharacters)
+            {
+                return normalizedDetail;
+            }
+
+            return normalizedDetail.Substring(0, Mathf.Max(1, roomDetailMaxCharacters - 1)).TrimEnd() + "…";
+        }
+
+        private string NormalizeCompactStatusHeadline(string headline)
+        {
+            string normalizedHeadline = CollapseWhitespace(headline);
+            if (string.IsNullOrWhiteSpace(normalizedHeadline))
+            {
+                return "현재 방";
+            }
+
+            if (normalizedHeadline.Length <= compactRoomStatusMaxCharacters)
+            {
+                return normalizedHeadline;
+            }
+
+            return normalizedHeadline.Substring(0, Mathf.Max(1, compactRoomStatusMaxCharacters - 1)).TrimEnd() + "…";
+        }
+
+        private string ResolveStatusEyebrow(RoomType roomType, string headline, bool emphasize)
+        {
+            if (ShouldSuppressCompactChallengeAuxiliaryCopy())
+            {
+                return string.Empty;
+            }
+
+            if (roomType == RoomType.Curse && headline.Contains("경고"))
+            {
+                return "입장 경고";
+            }
+
+            if (roomType == RoomType.Curse && emphasize)
+            {
+                return "저주 보상";
+            }
+
+            if (roomType == RoomType.Secret && emphasize)
+            {
+                return "비밀 신호";
+            }
+
+            if (!string.IsNullOrWhiteSpace(_explicitRoomStatusEyebrow))
+            {
+                return _explicitRoomStatusEyebrow;
+            }
+
+            if (roomType == RoomType.Challenge && !string.IsNullOrWhiteSpace(_explicitRoomStatusBadgeLabel))
+            {
+                return _explicitRoomStatusBadgeLabel;
+            }
+
+            if (roomType == RoomType.Challenge && emphasize)
+            {
+                return "도전 현황";
+            }
+
+            if (ShouldUseChallengeThreatTheme(roomType))
+            {
+                return string.IsNullOrWhiteSpace(_challengeThreatStatusEyebrow)
+                    ? ResolveRoomTypeBadgeLabel(roomType)
+                    : _challengeThreatStatusEyebrow;
+            }
+
+            if (roomType == RoomType.Boss)
+            {
+                return "위협 분석";
+            }
+
+            return "현재 위치";
+        }
+
+        private void ApplyDynamicBadgeLayout(string label, bool hasIcon)
+        {
+            if (roomTypeBadgeImage == null || roomTypeLabelText == null)
+            {
+                return;
+            }
+
+            float minWidth = _compactMode ? compactRoomTypeBadgeMinWidth : roomTypeBadgeMinWidth;
+            float maxWidth = _compactMode ? compactRoomTypeBadgeMaxWidth : roomTypeBadgeMaxWidth;
+            float characterWidth = _compactMode ? compactRoomTypeBadgeCharacterWidth : roomTypeBadgeCharacterWidth;
+            Vector2 badgeSize = _compactMode ? compactRoomTypeBadgeSize : roomTypeBadgeSize;
+            Vector2 labelSize = _compactMode ? compactRoomTypeLabelSize : roomTypeLabelSize;
+            float computedWidth = minWidth + (Mathf.Max(0, label != null ? label.Length : 0) * characterWidth);
+            computedWidth += hasIcon ? 18f : 0f;
+            float clampedWidth = Mathf.Clamp(computedWidth, minWidth, maxWidth);
+
+            roomTypeBadgeImage.rectTransform.sizeDelta = new Vector2(clampedWidth, badgeSize.y);
+            roomTypeLabelText.rectTransform.sizeDelta = new Vector2(clampedWidth - (hasIcon ? 42f : 28f), labelSize.y);
+        }
+
+        private void ApplyPlaceholderStatusPresentation()
+        {
+            bool showTopBarStatusCards = !(_topBarLayoutActive && hideStatusCardsInTopBar);
+
+            if (roomStatusText != null)
+            {
+                roomStatusText.supportRichText = true;
+                roomStatusText.lineSpacing = ResolveRoomStatusLineSpacing();
+                roomStatusText.text = _compactMode
+                    ? BuildCompactStatusHeadlineMarkup("현재 방")
+                    : BuildStatusHeadlineMarkup("현재 위치", "현재 방");
+                roomStatusText.color = placeholderTextColor;
+                roomStatusText.gameObject.SetActive(!_compactMode && showTopBarStatusCards);
+            }
+
+            if (roomDetailText != null)
+            {
+                roomDetailText.supportRichText = true;
+                roomDetailText.lineSpacing = ResolveRoomDetailLineSpacing();
+                roomDetailText.text = BuildStatusDetailMarkup("대기 중", "던전이 생성되면 탐험 정보가 여기에 표시됩니다.");
+                roomDetailText.color = roomDetailColor;
+                roomDetailText.gameObject.SetActive(!_compactMode && showTopBarStatusCards);
+            }
+
+            ApplyStatusCardVisibility(!_compactMode && showTopBarStatusCards, !_compactMode && showTopBarStatusCards);
+            ApplyRoomTypeBadge(RoomType.Normal, placeholderTextColor, false);
+            SetStatusEmphasis(false, placeholderTextColor);
+        }
+
+        private void ApplyCurrentStatusPresentation(bool useCurseAlertTheme, bool useCurseAltarReadyTheme, bool useChallengeThreatTheme)
+        {
+            bool showTopBarStatusCards = !(_topBarLayoutActive && hideStatusCardsInTopBar);
+            bool suppressCompactChallengeAuxiliaryCopy = ShouldSuppressCompactChallengeAuxiliaryCopy();
+
+            if (roomStatusText != null)
+            {
+                string eyebrow = ResolveStatusEyebrow(_currentRoomType, _currentHeadline, _currentStatusEmphasize);
+                Color eyebrowColor = ResolveStatusEyebrowColor(useChallengeThreatTheme);
+                roomStatusText.supportRichText = true;
+                roomStatusText.lineSpacing = ResolveRoomStatusLineSpacing();
+                roomStatusText.text = _compactMode
+                    ? useChallengeThreatTheme
+                        ? BuildCompactChallengeThreatHeadlineMarkup(_currentHeadline, _challengeThreatCompactTag, ResolveCompactChallengeThreatTagColor())
+                        : !string.IsNullOrWhiteSpace(_explicitRoomStatusCompactTag)
+                            ? BuildCompactChallengeThreatHeadlineMarkup(
+                                ResolveCompactExplicitStatusHeadline(_currentHeadline),
+                                _explicitRoomStatusCompactTag,
+                                ResolveCompactExplicitStatusTagColor())
+                        : BuildCompactStatusHeadlineMarkup(NormalizeCompactStatusHeadline(_currentHeadline))
+                    : BuildStatusHeadlineMarkup(eyebrow, _currentHeadline, eyebrowColor);
+                roomStatusText.color = _currentAccentColor;
+                roomStatusText.gameObject.SetActive(showTopBarStatusCards);
+            }
+
+            if (roomDetailText != null)
+            {
+                string detailEyebrow = useChallengeThreatTheme && !string.IsNullOrWhiteSpace(_challengeThreatDetailEyebrow)
+                    ? _challengeThreatDetailEyebrow
+                    : "전술 메모";
+                if (!useChallengeThreatTheme && !string.IsNullOrWhiteSpace(_explicitRoomStatusDetailEyebrow))
+                {
+                    detailEyebrow = _explicitRoomStatusDetailEyebrow;
+                }
+
+                Color detailEyebrowColor = ResolveDetailEyebrowColor(useChallengeThreatTheme);
+                roomDetailText.supportRichText = true;
+                roomDetailText.lineSpacing = ResolveRoomDetailLineSpacing();
+                roomDetailText.text = suppressCompactChallengeAuxiliaryCopy || string.IsNullOrWhiteSpace(_currentDetail)
+                    ? string.Empty
+                    : BuildStatusDetailMarkup(detailEyebrow, _currentDetail, detailEyebrowColor);
+                roomDetailText.color = useCurseAlertTheme
+                    ? curseAlertDetailTextColor
+                    : useCurseAltarReadyTheme
+                        ? curseAltarReadyDetailTextColor
+                        : useChallengeThreatTheme
+                            ? challengeThreatDetailTextColor
+                            : roomDetailColor;
+                roomDetailText.gameObject.SetActive(showTopBarStatusCards && !_compactMode && !suppressCompactChallengeAuxiliaryCopy && !string.IsNullOrWhiteSpace(_currentDetail));
+            }
+
+            ApplyStatusCardVisibility(showTopBarStatusCards, showTopBarStatusCards && !_compactMode && roomDetailText != null && roomDetailText.gameObject.activeSelf);
+            ApplyRoomTypeBadge(_currentRoomType, _currentAccentColor, true);
+        }
+
+        private string BuildCompactChallengeThreatHeadlineMarkup(string headline, string compactTag)
+        {
+            return BuildCompactChallengeThreatHeadlineMarkup(headline, compactTag, Color.Lerp(_currentAccentColor, Color.white, 0.22f));
+        }
+
+        private string BuildCompactChallengeThreatHeadlineMarkup(string headline, string compactTag, Color compactTagColor)
+        {
+            string normalizedHeadline = NormalizeCompactStatusHeadline(headline);
+            string normalizedTag = CollapseWhitespace(compactTag);
+            if (string.IsNullOrWhiteSpace(normalizedTag))
+            {
+                return BuildCompactStatusHeadlineMarkup(NormalizeCompactStatusHeadline(normalizedHeadline));
+            }
+
+            int primaryCharacterBudget = Mathf.Max(8, compactRoomStatusMaxCharacters - 6);
+            string primary = normalizedHeadline;
+            if (primary.Length > primaryCharacterBudget)
+            {
+                primary = primary.Substring(0, primaryCharacterBudget - 1).TrimEnd() + "…";
+            }
+
+            if (normalizedTag.Length > 9)
+            {
+                normalizedTag = normalizedTag.Substring(0, 8).TrimEnd() + "…";
+            }
+
+            int tagFontSize = ResolveCompactChallengeTagFontSize();
+            string tagColor = ColorUtility.ToHtmlStringRGBA(compactTagColor);
+            return
+                $"<size={compactRoomStatusFontSize}><b>{primary}</b></size> " +
+                $"<size={tagFontSize}><color=#{tagColor}><b>{normalizedTag}</b></color></size>";
+        }
+
+        private string ResolveCompactExplicitStatusHeadline(string headline)
+        {
+            if (_currentRoomType != RoomType.Challenge || string.IsNullOrWhiteSpace(_explicitRoomStatusCompactTag))
+            {
+                return NormalizeCompactStatusHeadline(headline);
+            }
+
+            if (IsChallengeRewardReadyStatus())
+            {
+                return IsChallengeFinaleStatus()
+                    ? headline.Contains("\uC644\uC804 \uC81C\uC555")
+                        ? "\uC644\uC804 \uC81C\uC555"
+                        : "\uCD5C\uC885 \uC815\uB9AC"
+                    : "\uBCF4\uC0C1 \uAC1C\uBC29";
+            }
+
+            if (IsChallengeCompletedStatus())
+            {
+                return IsChallengeFinaleStatus()
+                    ? headline.Contains("\uC644\uC804 \uC81C\uC555")
+                        ? "\uC81C\uC555 \uC644\uB8CC"
+                        : "\uC815\uB9AC \uC644\uB8CC"
+                    : "\uBCF4\uC0C1 \uD68C\uC218";
+            }
+
+            return NormalizeCompactStatusHeadline(headline);
+        }
+
+        private Color ResolveCompactExplicitStatusTagColor()
+        {
+            if (_currentRoomType != RoomType.Challenge || string.IsNullOrWhiteSpace(_explicitRoomStatusCompactTag))
+            {
+                return Color.Lerp(_currentAccentColor, Color.white, 0.22f);
+            }
+
+            if (IsChallengeRewardReadyStatus())
+            {
+                return IsChallengeFinaleStatus()
+                    ? challengeFinaleCompactTagColor
+                    : challengeRewardReadyCompactTagColor;
+            }
+
+            if (IsChallengeCompletedStatus())
+            {
+                return IsChallengeFinaleStatus()
+                    ? challengeFinaleCompactTagColor
+                    : challengeCompletedCompactTagColor;
+            }
+
+            return Color.Lerp(_currentAccentColor, Color.white, 0.22f);
+        }
+
+        private float ResolveRoomStatusLineSpacing()
+        {
+            ChallengeBannerLayoutProfile layoutProfile = ResolveCurrentChallengeLayoutProfile();
+            if (layoutProfile == ChallengeBannerLayoutProfile.None)
+            {
+                return 1f;
+            }
+
+            if (_compactMode)
+            {
+                return layoutProfile switch
+                {
+                    ChallengeBannerLayoutProfile.Baseline => challengeBaselineCompactStatusLineSpacing,
+                    ChallengeBannerLayoutProfile.Pace => challengePaceCompactStatusLineSpacing,
+                    ChallengeBannerLayoutProfile.EliteWarning => eliteWarningCompactStatusLineSpacing,
+                    _ => 1f
+                };
+            }
+
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineStatusLineSpacing,
+                ChallengeBannerLayoutProfile.Pace => challengePaceStatusLineSpacing,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningStatusLineSpacing,
+                _ => 1f
+            };
+        }
+
+        private float ResolveRoomDetailLineSpacing()
+        {
+            ChallengeBannerLayoutProfile layoutProfile = ResolveCurrentChallengeLayoutProfile();
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineDetailLineSpacing,
+                ChallengeBannerLayoutProfile.Pace => challengePaceDetailLineSpacing,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningDetailLineSpacing,
+                _ => 1.04f
+            };
+        }
+
+        private ChallengeBannerLayoutProfile ResolveCurrentChallengeLayoutProfile()
+        {
+            if (_currentRoomType != RoomType.Challenge)
+            {
+                return ChallengeBannerLayoutProfile.None;
+            }
+
+            string resolvedBadgeLabel = !string.IsNullOrWhiteSpace(_explicitRoomStatusBadgeLabel)
+                ? _explicitRoomStatusBadgeLabel
+                : !string.IsNullOrWhiteSpace(_challengeThreatBadgeLabel)
+                    ? _challengeThreatBadgeLabel
+                    : "챌린지";
+
+            ChallengeBannerLayoutProfile layoutProfile = ChallengeThreatPresentationResolver.ResolveBannerLayoutProfile(resolvedBadgeLabel);
+            return layoutProfile == ChallengeBannerLayoutProfile.None
+                ? ChallengeBannerLayoutProfile.Baseline
+                : layoutProfile;
+        }
+
+        private Vector2 ResolveRoomStatusCardSize(ChallengeBannerLayoutProfile layoutProfile, bool compactMode)
+        {
+            if (compactMode)
+            {
+                return layoutProfile switch
+                {
+                    ChallengeBannerLayoutProfile.Baseline => challengeBaselineCompactRoomStatusCardSize,
+                    ChallengeBannerLayoutProfile.Pace => challengePaceCompactRoomStatusCardSize,
+                    ChallengeBannerLayoutProfile.EliteWarning => eliteWarningCompactRoomStatusCardSize,
+                    _ => compactRoomStatusCardSize
+                };
+            }
+
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineRoomStatusCardSize,
+                ChallengeBannerLayoutProfile.Pace => challengePaceRoomStatusCardSize,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningRoomStatusCardSize,
+                _ => roomStatusCardSize
+            };
+        }
+
+        private Vector2 ResolveRoomStatusTextSize(ChallengeBannerLayoutProfile layoutProfile, bool compactMode)
+        {
+            if (compactMode)
+            {
+                return layoutProfile switch
+                {
+                    ChallengeBannerLayoutProfile.Baseline => challengeBaselineCompactRoomStatusTextSize,
+                    ChallengeBannerLayoutProfile.Pace => challengePaceCompactRoomStatusTextSize,
+                    ChallengeBannerLayoutProfile.EliteWarning => eliteWarningCompactRoomStatusTextSize,
+                    _ => compactRoomStatusTextSize
+                };
+            }
+
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineRoomStatusTextSize,
+                ChallengeBannerLayoutProfile.Pace => challengePaceRoomStatusTextSize,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningRoomStatusTextSize,
+                _ => roomStatusTextSize
+            };
+        }
+
+        private Vector2 ResolveRoomDetailCardSize(ChallengeBannerLayoutProfile layoutProfile)
+        {
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineRoomDetailCardSize,
+                ChallengeBannerLayoutProfile.Pace => challengePaceRoomDetailCardSize,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningRoomDetailCardSize,
+                _ => roomDetailCardSize
+            };
+        }
+
+        private Vector2 ResolveRoomDetailTextSize(ChallengeBannerLayoutProfile layoutProfile)
+        {
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineRoomDetailTextSize,
+                ChallengeBannerLayoutProfile.Pace => challengePaceRoomDetailTextSize,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningRoomDetailTextSize,
+                _ => roomDetailTextSize
+            };
+        }
+
+        private float ResolveRoomStatusContentShiftX(ChallengeBannerLayoutProfile layoutProfile, bool compactMode)
+        {
+            if (compactMode)
+            {
+                return layoutProfile switch
+                {
+                    ChallengeBannerLayoutProfile.Baseline => challengeBaselineCompactRoomStatusContentShiftX,
+                    ChallengeBannerLayoutProfile.Pace => challengePaceCompactRoomStatusContentShiftX,
+                    ChallengeBannerLayoutProfile.EliteWarning => eliteWarningCompactRoomStatusContentShiftX,
+                    _ => 0f
+                };
+            }
+
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineRoomStatusContentShiftX,
+                ChallengeBannerLayoutProfile.Pace => challengePaceRoomStatusContentShiftX,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningRoomStatusContentShiftX,
+                _ => 0f
+            };
+        }
+
+        private float ResolveRoomDetailContentShiftX(ChallengeBannerLayoutProfile layoutProfile)
+        {
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineRoomDetailContentShiftX,
+                ChallengeBannerLayoutProfile.Pace => challengePaceRoomDetailContentShiftX,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningRoomDetailContentShiftX,
+                _ => 0f
+            };
+        }
+
+        private float ResolveRoomStatusTextWidthTrim(ChallengeBannerLayoutProfile layoutProfile, bool compactMode)
+        {
+            if (compactMode)
+            {
+                return layoutProfile switch
+                {
+                    ChallengeBannerLayoutProfile.Baseline => challengeBaselineCompactRoomStatusTextWidthTrim,
+                    ChallengeBannerLayoutProfile.Pace => challengePaceCompactRoomStatusTextWidthTrim,
+                    ChallengeBannerLayoutProfile.EliteWarning => eliteWarningCompactRoomStatusTextWidthTrim,
+                    _ => 0f
+                };
+            }
+
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineRoomStatusTextWidthTrim,
+                ChallengeBannerLayoutProfile.Pace => challengePaceRoomStatusTextWidthTrim,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningRoomStatusTextWidthTrim,
+                _ => 0f
+            };
+        }
+
+        private float ResolveRoomDetailTextWidthTrim(ChallengeBannerLayoutProfile layoutProfile)
+        {
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineRoomDetailTextWidthTrim,
+                ChallengeBannerLayoutProfile.Pace => challengePaceRoomDetailTextWidthTrim,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningRoomDetailTextWidthTrim,
+                _ => 0f
+            };
+        }
+
+        private static Vector2 ResolveAccentSizeForCard(Vector2 baseAccentSize, float cardHeight)
+        {
+            return new Vector2(baseAccentSize.x, cardHeight);
+        }
+
+        private int ResolveRoomStatusEyebrowFontSize()
+        {
+            ChallengeBannerLayoutProfile layoutProfile = ResolveCurrentChallengeLayoutProfile();
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineStatusEyebrowFontSize,
+                ChallengeBannerLayoutProfile.Pace => challengePaceStatusEyebrowFontSize,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningStatusEyebrowFontSize,
+                _ => roomStatusEyebrowFontSize
+            };
+        }
+
+        private int ResolveRoomDetailEyebrowFontSize()
+        {
+            ChallengeBannerLayoutProfile layoutProfile = ResolveCurrentChallengeLayoutProfile();
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineDetailEyebrowFontSize,
+                ChallengeBannerLayoutProfile.Pace => challengePaceDetailEyebrowFontSize,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningDetailEyebrowFontSize,
+                _ => roomDetailEyebrowFontSize
+            };
+        }
+
+        private int ResolveRoomDetailFontSize()
+        {
+            ChallengeBannerLayoutProfile layoutProfile = ResolveCurrentChallengeLayoutProfile();
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineDetailFontSize,
+                ChallengeBannerLayoutProfile.Pace => challengePaceDetailFontSize,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningDetailFontSize,
+                _ => roomDetailFontSize
+            };
+        }
+
+        private int ResolveCompactChallengeTagFontSize()
+        {
+            ChallengeBannerLayoutProfile layoutProfile = ResolveCurrentChallengeLayoutProfile();
+            return layoutProfile switch
+            {
+                ChallengeBannerLayoutProfile.Baseline => challengeBaselineCompactTagFontSize,
+                ChallengeBannerLayoutProfile.Pace => challengePaceCompactTagFontSize,
+                ChallengeBannerLayoutProfile.EliteWarning => eliteWarningCompactTagFontSize,
+                _ => Mathf.Max(10, compactRoomStatusFontSize - 2)
+            };
+        }
+
+        private static string CollapseWhitespace(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            string[] segments = value.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
+            return string.Join(" ", segments);
+        }
+
+        private static string GetRoomTypeLabel(RoomType roomType)
+        {
+            return roomType switch
+            {
+                RoomType.Start => "시작 방",
+                RoomType.Boss => "보스 방",
+                RoomType.MiniBoss => "미니보스",
+                RoomType.Treasure => "보물 방",
+                RoomType.Shop => "상점",
+                RoomType.Secret => "비밀 방",
+                RoomType.Challenge => "도전 방",
+                RoomType.Trap => "함정 방",
+                RoomType.Curse => "저주 방",
+                _ => "일반 방"
+            };
+        }
+
+        private static bool ColorsApproximatelyEqual(Color lhs, Color rhs)
+        {
+            return Mathf.Approximately(lhs.r, rhs.r)
+                && Mathf.Approximately(lhs.g, rhs.g)
+                && Mathf.Approximately(lhs.b, rhs.b)
+                && Mathf.Approximately(lhs.a, rhs.a);
+        }
+    }
+}

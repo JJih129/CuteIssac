@@ -17,5 +17,13 @@ MonoBehaviour:
   entries:
   - enemyId: chaser
     enemyPrefab: {fileID: 930000106, guid: c7f3af65372d46ee83fd98579e23720d, type: 3}
-    count: 2
+    count: 1
     difficultyCost: 1
+  - enemyId: shooter
+    enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
+    count: 1
+    difficultyCost: 2
+  - enemyId: spawner
+    enemyPrefab: {fileID: 930000106, guid: 2f67f9b2f0e4469b9ce5fba1c5ff8ec5, type: 3}
+    count: 1
+    difficultyCost: 3

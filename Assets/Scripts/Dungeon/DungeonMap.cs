@@ -13,12 +13,14 @@ namespace CuteIssac.Dungeon
     {
         private readonly Dictionary<GridPosition, DungeonRoomNode> _roomsByPosition = new();
 
-        public DungeonMap(FloorConfig floorConfig)
+        public DungeonMap(FloorConfig floorConfig, int seed)
         {
             FloorConfig = floorConfig;
+            Seed = seed;
         }
 
         public FloorConfig FloorConfig { get; }
+        public int Seed { get; }
         public int RoomCount => _roomsByPosition.Count;
         public IReadOnlyDictionary<GridPosition, DungeonRoomNode> RoomsByPosition => _roomsByPosition;
 

@@ -16,12 +16,15 @@ namespace CuteIssac.Data.Room
         [SerializeField] private bool allowDuplicateSelections = true;
         [SerializeField] private List<RoomRewardEntry> rewardEntries = new();
 
+        public int MinimumRewardSelections => Mathf.Max(1, minimumRewardSelections);
+        public int MaximumRewardSelections => Mathf.Max(MinimumRewardSelections, maximumRewardSelections);
         public bool AllowDuplicateSelections => allowDuplicateSelections;
+        public IReadOnlyList<RoomRewardEntry> RewardEntries => rewardEntries;
 
         public int GetSelectionCount()
         {
-            int minimum = Mathf.Max(1, minimumRewardSelections);
-            int maximum = Mathf.Max(minimum, maximumRewardSelections);
+            int minimum = MinimumRewardSelections;
+            int maximum = MaximumRewardSelections;
             return Random.Range(minimum, maximum + 1);
         }
 

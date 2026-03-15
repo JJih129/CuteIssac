@@ -14,6 +14,13 @@ namespace CuteIssac.Common.Stats
         [SerializeField] private StatModifierOperation operation;
         [SerializeField] private float value;
 
+        public StatModifier(PlayerStatType statType, StatModifierOperation operation, float value)
+        {
+            this.statType = statType;
+            this.operation = operation;
+            this.value = value;
+        }
+
         public PlayerStatType StatType => statType;
         public StatModifierOperation Operation => operation;
         public float Value => value;

@@ -1,0 +1,1031 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3e9f8a4b6cd4e83b5f0e4d2a1c3d304, type: 3}
+  m_Name: IsaacShopPool
+  m_EditorClassIdentifier: 
+  poolId: isaac_shop_pool
+  poolType: 1
+  preventDuplicateSelections: 1
+  requireUnlockedItems: 1
+  ownedDuplicateWeightMultiplier: 0.2
+  offeredDuplicateWeightMultiplier: 0.45
+  recentDuplicateWeightMultiplier: 0.15
+  rarityWeights:
+  - rarity: 0
+    weightMultiplier: 1.7
+  - rarity: 1
+    weightMultiplier: 1.2
+  - rarity: 2
+    weightMultiplier: 0.7
+  - rarity: 3
+    weightMultiplier: 0.3
+  entries:
+  - itemData: {fileID: 11400000, guid: d8bd17f706bf4b3dabfb33af3e657359, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 5f2f29e0d190418abb0a448419547aa9, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b87281bce73a4085ba09ce3efa442478, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 72c667d11492429bbe39fa9543d32c4f, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d451cc6867b74c288f4d153532440bce, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ddf48624bea04197bc3cf3387c03ceb8, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: db439f1954804942a72186edd20ee938, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 578ded6f2fe34aa9b421ba7c149f4346, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 9566d1ad0c3544079519122e0460b634, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 00be8367e1304296a83f85911011db00, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e21f7c0c92944576ae53caebc4c40c55, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: dd295706f3ad414fae4f849634e33763, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: fb30cf74b4234a97bd2048334cf88b05, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: afe44af800b24eaba9fe3c27e01e900a, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b71f037ba03f4cb3a519a8e455c75e85, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 65b13ac2181b44c9ae35488602d143b9, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 11023e3adc6a4af490a2285590904e9e, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 68cc006fd9d64799be6aabbfcfdf8f96, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: fb53c9628daa4038bc0a4bd936f3aaea, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 18f1336728924a5fa398aa6a41a716d8, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ffac5ed03129401382b84645596f1871, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d436bc21b86a44c893c11001cdedbc11, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 06123f9b60304743b5b59db6c97f09a6, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 936417310dac4bd78da0c32e1ea0362e, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 419dc41a01b242e8b5bc46248721c41b, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 7fa997ae17374e4e95b1e43e7292103a, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 31df6d708420499bb6964bbc378c118a, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b50bd2cebd394616b0ef7acbd49c3325, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 8c7f765041fb4cd8b4dceace4a15d492, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 8342eec89d73442e8fddaf6422ab96e0, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e3a3a39dd3f14fbfaf102264eeeb7ffe, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 75322902027b4f4882adefc256541eb2, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: df85ab1979ab4057bf67a3e0da203950, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 88953570ee3d4c17a0149c150bb12c05, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 36d5cad5fb864ba6aea32092be9e17fa, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 3448b4ebf5864577bffd5724597aff08, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 40826f21b7f94038819c0ad3e2258745, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: bfa9e0d61f344e5fbfafd8b108a44132, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 348976ea1e714a2a8093b437a20f1280, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 92d4f3e34f0a45f3b6c455402a3cf57c, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d5e70e5afa9d40ebbf6b40dc50e7ebfc, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e3c17fc036c544bab9d9555ac97f1f5e, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 047d8a21be3c43d0b1154ec331f08129, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 797b838fffb84d2fa2f8b71baff837e7, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 0d8e73e87fd644a5b899ed22469822f2, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 03556a90d9d94b0ab01bb574f7b370e9, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 0bb72a43fdfd48e6b124de159ed1dc1b, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d2324b6ccf4e4e0ba86a8b2cfba0e6a6, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 43745ef6e506461d9fac733b209e7b84, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 7287b3bdd14f42d182e226ee2cc44d41, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 94f69a8277404650a15aec30b83e7539, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: cd5f8288ccc946d7a594259ae0a11169, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b770505738c04694bef885cf68322ac5, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: aa05e0c5dfc84c7aaf758e9239922baa, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 7e9fc0bb4b5141eeac460546ec89cbc3, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f22b869675524122b155574925a1e889, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e86e8378b6764f9794f6ac6b1cdd973c, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b746260d0a904118ba2d0375ce2f7f67, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d54e735e8abe495ca4aad4dc468a61d2, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f45938a1d5cf4314b22f8fa9b5857756, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e36ad8c63271499383977aec1cf30a25, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 7d693e48c296459593a8818fb9e9aaa6, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e3e2d4dca553479b9644283cd75f4aa9, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 03b8c88ff57e47d4bc8a76bafb56ec13, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 989d04cc69a74069ae8febd665e49f1f, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b4d20add33f54199a7e0488aa388c498, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e9269207908d4e549e88dd8643a577b7, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 90c2d7bf91a34a46a04eb252f6b57ba3, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 8e2f159ec9694e6eb310e17a2e9e604b, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 80e9073612a04f9da1b998b6fc807c96, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 92ab769952ff4fd9b024513e3200c4b1, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: bdff20c294da41e297fb0f93fc0145b3, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 1bfdf0c5ff5b4969bc4b7ec2a22d3a55, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 8427868320b643da9dd55a0349f76b1f, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 828c2bc7ebf54f98b4a584d24f385cde, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 61630ed23b7b48749e3016b4c341d7e9, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 59b9b4fbd1fa459e81ad99ffd97074d8, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: cfd83fae81b8485a9b1bcf728844c5aa, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: c4e51b1277fb4822a478e91631773c65, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f93b0fbada1d4a098cab31b709cbf5cd, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b491b519bc864cd48718cd6349227265, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b4ab721ab9124b84856ed91399d14a3d, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 0224552abdf74aa0b08180e50b3e6df3, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 0d4d0971f69042fbb58f7ec9cebe6faa, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 1e8285a572da4ac88a9224e4c278feea, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: a5687c3efc464e14bb7f618f168c4f0c, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f0205f728f904a61ab2af8dbd485d2fb, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 251b439e68dc49ea943161f34a803463, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b1c2aacbd5e84b20a4215f7720765d41, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 4759d54e6e864993b332b1db430141e8, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f965912dd72948e6bc0ac2a8eeb8f830, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: eba71def41ac472fafcf6716e290d9ff, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 6eba39bf26514096a478bf534aae0f42, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 2ccc723306d74962b876cd71ee57b94b, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 8880e5b21c9f4cfea126d84a5ec8a717, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 5e2c9d05ad09446b8b007dc3d92b10c9, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ae5195441f514217918a47ff19a9f1a5, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: de21acbd60994141b0294aa708bf7a46, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f2d5b4cef4f041fdb0016bab1648d2e6, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: afa332eaa30b478da8a7a2a2a58b0427, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ebe8f6e101354ab592d7b481bb87bce0, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 8c2b1e7f3a3740b1a2cdec26ba30a421, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d4c4d7c4866f428796671c840014c008, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 42ac785bb9e846058fd4b096d02db564, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e8a7b918b50e4e2b81b590f5982aa8c5, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 574ffb0649734920a3c47ad4f22990af, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e88eb9a4cf9e4f5f8b8408f76740e0e9, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 53d3c0fdc1974856b14057c61d77c611, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 24ad7bfd5e0841278fe11c8f3d342814, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d733478c2f9341f6bec0b83939b33935, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ad9136c25d674637b322f97a8bf93aef, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: febc978197c6479ea546c5837d8ed372, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 26d4b8a82ea84924b06d1855646f0cce, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 7289513a5e834b9984742ea826a2b89e, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 77e5d5fc61bb406382cc5c8a4b21453f, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ec57990e9aa54c699ab1950503a87113, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 14bab54c4d0b4a23b206442c2a65b633, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: fddd8b589bca46ee83551e4c7e42d0d3, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 28c7737c65ab4b1e8efbeae05f3309de, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 6ab23ee092f04671a300583babfe6458, type: 2}
+    weight: 1.4
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: a3b486fb93484fbbb51b1080a638d531, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: c112457f7c6347a683b88fc9da2f45c7, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: fde0aef855894b51a667e879449f0717, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 42a04fc03f7c4c959c5d742fd695dbb8, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 7870bdb2052a447885a47d4b4f0535ed, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d860acf2cec54f9499cca915984f1945, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 4efe3550458a448d9cf2e0612edb61bf, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: be5adbbdff2b4437be79bf4a80859e2a, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 63ec79eea7664568ba11920e2ee05854, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 6a33ab234b0f449ebf6900c36d016307, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 39cda679c7dd4ed1842ec5b4cbd6768d, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: a3c6d929e926467399849d9897cd2846, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 6c7514a0742c425a919897e3172a8968, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ba8a674a60444098bdc3befba17144c7, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 21a9e152fdbc4474a93654374f00e9b3, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 1eb61b5ea63e444c9d4d29e1e3f211ad, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 95b1b918208949a486ed1fb533ba2c59, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 05a5ab4f97d5418a96052decfd9fa5cc, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: c38c588d91d94c608160d9c90e7910c3, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 3d5bd7292e8e48f687bb3f050d6cae46, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: eb84598af04a431aacd726d6ba8cbe3d, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 8a0b16bf8ac046889f306cecf7bc0479, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ce123ae59a80436593ff994afa595c5e, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 90d0418062b344d29697cfc9d5719378, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 5931b46f494e410fa688401d7773aa53, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 49524ce26f08475cb7ca2f92c97e3a66, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: c82ed4121c564953b222cf2187cb94b4, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f8e6ef7b07c34490ac70540c54244dc0, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 0168fd1998d34de399df63309a4e1dd5, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 4321aee5cd304419bdb5990721d2f572, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 628a34a4e750453f9611589da5a3330d, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 33315c527ae0405e8f4c5275c9eb4ebd, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 472de379237e4ceebf2e3aa7481ccd1d, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d288c44b5afe4e03bb1f5e505f4862bd, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 095cd73e7af54485a82dc506431b1007, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 9fc646bd5aba49a08afa78d0d9339bbc, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 7732f56bc8ab4812b0b2bcdc040b0d33, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 3e1b79ca367c49cd99243997326af693, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d8f57f13d67849f6a05d7cd623ce019f, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 4e13d847ac05484da7a9b563d5520ae5, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 3ca4466065464120a74a91d361e45bab, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: c267ad6b93534355b249c79e4af8c23c, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 68249c79d19f4687b26e2b36e74c9439, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: c8547e7adf194cf08eff66c88abcd39e, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 0519c8a7e6a645ccb519304e3116534e, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 1da7f27eb0c645269072e9ec18d0436d, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e5d34b45b7cf4dfa9af4122de1cc06bd, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: eaf1475d6b8d41f8823af432acd32e56, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: a7450be4cd7046659fae4dd50950b5f1, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 88b805128a38423087571adb56252346, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: ea6cce7031214cff8520b90936a5365b, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e5ed2f38f81a4619b8970ba6ee8b2bec, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: b716cc59bc29493298207e5211441163, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d1f166828a324992827ce3b0d0fb013f, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 29f30d2197934b2c9c8171409832d083, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 1767b050454b463fb05f82dc519bb09a, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 4ec987e551db46ae97168413b8916db9, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 388d708333ab4109aa7d6697a9f93d6b, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f73af3b002924644964e6c5f74ba7144, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 9d69a346022b437da12426b5929ee05a, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: cab19074209248dfacd5291b55dad295, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: f3ec2dcf90754d56a8ab15c40e2ae678, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 159dbbaa6d254802ae509da30a77569c, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 5ac0aef55e2c4ccba8bcd00f0ab2de37, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 2ab4dc07628948a1a4161ca524aa2fee, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 50335fe71f274309b20ba4b51c9c396c, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: a421afee2b4247fbb2e9761464e013a2, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 5c7a6edb875a48de852182951ebddf90, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: aceb62c361fd44f7835bbbf623859a9a, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 042897cecdc841328bd4c1dc1f347cdd, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 3c04ce452ce346e794c131215da2c667, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 4ad0bcd9281e4e1394e7e1da9a90a9fa, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 9dc77cb1f8964dca99b7cb0765d7c9d3, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 97d0625095594037806908a8a4235599, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: abb62aca3a9a4c9994aff63997d0e5c9, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 574214ef28e04eddbfed768836e5b72d, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 497940a8cd204515bb7b283c0441641f, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 4ed3a20a767e489e9afbaf8a722054e9, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: cb0eafb312234d7e98b49723a4022f82, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: aa15895faba34078b10c25294a07d95b, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8241f6317904365a1f521d857ca9c87, type: 3}
+  m_Name: ShopHeartOffer
+  m_EditorClassIdentifier: 
+  offerId: shop_heart
+  displayName: Heart Refill
+  description: Restores 2 health immediately after purchase.
+  icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000f, type: 3}
+  price: 3
+  currencyType: 0
+  deliveryMode: 0
+  offer:
+    rewardType: 1
+    passiveItem: {fileID: 0}
+    resourceAmount: 1
+    healthAmount: 2
+    pickupPrefabOverride: {fileID: 0}

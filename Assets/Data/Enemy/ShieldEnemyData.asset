@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eac4c2ef71564ffb8058be007dab2974, type: 3}
+  m_Name: ShieldEnemyData
+  m_EditorClassIdentifier: 
+  enemyId: shield
+  moveSpeed: 1.95
+  maxHealth: 12
+  contactDamage: 0.75
+  visualSet: {fileID: 11400000, guid: b27a59c9767a40afb7d2428406915254, type: 2}
+  advanceSpeedMultiplier: 0.9
+  blockFeedbackCooldown: 0.18
+  contactRange: 1.35
+  blockFeedbackColor: {r: 0.42, g: 0.92, b: 1, a: 1}
