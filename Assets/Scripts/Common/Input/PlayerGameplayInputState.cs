@@ -13,7 +13,13 @@ namespace CuteIssac.Common.Input
             bool hasAimInput,
             bool bombPressed,
             bool activeItemPressed,
-            bool minimapTogglePressed)
+            bool minimapTogglePressed,
+            bool reloadPressed,
+            bool cycleWeaponPressed,
+            bool dropWeaponPressed,
+            bool weaponCarouselHeld,
+            int weaponCarouselSelectionDelta,
+            bool weaponCarouselDropPressed)
         {
             Move = move;
             Aim = aim;
@@ -21,6 +27,12 @@ namespace CuteIssac.Common.Input
             BombPressed = bombPressed;
             ActiveItemPressed = activeItemPressed;
             MinimapTogglePressed = minimapTogglePressed;
+            ReloadPressed = reloadPressed;
+            CycleWeaponPressed = cycleWeaponPressed;
+            DropWeaponPressed = dropWeaponPressed;
+            WeaponCarouselHeld = weaponCarouselHeld;
+            WeaponCarouselSelectionDelta = Mathf.Clamp(weaponCarouselSelectionDelta, -1, 1);
+            WeaponCarouselDropPressed = weaponCarouselDropPressed;
         }
 
         public Vector2 Move { get; }
@@ -29,5 +41,11 @@ namespace CuteIssac.Common.Input
         public bool BombPressed { get; }
         public bool ActiveItemPressed { get; }
         public bool MinimapTogglePressed { get; }
+        public bool ReloadPressed { get; }
+        public bool CycleWeaponPressed { get; }
+        public bool DropWeaponPressed { get; }
+        public bool WeaponCarouselHeld { get; }
+        public int WeaponCarouselSelectionDelta { get; }
+        public bool WeaponCarouselDropPressed { get; }
     }
 }

@@ -172,6 +172,44 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   projectileVisual: {fileID: 920000106}
+  homingSearchRadius: 6
+  homingTurnRateDegrees: 180
+  explosiveDamageArea: {fileID: 0}
+  explosiveRadiusBase: 1.35
+  explosiveRadiusPerStrength: 0.35
+  explosiveDamageMultiplierBase: 0.55
+  explosiveDamageMultiplierPerStrength: 0.18
+  explosiveKnockbackMultiplierBase: 1.1
+  explosiveKnockbackMultiplierPerStrength: 0.2
+  bounceSpeedRetention: 0.94
+  bounceSurfaceSeparation: 0.04
+  lifestealHealRatioBase: 0.08
+  lifestealHealRatioPerStrength: 0.04
+  splitChildCountBase: 2
+  splitAdditionalChildrenPerStrength: 1
+  splitSpreadDegrees: 26
+  splitDamageMultiplier: 0.62
+  splitSpeedMultiplier: 0.94
+  splitLifetimeMultiplier: 0.76
+  splitScaleMultiplier: 0.84
+  splitSpawnOffset: 0.18
+  shieldPulseInterval: 0.1
+  shieldRadiusBase: 0.85
+  shieldRadiusPerStrength: 0.24
+  laserLengthBase: 4.25
+  laserLengthPerStrength: 1.2
+  laserWidthBase: 0.62
+  laserWidthPerStrength: 0.16
+  laserDamageMultiplierBase: 0.72
+  laserDamageMultiplierPerStrength: 0.2
+  laserHitBufferSize: 24
+  orbitCountBase: 1
+  orbitAdditionalCountPerStrength: 1
+  orbitRadiusBase: 1.15
+  orbitRadiusPerStrength: 0.18
+  orbitAngularSpeedBase: 165
+  orbitAngularSpeedPerStrength: 28
+  orbitHitCooldown: 0.2
 --- !u!114 &920000106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -186,12 +224,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spriteRenderer: {fileID: 920000104}
   trailRenderer: {fileID: 0}
-  damageableHitEffectPrefab: {fileID: 930000103, guid: 18249d1d43e14bac91e7385a55ef0c75, type: 3}
-  solidHitEffectPrefab: {fileID: 940000103, guid: 445a5d3653234283aa7c4c1b94d9c523, type: 3}
+  damageableHitEffectPrefab: {fileID: 0}
+  solidHitEffectPrefab: {fileID: 0}
   destroyEffectPrefab: {fileID: 0}
   hitEffectAnchor: {fileID: 920000107}
   destroyEffectAnchor: {fileID: 0}
   flipSpriteByDirection: 0
+  useRuntimeOutline: 1
+  outlineColor: {r: 0.05, g: 0.05, b: 0.08, a: 0.96}
+  outlineScaleMultiplier: 1.28
+  outlineSortingOffset: -1
+  effectPrewarmCount: 2
+  useRuntimeTraitOverlay: 1
+  auraScaleMultiplier: 1.9
+  coreScaleMultiplier: 1.18
+  traitPulseSpeed: 7.5
 --- !u!1 &920000110
 GameObject:
   m_ObjectHideFlags: 0

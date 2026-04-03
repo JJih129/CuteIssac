@@ -45,6 +45,10 @@ namespace CuteIssac.Enemy
         private float _orbitSign = 1f;
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
+        private float _siegeCueWindowRemaining;
+        private Vector2 _siegeCueAnchor = Vector2.right;
+        private int _lastSiegeCueSerial;
+        private bool _siegeCueRaisedForCurrentWindup;
 
         protected override void HandleInitialized()
         {
@@ -67,6 +71,10 @@ namespace CuteIssac.Enemy
             _summonCooldownRemaining = summonCooldown * 0.45f;
             _spawnCursor = 0;
             _orbitSign = (GetInstanceID() & 1) == 0 ? 1f : -1f;
+            _siegeCueWindowRemaining = 0f;
+            _siegeCueAnchor = Vector2.right;
+            _lastSiegeCueSerial = 0;
+            _siegeCueRaisedForCurrentWindup = false;
             Controller.SetMoveSpeedMultiplier(1f);
             Controller.EnemyVisual?.StopAttackTelegraph();
         }
@@ -93,9 +101,26 @@ namespace CuteIssac.Enemy
             float distance = toTarget.magnitude;
             Vector2 aimDirection = toTarget / distance;
             _initialSummonDelayRemaining = Mathf.Max(0f, _initialSummonDelayRemaining - fixedDeltaTime);
+            if (EnemyFormationTactics.TryPrimeSiegeCue(
+                FormationModifier,
+                ref _lastSiegeCueSerial,
+                ref _siegeCueWindowRemaining,
+                ref _siegeCueAnchor,
+                ref _summonCooldownRemaining,
+                fixedDeltaTime,
+                0.28f))
+            {
+                _initialSummonDelayRemaining = Mathf.Min(_initialSummonDelayRemaining, 0.24f);
+            }
 
             if (_summonWindupRemaining > 0f)
             {
+                if (!_siegeCueRaisedForCurrentWindup)
+                {
+                    EnemyFormationTactics.BroadcastSiegeCue(FormationModifier, Controller.TargetPosition, 0.92f, 1.08f);
+                    _siegeCueRaisedForCurrentWindup = true;
+                }
+
                 _summonWindupRemaining -= fixedDeltaTime;
                 Controller.SetMoveSpeedMultiplier(summonWindupMoveSpeedMultiplier);
                 Controller.StopMovement();
@@ -106,6 +131,7 @@ namespace CuteIssac.Enemy
                     Controller.EnemyVisual?.StopAttackTelegraph();
                     Controller.EnemyVisual?.HandleAttack();
                     _summonCooldownRemaining = summonCooldown;
+                    _siegeCueRaisedForCurrentWindup = false;
                     Controller.SetMoveSpeedMultiplier(1f);
                 }
 
@@ -116,8 +142,7 @@ namespace CuteIssac.Enemy
 
             if (CanStartSummon(distance))
             {
-                _summonWindupRemaining = summonWindup * _runtimeTelegraphDurationMultiplier;
-                Controller.EnemyVisual?.StartAttackTelegraph(summonTelegraphColor);
+                BeginSummonWindup();
                 return;
             }
 
@@ -133,6 +158,17 @@ namespace CuteIssac.Enemy
                 && distance <= summonTriggerRange
                 && CountAvailableSummonSlots() > 0
                 && HasSummonPrefab();
+        }
+
+        private void BeginSummonWindup()
+        {
+            _summonWindupRemaining = EnemyFormationTactics.ResolveCueTelegraphDuration(
+                summonWindup,
+                _siegeCueWindowRemaining,
+                0.62f) * _runtimeTelegraphDurationMultiplier;
+            _siegeCueRaisedForCurrentWindup = true;
+            Controller.EnemyVisual?.StartAttackTelegraph(summonTelegraphColor);
+            EnemyFormationTactics.BroadcastSiegeCue(FormationModifier, Controller.TargetPosition, 0.92f, 1.08f);
         }
 
         private int CountAvailableSummonSlots()
@@ -160,19 +196,39 @@ namespace CuteIssac.Enemy
 
         private Vector2 ResolveMoveDirection(Vector2 aimDirection, float distance)
         {
+            Vector2 fallbackDirection;
+
             Vector2 perpendicular = new Vector2(-aimDirection.y, aimDirection.x * _orbitSign);
 
             if (distance < retreatRange)
             {
-                return (-aimDirection + (perpendicular * orbitBlend)).normalized;
+                fallbackDirection = (-aimDirection + (perpendicular * orbitBlend)).normalized;
+                return EnemyFormationTactics.ResolveSiegeBacklineMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    0.72f);
             }
 
             if (distance > preferredRange)
             {
-                return (aimDirection + (perpendicular * 0.2f)).normalized;
+                fallbackDirection = (aimDirection + (perpendicular * 0.2f)).normalized;
+                return EnemyFormationTactics.ResolveSiegeBacklineMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    0.72f);
             }
 
-            return perpendicular * Mathf.Clamp01(strafeBlend);
+            fallbackDirection = perpendicular * Mathf.Clamp01(strafeBlend);
+            return EnemyFormationTactics.ResolveSiegeBacklineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                fallbackDirection,
+                0.72f);
         }
 
         private void ExecuteSummon()
@@ -282,9 +338,13 @@ namespace CuteIssac.Enemy
         private Vector3 ResolveSummonPosition(int summonIndex)
         {
             Transform anchor = summonAnchor != null ? summonAnchor : transform;
-            float angle = ((360f / Mathf.Max(1, summonCountPerCycle)) * summonIndex) * Mathf.Deg2Rad;
-            Vector3 offset = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * summonScatterRadius;
-            return anchor.position + offset;
+            return EnemyFormationTactics.ResolveSiegeSummonPosition(
+                FormationModifier,
+                anchor,
+                Controller.TargetPosition,
+                summonIndex,
+                summonCountPerCycle,
+                summonScatterRadius);
         }
 
         private void CleanupSummons()

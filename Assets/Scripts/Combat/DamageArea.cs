@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using CuteIssac.Common.Combat;
+using CuteIssac.Enemy;
+using CuteIssac.Player;
 using UnityEngine;
 
 namespace CuteIssac.Combat
@@ -21,6 +23,11 @@ namespace CuteIssac.Combat
 
         public void ApplyExplosion(in BombExplosionInfo explosionInfo, Collider2D ignoredCollider = null)
         {
+            ApplyExplosion(in explosionInfo, ProjectileDamageTarget.Any, ignoredCollider);
+        }
+
+        public void ApplyExplosion(in BombExplosionInfo explosionInfo, ProjectileDamageTarget damageTarget, Collider2D ignoredCollider = null)
+        {
             EnsureBuffer();
             _processedDamageables.Clear();
             _processedReactives.Clear();
@@ -36,7 +43,7 @@ namespace CuteIssac.Combat
                     continue;
                 }
 
-                TryDamage(hit, in explosionInfo);
+                TryDamage(hit, in explosionInfo, damageTarget);
                 TryNotifyReactive(hit, in explosionInfo);
             }
 
@@ -71,8 +78,13 @@ namespace CuteIssac.Combat
             return contactFilter;
         }
 
-        private void TryDamage(Collider2D hit, in BombExplosionInfo explosionInfo)
+        private void TryDamage(Collider2D hit, in BombExplosionInfo explosionInfo, ProjectileDamageTarget damageTarget)
         {
+            if (!CanDamage(hit, damageTarget))
+            {
+                return;
+            }
+
             if (!DamageableResolver.TryResolve(hit, out IDamageable damageable))
             {
                 return;
@@ -99,6 +111,16 @@ namespace CuteIssac.Combat
                 hitDirection.normalized,
                 explosionInfo.Source,
                 explosionInfo.KnockbackForce));
+        }
+
+        private static bool CanDamage(Collider2D hit, ProjectileDamageTarget damageTarget)
+        {
+            return damageTarget switch
+            {
+                ProjectileDamageTarget.PlayerOnly => hit.GetComponentInParent<PlayerHealth>() != null,
+                ProjectileDamageTarget.EnemyOnly => hit.GetComponentInParent<EnemyHealth>() != null,
+                _ => true
+            };
         }
 
         private void TryNotifyReactive(Collider2D hit, in BombExplosionInfo explosionInfo)

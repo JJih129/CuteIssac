@@ -20,6 +20,14 @@ namespace CuteIssac.Room
     [DisallowMultipleComponent]
     public sealed class RoomEnemySpawner : MonoBehaviour
     {
+        private enum EncounterSynergyFormation
+        {
+            None = 0,
+            Escort = 1,
+            Crossfire = 2,
+            Siege = 3
+        }
+
         [Header("References")]
         [Tooltip("RoomController that requests combat spawning. Auto-filled from the same object when possible.")]
         [SerializeField] private RoomController roomController;
@@ -44,12 +52,36 @@ namespace CuteIssac.Room
         [SerializeField] [Min(0)] private int prewarmBufferCount = 1;
 
         [Header("Spawn Behavior")]
-        [SerializeField] [Min(0f)] private float encounterStartAggroDelay = 0.9f;
-        [SerializeField] [Min(0f)] private float encounterStartAggroDelayJitter = 0.35f;
+        [SerializeField] [Min(0f)] private float encounterStartAggroDelay = 1f;
+        [SerializeField] [Min(0f)] private float encounterStartAggroDelayJitter = 0f;
         [SerializeField] [Min(0f)] private float minimumDistanceFromPlayer = 2.8f;
         [SerializeField] [Min(0f)] private float preferredSpawnSeparation = 2.2f;
         [SerializeField] [Min(1)] private int roomCandidateSamples = 8;
         [SerializeField] [Range(0f, 0.45f)] private float roomBoundsInsetRatio = 0.16f;
+        [SerializeField] [Range(1f, 2f)] private float globalEnemyCountMultiplier = 1.45f;
+
+        [Header("Spawn Telegraph")]
+        [SerializeField] private bool enableSpawnTelegraph = true;
+        [SerializeField] [Min(0.05f)] private float spawnTelegraphMinDuration = 0.28f;
+        [SerializeField] [Min(0.1f)] private float spawnTelegraphMaxDuration = 0.72f;
+        [SerializeField] [Range(0.2f, 0.9f)] private float spawnTelegraphRevealRatio = 0.58f;
+        [SerializeField] [Min(0.05f)] private float spawnTelegraphVisibleLeadTime = 0.18f;
+        [SerializeField] [Min(0.5f)] private float spawnTelegraphScale = 1.12f;
+        [SerializeField] [Min(0.1f)] private float spawnTelegraphPulseSpeed = 5.4f;
+        [SerializeField] [Range(0.05f, 1f)] private float spawnTelegraphOpacity = 0.58f;
+        [SerializeField] private Vector2 spawnTelegraphLocalOffset = new(0f, -0.28f);
+
+        [Header("Encounter Synergy")]
+        [SerializeField] private bool enableEncounterSynergy = true;
+        [SerializeField] [Range(0.8f, 1.4f)] private float escortFrontlineSpeedMultiplier = 1.14f;
+        [SerializeField] [Range(1f, 1.5f)] private float escortFrontlineContactMultiplier = 1.18f;
+        [SerializeField] [Range(0.5f, 1f)] private float crossfireAggroDelayScale = 0.72f;
+        [SerializeField] [Range(0.9f, 1.4f)] private float crossfireControllerSpeedMultiplier = 1.12f;
+        [SerializeField] [Range(0.9f, 1.3f)] private float siegeUnitSpeedMultiplier = 1.08f;
+        [SerializeField] [Min(0.25f)] private float siegeDeathPulseRadius = 0.9f;
+        [SerializeField] [Min(0.1f)] private float siegeDeathPulseTelegraphDuration = 0.55f;
+        [SerializeField] [Min(0f)] private float siegeDeathPulseDamage = 1f;
+        [SerializeField] [Min(0f)] private float siegeDeathPulseKnockback = 4.6f;
 
         [Header("Champion Enemies")]
         [SerializeField] private bool allowChampionPromotions = true;
@@ -60,6 +92,7 @@ namespace CuteIssac.Room
         private RoomType? _runtimeRoomType;
         private bool _hasSpawnedEncounter;
         private readonly System.Collections.Generic.List<Vector3> _spawnedPositionBuffer = new();
+        private readonly System.Collections.Generic.List<EnemyController> _spawnedEnemyBuffer = new();
         private ChampionEnemyProfile _runtimeChampionProfile;
         private EnemyWaveAssignment _challengeFollowupWaveAssignment;
         private int _currentEncounterWave;
@@ -93,8 +126,9 @@ namespace CuteIssac.Room
 
             nextWaveNumber = _currentEncounterWave + 1;
             totalWaveCount = _plannedEncounterWaveCount;
-            enemyCount = upcomingWave.TotalEnemyCount;
-            guaranteedChampionCount = GetChallengeFollowupGuaranteedChampionCount(upcomingWave.TotalEnemyCount, _currentEncounterWave);
+            int adjustedEnemyCount = ResolveAdjustedTotalEnemyCount(upcomingWave);
+            enemyCount = adjustedEnemyCount;
+            guaranteedChampionCount = GetChallengeFollowupGuaranteedChampionCount(adjustedEnemyCount, _currentEncounterWave);
             championChanceBonus = GetChallengeFollowupChampionChanceBonus(_currentEncounterWave);
             return true;
         }
@@ -116,7 +150,7 @@ namespace CuteIssac.Room
             }
 
             reinforcementEnemyCount = _challengeFollowupWaveAssignment != null
-                ? _challengeFollowupWaveAssignment.TotalEnemyCount
+                ? ResolveAdjustedTotalEnemyCount(_challengeFollowupWaveAssignment)
                 : 0;
 
             for (int waveIndex = 1; waveIndex < _plannedEncounterWaveCount; waveIndex++)
@@ -331,7 +365,7 @@ namespace CuteIssac.Room
 
                 PrefabPoolService.Prewarm(
                     spawnGroup.EnemyPrefab.gameObject,
-                    Mathf.Max(1, spawnGroup.Count + prewarmBufferCount));
+                    Mathf.Max(1, ResolveAdjustedSpawnCount(spawnGroup.Count) + prewarmBufferCount));
             }
         }
 
@@ -358,8 +392,9 @@ namespace CuteIssac.Room
             int spawnIndex = 0;
             int spawnedEnemyCount = 0;
             int promotedChampionCount = 0;
-            int totalSpawnCount = enemyWaveAssignment.TotalEnemyCount;
+            int totalSpawnCount = ResolveAdjustedTotalEnemyCount(enemyWaveAssignment);
             _spawnedPositionBuffer.Clear();
+            _spawnedEnemyBuffer.Clear();
 
             for (int i = 0; i < enemyWaveAssignment.SpawnGroups.Count; i++)
             {
@@ -370,7 +405,9 @@ namespace CuteIssac.Room
                     continue;
                 }
 
-                for (int countIndex = 0; countIndex < spawnGroup.Count; countIndex++)
+                int adjustedSpawnCount = ResolveAdjustedSpawnCount(spawnGroup.Count);
+
+                for (int countIndex = 0; countIndex < adjustedSpawnCount; countIndex++)
                 {
                     if (SpawnEnemyInstance(targetRoom, spawnGroup, spawnIndex, waveIndex, totalSpawnCount, ref promotedChampionCount))
                     {
@@ -381,6 +418,7 @@ namespace CuteIssac.Room
                 }
             }
 
+            ApplyEncounterSynergy(targetRoom, waveIndex);
             return spawnedEnemyCount;
         }
 
@@ -417,14 +455,485 @@ namespace CuteIssac.Room
             }
 
             roomEnemyMember.AssignRoom(targetRoom);
-            spawnedEnemy.ApplySpawnAggroDelay(CalculateAggroDelay(spawnIndex, waveIndex));
+            spawnedEnemy.GetComponent<EnemyFormationModifier>()?.PrepareForSpawn();
+            spawnedEnemy.GetComponent<EncounterDeathPulseModifier>()?.PrepareForSpawn();
+            float aggroDelay = CalculateAggroDelay(spawnIndex, waveIndex);
+            spawnedEnemy.ApplySpawnAggroDelay(aggroDelay);
+            ApplySpawnTelegraph(spawnedEnemy, spawnIndex, waveIndex, aggroDelay);
             ApplyEncounterPacing(spawnedEnemy);
+
+            if (spawnIndex == 0)
+            {
+                RaiseWaveSpawnThreatFlash(waveIndex);
+            }
+
             if (TryApplyChampionPromotion(spawnedEnemy, targetRoom, spawnGroup, spawnIndex, waveIndex, totalSpawnCount, promotedChampionCount))
             {
                 promotedChampionCount++;
             }
+
+            _spawnedEnemyBuffer.Add(spawnedEnemy);
             _spawnedPositionBuffer.Add(spawnedEnemy.transform.position);
             return true;
+        }
+
+        private void ApplyEncounterSynergy(RoomController targetRoom, int waveIndex)
+        {
+            if (!enableEncounterSynergy || targetRoom == null || _spawnedEnemyBuffer.Count < 2)
+            {
+                return;
+            }
+
+            RoomType effectiveRoomType = GetEffectiveRoomType();
+
+            if (!IsEncounterSynergyRoomType(effectiveRoomType))
+            {
+                return;
+            }
+
+            int supportCount = 0;
+            int frontlineCount = 0;
+            int controllerCount = 0;
+            int rangedCount = 0;
+            int siegeCount = 0;
+
+            for (int index = 0; index < _spawnedEnemyBuffer.Count; index++)
+            {
+                EnemyController enemy = _spawnedEnemyBuffer[index];
+
+                if (enemy == null)
+                {
+                    continue;
+                }
+
+                if (IsSupportEnemy(enemy))
+                {
+                    supportCount++;
+                }
+
+                if (IsFrontlineEnemy(enemy))
+                {
+                    frontlineCount++;
+                }
+
+                if (IsControllerEnemy(enemy))
+                {
+                    controllerCount++;
+                }
+
+                if (IsRangedEnemy(enemy))
+                {
+                    rangedCount++;
+                }
+
+                if (IsSiegeEnemy(enemy))
+                {
+                    siegeCount++;
+                }
+            }
+
+            int escortScore = supportCount > 0 && frontlineCount > 0 ? (supportCount * 2) + frontlineCount : 0;
+            int crossfireScore = controllerCount > 0 && rangedCount > 0 ? (controllerCount * 2) + rangedCount : 0;
+            int siegeScore = siegeCount > 0 && (supportCount > 0 || rangedCount > 0) ? (siegeCount * 2) + Mathf.Max(supportCount, rangedCount) : 0;
+            EncounterSynergyFormation formation = EncounterSynergyFormation.None;
+            int bestScore = 0;
+
+            if (escortScore >= 3 && escortScore > bestScore)
+            {
+                formation = EncounterSynergyFormation.Escort;
+                bestScore = escortScore;
+            }
+
+            if (crossfireScore >= 3 && crossfireScore > bestScore)
+            {
+                formation = EncounterSynergyFormation.Crossfire;
+                bestScore = crossfireScore;
+            }
+
+            if (siegeScore >= 3 && siegeScore > bestScore)
+            {
+                formation = EncounterSynergyFormation.Siege;
+            }
+
+            switch (formation)
+            {
+                case EncounterSynergyFormation.Escort:
+                    ApplyEscortFormation(targetRoom, waveIndex);
+                    break;
+                case EncounterSynergyFormation.Crossfire:
+                    ApplyCrossfireFormation(targetRoom, waveIndex);
+                    break;
+                case EncounterSynergyFormation.Siege:
+                    ApplySiegeFormation(targetRoom, waveIndex);
+                    break;
+            }
+        }
+
+        private void ApplyEscortFormation(RoomController targetRoom, int waveIndex)
+        {
+            float speedMultiplier = escortFrontlineSpeedMultiplier + (waveIndex > 0 ? 0.04f : 0f);
+            float contactMultiplier = escortFrontlineContactMultiplier + (waveIndex > 0 ? 0.05f : 0f);
+            float supportSpeedMultiplier = 1.04f + (waveIndex > 0 ? 0.02f : 0f);
+            Color accentColor = new(0.48f, 0.96f, 0.62f, 1f);
+            Color criticalColor = Color.Lerp(accentColor, Color.white, 0.24f);
+
+            for (int index = 0; index < _spawnedEnemyBuffer.Count; index++)
+            {
+                EnemyController enemy = _spawnedEnemyBuffer[index];
+
+                if (enemy == null)
+                {
+                    continue;
+                }
+
+                if (IsFrontlineEnemy(enemy))
+                {
+                    ApplyFormationModifier(enemy, "escort", EnemyFormationRole.Frontline, accentColor, speedMultiplier, contactMultiplier);
+                    continue;
+                }
+
+                if (IsSupportEnemy(enemy))
+                {
+                    ApplyFormationModifier(enemy, "escort", EnemyFormationRole.Support, accentColor, supportSpeedMultiplier, 1f);
+                    ApplyPriorityHint(enemy, "escort", EnemyFormationPriorityLevel.Critical, criticalColor);
+                }
+            }
+
+            RaiseEncounterSynergyFeedback(targetRoom, "ESCORT FORMATION", "Cut the marked healer before the screen closes.", accentColor);
+        }
+
+        private void ApplyCrossfireFormation(RoomController targetRoom, int waveIndex)
+        {
+            float aggroScale = Mathf.Clamp(crossfireAggroDelayScale - (waveIndex > 0 ? 0.06f : 0f), 0.45f, 1f);
+            float controllerSpeedMultiplier = crossfireControllerSpeedMultiplier + (waveIndex > 0 ? 0.04f : 0f);
+            Color accentColor = new(0.44f, 0.78f, 1f, 1f);
+            Color focusColor = Color.Lerp(accentColor, Color.white, 0.12f);
+            Color criticalColor = Color.Lerp(accentColor, Color.white, 0.28f);
+
+            for (int index = 0; index < _spawnedEnemyBuffer.Count; index++)
+            {
+                EnemyController enemy = _spawnedEnemyBuffer[index];
+
+                if (enemy == null)
+                {
+                    continue;
+                }
+
+                if (IsControllerEnemy(enemy))
+                {
+                    enemy.ScaleSpawnAggroDelay(aggroScale);
+                    ApplyFormationModifier(enemy, "crossfire", EnemyFormationRole.Controller, accentColor, controllerSpeedMultiplier, 1f);
+                    ApplyPriorityHint(enemy, "crossfire", EnemyFormationPriorityLevel.Critical, criticalColor);
+                    continue;
+                }
+
+                if (IsRangedEnemy(enemy))
+                {
+                    enemy.ScaleSpawnAggroDelay(Mathf.Lerp(aggroScale, 1f, 0.35f));
+                    ApplyFormationModifier(enemy, "crossfire", EnemyFormationRole.Ranged, accentColor, 1.05f, 1f);
+                    ApplyPriorityHint(enemy, "crossfire", EnemyFormationPriorityLevel.Focus, focusColor);
+                }
+            }
+
+            RaiseEncounterSynergyFeedback(targetRoom, "CROSSFIRE NET", "Break the marked controller to collapse the lane.", accentColor);
+        }
+
+        private void ApplySiegeFormation(RoomController targetRoom, int waveIndex)
+        {
+            float speedMultiplier = siegeUnitSpeedMultiplier + (waveIndex > 0 ? 0.04f : 0f);
+            float deathPulseRadius = siegeDeathPulseRadius + (waveIndex > 0 ? 0.12f : 0f);
+            float deathPulseDamage = siegeDeathPulseDamage + (waveIndex > 0 ? 0.25f : 0f);
+            Color accentColor = new(1f, 0.62f, 0.3f, 1f);
+            Color criticalColor = Color.Lerp(accentColor, Color.white, 0.22f);
+
+            for (int index = 0; index < _spawnedEnemyBuffer.Count; index++)
+            {
+                EnemyController enemy = _spawnedEnemyBuffer[index];
+
+                if (enemy == null || !IsSiegeEnemy(enemy))
+                {
+                    continue;
+                }
+
+                ApplyFormationModifier(enemy, "siege", EnemyFormationRole.Siege, accentColor, speedMultiplier, 1.08f);
+                ApplyDeathPulseModifier(enemy, deathPulseRadius, siegeDeathPulseTelegraphDuration, deathPulseDamage, siegeDeathPulseKnockback, accentColor);
+                ApplyPriorityHint(enemy, "siege", EnemyFormationPriorityLevel.Critical, criticalColor);
+            }
+
+            RaiseEncounterSynergyFeedback(targetRoom, "SIEGE NEST", "Crush the marked nest before pressure snowballs.", accentColor);
+        }
+
+        private static void ApplyFormationModifier(EnemyController enemy, string formationId, EnemyFormationRole formationRole, Color accentColor, float speedMultiplier, float contactDamageMultiplier)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            EnemyFormationModifier modifier = enemy.GetComponent<EnemyFormationModifier>();
+
+            if (modifier == null)
+            {
+                modifier = enemy.gameObject.AddComponent<EnemyFormationModifier>();
+            }
+
+            modifier.ApplyFormation(formationId, formationRole, accentColor, speedMultiplier, contactDamageMultiplier);
+            enemy.GetComponent<EnemySpawnTelegraph>()?.ApplyAccent(
+                accentColor,
+                ResolveFormationTelegraphScaleMultiplier(formationId),
+                ResolveFormationTelegraphOpacityMultiplier(formationId));
+        }
+
+        private static void ApplyPriorityHint(EnemyController enemy, string formationId, EnemyFormationPriorityLevel priorityLevel, Color accentColor)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            EnemyFormationModifier modifier = enemy.GetComponent<EnemyFormationModifier>();
+
+            if (modifier == null)
+            {
+                return;
+            }
+
+            modifier.SetPriorityHint(priorityLevel, accentColor);
+
+            if (priorityLevel == EnemyFormationPriorityLevel.None)
+            {
+                return;
+            }
+
+            float scaleMultiplier = ResolveFormationTelegraphScaleMultiplier(formationId)
+                + (priorityLevel == EnemyFormationPriorityLevel.Critical ? 0.12f : 0.06f);
+            float opacityMultiplier = ResolveFormationTelegraphOpacityMultiplier(formationId)
+                + (priorityLevel == EnemyFormationPriorityLevel.Critical ? 0.18f : 0.1f);
+            enemy.GetComponent<EnemySpawnTelegraph>()?.ApplyAccent(accentColor, scaleMultiplier, opacityMultiplier);
+        }
+
+        private static void ApplyDeathPulseModifier(EnemyController enemy, float pulseRadius, float telegraphDuration, float pulseDamage, float pulseKnockback, Color pulseColor)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            EncounterDeathPulseModifier modifier = enemy.GetComponent<EncounterDeathPulseModifier>();
+
+            if (modifier == null)
+            {
+                modifier = enemy.gameObject.AddComponent<EncounterDeathPulseModifier>();
+            }
+
+            modifier.Configure(pulseRadius, telegraphDuration, pulseDamage, pulseKnockback, pulseColor);
+        }
+
+        private static void RaiseEncounterSynergyFeedback(RoomController targetRoom, string title, string subtitle, Color accentColor)
+        {
+            GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
+                title,
+                subtitle,
+                accentColor,
+                1.5f));
+
+            GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
+                targetRoom.CameraFocusPosition + new Vector3(0f, 0.92f, 0f),
+                title,
+                accentColor,
+                0.65f,
+                0.84f,
+                1.06f,
+                visualProfile: FloatingFeedbackVisualProfile.EventLabel));
+        }
+
+        private static bool IsEncounterSynergyRoomType(RoomType roomType)
+        {
+            return roomType == RoomType.Normal
+                || roomType == RoomType.Challenge
+                || roomType == RoomType.Trap
+                || roomType == RoomType.Curse;
+        }
+
+        private static float ResolveFormationTelegraphScaleMultiplier(string formationId)
+        {
+            switch (formationId)
+            {
+                case "crossfire":
+                    return 1.08f;
+                case "siege":
+                    return 1.12f;
+                case "escort":
+                    return 1.03f;
+                default:
+                    return 1f;
+            }
+        }
+
+        private static float ResolveFormationTelegraphOpacityMultiplier(string formationId)
+        {
+            switch (formationId)
+            {
+                case "crossfire":
+                    return 1.16f;
+                case "siege":
+                    return 1.2f;
+                case "escort":
+                    return 1.08f;
+                default:
+                    return 1f;
+            }
+        }
+
+        private static bool IsSupportEnemy(EnemyController enemy)
+        {
+            return enemy != null && enemy.GetComponent<SupportHealerEnemyBrain>() != null;
+        }
+
+        private static bool IsFrontlineEnemy(EnemyController enemy)
+        {
+            return enemy != null
+                && (enemy.GetComponent<ChaserEnemyBrain>() != null
+                    || enemy.GetComponent<DasherEnemyBrain>() != null
+                    || enemy.GetComponent<ShieldEnemyBrain>() != null
+                    || enemy.GetComponent<ExploderEnemyBrain>() != null
+                    || enemy.GetComponent<OrbiterEnemyBrain>() != null
+                    || enemy.GetComponent<SplitterEnemyBrain>() != null);
+        }
+
+        private static bool IsControllerEnemy(EnemyController enemy)
+        {
+            return enemy != null
+                && (enemy.GetComponent<PullerEnemyBrain>() != null
+                    || enemy.GetComponent<TeleporterEnemyBrain>() != null);
+        }
+
+        private static bool IsRangedEnemy(EnemyController enemy)
+        {
+            return enemy != null
+                && (enemy.GetComponent<ShooterEnemyBrain>() != null
+                    || enemy.GetComponent<BurstShooterEnemyBrain>() != null
+                    || enemy.GetComponent<HomingShooterEnemyBrain>() != null
+                    || enemy.GetComponent<SniperEnemyBrain>() != null
+                    || enemy.GetComponent<TurretEnemyBrain>() != null);
+        }
+
+        private static bool IsSiegeEnemy(EnemyController enemy)
+        {
+            return enemy != null
+                && (enemy.GetComponent<MineLayerEnemyBrain>() != null
+                    || enemy.GetComponent<EnemySpawnerBrain>() != null
+                    || enemy.GetComponent<ExploderEnemyBrain>() != null);
+        }
+
+        private void ApplySpawnTelegraph(EnemyController spawnedEnemy, int spawnIndex, int waveIndex, float aggroDelay)
+        {
+            if (!enableSpawnTelegraph || spawnedEnemy == null || aggroDelay <= 0.1f)
+            {
+                return;
+            }
+
+            float revealDelay = CalculateSpawnTelegraphRevealDelay(aggroDelay, waveIndex);
+
+            if (revealDelay <= 0.05f)
+            {
+                return;
+            }
+
+            EnemySpawnTelegraph telegraph = spawnedEnemy.GetComponent<EnemySpawnTelegraph>();
+
+            if (telegraph == null)
+            {
+                telegraph = spawnedEnemy.gameObject.AddComponent<EnemySpawnTelegraph>();
+            }
+
+            telegraph.Configure(
+                revealDelay,
+                ResolveSpawnTelegraphColor(waveIndex),
+                CalculateSpawnTelegraphScale(spawnIndex, waveIndex),
+                spawnTelegraphOpacity,
+                spawnTelegraphPulseSpeed,
+                spawnTelegraphLocalOffset);
+        }
+
+        private float CalculateSpawnTelegraphRevealDelay(float aggroDelay, int waveIndex)
+        {
+            float telegraphDurationMultiplier = _runtimeEncounterPacing != null
+                ? _runtimeEncounterPacing.TelegraphDurationMultiplier
+                : 1f;
+            float revealRatio = spawnTelegraphRevealRatio;
+
+            if (GetEffectiveRoomType() == RoomType.Challenge && waveIndex > 0)
+            {
+                revealRatio += 0.08f;
+            }
+
+            float revealDelay = aggroDelay * Mathf.Clamp(revealRatio * telegraphDurationMultiplier, 0.2f, 0.9f);
+            float scaledMaxDuration = Mathf.Max(spawnTelegraphMinDuration, spawnTelegraphMaxDuration * telegraphDurationMultiplier);
+            revealDelay = Mathf.Clamp(revealDelay, spawnTelegraphMinDuration, scaledMaxDuration);
+            revealDelay = Mathf.Min(revealDelay, Mathf.Max(0f, aggroDelay - spawnTelegraphVisibleLeadTime));
+            return revealDelay;
+        }
+
+        private float CalculateSpawnTelegraphScale(int spawnIndex, int waveIndex)
+        {
+            float roomTypeScale = GetEffectiveRoomType() switch
+            {
+                RoomType.Boss => 1.42f,
+                RoomType.MiniBoss => 1.28f,
+                RoomType.Challenge => waveIndex > 0 ? 1.18f : 1.08f,
+                _ => 1f
+            };
+
+            float staggerScale = 1f + ((spawnIndex % 3) * 0.05f);
+            return spawnTelegraphScale * roomTypeScale * staggerScale;
+        }
+
+        private Color ResolveSpawnTelegraphColor(int waveIndex)
+        {
+            Color roomAccent = GetEffectiveRoomType() switch
+            {
+                RoomType.Boss => new Color(0.95f, 0.3f, 0.36f, 1f),
+                RoomType.MiniBoss => new Color(0.98f, 0.56f, 0.24f, 1f),
+                RoomType.Challenge => new Color(0.99f, 0.64f, 0.22f, 1f),
+                RoomType.Normal => new Color(0.48f, 0.84f, 1f, 1f),
+                _ => new Color(0.82f, 0.88f, 0.98f, 1f)
+            };
+
+            if (GetEffectiveRoomType() == RoomType.Challenge && waveIndex > 0)
+            {
+                float escalation = Mathf.Clamp01(waveIndex * 0.34f);
+                roomAccent = Color.Lerp(roomAccent, new Color(1f, 0.24f, 0.28f, 1f), escalation);
+            }
+
+            return roomAccent;
+        }
+
+        private void RaiseWaveSpawnThreatFlash(int waveIndex)
+        {
+            RoomType roomType = GetEffectiveRoomType();
+
+            if (roomType != RoomType.Boss
+                && roomType != RoomType.MiniBoss
+                && !(roomType == RoomType.Challenge && waveIndex > 0))
+            {
+                return;
+            }
+
+            Color flashColor = ResolveSpawnTelegraphColor(waveIndex);
+            float opacity = roomType == RoomType.Boss ? 0.09f : 0.07f;
+            float duration = roomType == RoomType.Boss ? 0.42f : 0.32f;
+            int pulseCount = roomType == RoomType.Boss || waveIndex > 0 ? 2 : 1;
+            float pulseStrength = roomType == RoomType.Boss ? 0.28f : 0.2f;
+
+            GameplayFeedbackEvents.RaiseThreatFlash(new ThreatFlashRequest(
+                flashColor,
+                opacity,
+                duration,
+                pulseCount,
+                pulseStrength,
+                0.96f,
+                0.42f));
         }
 
         private bool TryApplyChampionPromotion(EnemyController spawnedEnemy, RoomController targetRoom, EnemyWaveSpawnGroup spawnGroup, int spawnIndex, int waveIndex, int totalSpawnCount, int currentChampionCount)
@@ -926,9 +1435,48 @@ namespace CuteIssac.Room
             return _challengeFollowupWaveAssignment;
         }
 
+        private int ResolveAdjustedTotalEnemyCount(EnemyWaveAssignment enemyWaveAssignment)
+        {
+            if (enemyWaveAssignment == null)
+            {
+                return 0;
+            }
+
+            int totalCount = 0;
+
+            for (int index = 0; index < enemyWaveAssignment.SpawnGroups.Count; index++)
+            {
+                EnemyWaveSpawnGroup spawnGroup = enemyWaveAssignment.SpawnGroups[index];
+
+                if (spawnGroup == null || spawnGroup.EnemyPrefab == null || spawnGroup.Count <= 0)
+                {
+                    continue;
+                }
+
+                totalCount += ResolveAdjustedSpawnCount(spawnGroup.Count);
+            }
+
+            return totalCount;
+        }
+
+        private int ResolveAdjustedSpawnCount(int baseCount)
+        {
+            if (baseCount <= 0)
+            {
+                return 0;
+            }
+
+            RoomType roomType = GetEffectiveRoomType();
+            float multiplier = roomType == RoomType.Normal || roomType == RoomType.Challenge
+                ? Mathf.Max(1f, globalEnemyCountMultiplier)
+                : 1f;
+
+            return Mathf.Max(baseCount, Mathf.CeilToInt(baseCount * multiplier));
+        }
+
         private void RaiseChallengeWaveFeedback(RoomController targetRoom, EnemyWaveAssignment waveAssignment, int currentWave, int totalWaves)
         {
-            int enemyCount = waveAssignment != null ? waveAssignment.TotalEnemyCount : 0;
+            int enemyCount = waveAssignment != null ? ResolveAdjustedTotalEnemyCount(waveAssignment) : 0;
             int guaranteedChampionCount = GetChallengeFollowupGuaranteedChampionCount(enemyCount, Mathf.Max(0, currentWave - 1));
             float championChanceBonus = GetChallengeFollowupChampionChanceBonus(Mathf.Max(0, currentWave - 1));
             ChallengeThreatPresentation presentation = ChallengeThreatPresentationResolver.Build(

@@ -16,6 +16,7 @@ namespace CuteIssac.Enemy
         private float _strafeSign = 1f;
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
+        private bool _crossfireCueRaisedForCurrentTelegraph;
 
         protected override void HandleInitialized()
         {
@@ -30,6 +31,7 @@ namespace CuteIssac.Enemy
             _telegraphRemaining = 0f;
             _strafeSign = (GetInstanceID() & 1) == 0 ? 1f : -1f;
             _strafeSwapRemaining = enemyData != null ? enemyData.StrafeSwapInterval : 1f;
+            _crossfireCueRaisedForCurrentTelegraph = false;
             Controller?.EnemyVisual?.StopAttackTelegraph();
         }
 
@@ -62,6 +64,12 @@ namespace CuteIssac.Enemy
 
             if (_telegraphRemaining > 0f)
             {
+                if (!_crossfireCueRaisedForCurrentTelegraph)
+                {
+                    EnemyFormationTactics.BroadcastCrossfireCue(FormationModifier, Controller.TargetPosition, 0.82f, 1f);
+                    _crossfireCueRaisedForCurrentTelegraph = true;
+                }
+
                 _telegraphRemaining -= fixedDeltaTime;
                 Controller.SetMoveSpeedMultiplier(enemyData.MoveSpeedWhileTelegraphing);
                 Controller.StopMovement();
@@ -92,24 +100,46 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _telegraphRemaining = enemyData.TelegraphDuration * _runtimeTelegraphDurationMultiplier;
-            Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TelegraphColor);
+            BeginPullTelegraph(enemyData);
         }
 
         private Vector2 ResolveMoveDirection(PullerEnemyData enemyData, Vector2 aimDirection, float distance)
         {
+            Vector2 fallbackDirection;
+
             if (distance > enemyData.PreferredRange)
             {
-                return aimDirection;
+                fallbackDirection = aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireControllerMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    2.05f,
+                    0.62f);
             }
 
             if (distance < enemyData.RetreatRange)
             {
-                return -aimDirection;
+                fallbackDirection = -aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireControllerMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    2.05f,
+                    0.62f);
             }
 
             Vector2 strafeDirection = new(-aimDirection.y, aimDirection.x * _strafeSign);
-            return strafeDirection * Mathf.Clamp01(enemyData.OrbitBlend);
+            fallbackDirection = strafeDirection * Mathf.Clamp01(enemyData.OrbitBlend);
+            return EnemyFormationTactics.ResolveCrossfireControllerMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                fallbackDirection,
+                2.05f,
+                0.62f);
         }
 
         private void ExecutePull(PullerEnemyData enemyData)
@@ -117,6 +147,7 @@ namespace CuteIssac.Enemy
             Controller.EnemyVisual?.StopAttackTelegraph();
             Controller.EnemyVisual?.HandleAttack();
             _pullCooldown = enemyData.PullInterval;
+            _crossfireCueRaisedForCurrentTelegraph = false;
 
             Transform target = Controller.CurrentTarget;
 
@@ -145,6 +176,14 @@ namespace CuteIssac.Enemy
             }
 
             playerHealth.ApplyDamage(new DamageInfo(enemyData.PullDamage, pullDirection, transform));
+        }
+
+        private void BeginPullTelegraph(PullerEnemyData enemyData)
+        {
+            _telegraphRemaining = enemyData.TelegraphDuration * _runtimeTelegraphDurationMultiplier;
+            _crossfireCueRaisedForCurrentTelegraph = true;
+            Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TelegraphColor);
+            EnemyFormationTactics.BroadcastCrossfireCue(FormationModifier, Controller.TargetPosition, 0.82f, 1f);
         }
 
         private void ResolveReferences()

@@ -5,7 +5,10 @@ using CuteIssac.Common.Stats;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Run;
+using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
+using CuteIssac.Item;
+using CuteIssac.Player.ItemEffects;
 using UnityEngine;
 
 namespace CuteIssac.Player
@@ -21,6 +24,8 @@ namespace CuteIssac.Player
         [SerializeField] private PlayerTrinketHolder playerTrinketHolder;
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private PlayerHealth playerHealth;
+        [SerializeField] private PlayerActiveItemController playerActiveItemController;
+        [SerializeField] private PlayerWeaponLoadout playerWeaponLoadout;
         [SerializeField] private RunItemPoolService runItemPoolService;
 
         [Header("Debug")]
@@ -32,6 +37,7 @@ namespace CuteIssac.Player
         private readonly List<TimedEventModifierInstance> _timedEventModifiers = new();
         private readonly List<StatModifier> _resolvedTimedEventStatModifiers = new();
         private readonly List<ProjectileModifier> _resolvedTimedEventProjectileModifiers = new();
+        private readonly Dictionary<ItemGameplayEventEffect, float> _eventEffectNextTriggerTimes = new();
         private readonly ModifierStack _pickupPreviewModifierStack = new();
         private readonly List<ItemData> _ownedItemsBuffer = new();
 
@@ -53,7 +59,7 @@ namespace CuteIssac.Player
         private void Start()
         {
             RecalculateStats();
-            runItemPoolService?.SyncOwnedItems(playerInventory != null ? playerInventory.PassiveItems : null);
+            runItemPoolService?.SyncOwnedItems(_ownedItemsBuffer);
             RebuildEventEffectBindings();
         }
 
@@ -100,11 +106,17 @@ namespace CuteIssac.Player
             }
 
             ClearEventEffectBindings();
+            _eventEffectNextTriggerTimes.Clear();
         }
 
         public bool AcquirePassiveItem(ItemData itemData)
         {
             ResolveDependencies();
+
+            if (itemData != null && itemData.IsWeaponRelic)
+            {
+                return AcquireWeaponItem(itemData);
+            }
 
             if (playerInventory == null || playerStats == null)
             {
@@ -122,6 +134,29 @@ namespace CuteIssac.Player
             }
 
             return added;
+        }
+
+        public bool AcquireWeaponItem(ItemData itemData)
+        {
+            ResolveDependencies();
+
+            if (itemData == null || !itemData.IsWeaponRelic || playerWeaponLoadout == null)
+            {
+                return false;
+            }
+
+            bool acquired = playerWeaponLoadout.TryAcquireWeapon(itemData);
+            if (!acquired)
+            {
+                return false;
+            }
+
+            RecalculateStats();
+            runItemPoolService?.SyncOwnedItems(_ownedItemsBuffer);
+            RebuildEventEffectBindings();
+            runItemPoolService?.RegisterAcquired(itemData);
+            RaisePickupBanner(itemData);
+            return true;
         }
 
         public bool AcquireTrinketItem(ItemData itemData)
@@ -171,13 +206,14 @@ namespace CuteIssac.Player
         private void HandleInventoryChanged()
         {
             RecalculateStats();
-            runItemPoolService?.SyncOwnedItems(playerInventory != null ? playerInventory.PassiveItems : null);
+            runItemPoolService?.SyncOwnedItems(_ownedItemsBuffer);
             RebuildEventEffectBindings();
         }
 
         private void HandleTrinketChanged()
         {
             RecalculateStats();
+            runItemPoolService?.SyncOwnedItems(_ownedItemsBuffer);
             RebuildEventEffectBindings();
         }
 
@@ -210,6 +246,16 @@ namespace CuteIssac.Player
             if (playerHealth == null)
             {
                 playerHealth = GetComponent<PlayerHealth>();
+            }
+
+            if (playerActiveItemController == null)
+            {
+                playerActiveItemController = GetComponent<PlayerActiveItemController>();
+            }
+
+            if (playerWeaponLoadout == null)
+            {
+                playerWeaponLoadout = GetComponent<PlayerWeaponLoadout>();
             }
 
             if (runItemPoolService == null)
@@ -273,6 +319,8 @@ namespace CuteIssac.Player
                 }
             }
 
+            playerWeaponLoadout?.AppendOwnedWeaponItems(_ownedItemsBuffer);
+
             if (playerTrinketHolder != null && playerTrinketHolder.EquippedTrinket != null && !_ownedItemsBuffer.Contains(playerTrinketHolder.EquippedTrinket))
             {
                 _ownedItemsBuffer.Add(playerTrinketHolder.EquippedTrinket);
@@ -281,103 +329,65 @@ namespace CuteIssac.Player
 
         private void BindItemGameplayEffect(ItemGameplayEventEffect effect)
         {
-            switch (effect.TriggerType)
+            if (effect == null)
             {
-                case GameplayEventTriggerType.PlayerDamaged:
-                {
-                    void Handler(PlayerDamagedSignal signal)
-                    {
-                        if (signal.PlayerHealth != playerHealth)
-                        {
-                            return;
-                        }
-
-                        ApplyGameplayEventEffect(effect, signal.Position);
-                    }
-
-                    GameplayRuntimeEvents.PlayerDamaged += Handler;
-                    _eventUnbindActions.Add(() => GameplayRuntimeEvents.PlayerDamaged -= Handler);
-                    break;
-                }
-
-                case GameplayEventTriggerType.EnemyKilled:
-                {
-                    void Handler(EnemyKilledSignal signal)
-                    {
-                        if (effect.RequirePlayerSource && !IsOwnedByPlayer(signal.Killer))
-                        {
-                            return;
-                        }
-
-                        ApplyGameplayEventEffect(effect, signal.Position);
-                    }
-
-                    GameplayRuntimeEvents.EnemyKilled += Handler;
-                    _eventUnbindActions.Add(() => GameplayRuntimeEvents.EnemyKilled -= Handler);
-                    break;
-                }
-
-                case GameplayEventTriggerType.ProjectileFired:
-                {
-                    void Handler(ProjectileFiredSignal signal)
-                    {
-                        if (effect.RequirePlayerSource && !IsOwnedByPlayer(signal.Source))
-                        {
-                            return;
-                        }
-
-                        ApplyGameplayEventEffect(effect, signal.Origin);
-                    }
-
-                    GameplayRuntimeEvents.ProjectileFired += Handler;
-                    _eventUnbindActions.Add(() => GameplayRuntimeEvents.ProjectileFired -= Handler);
-                    break;
-                }
-
-                case GameplayEventTriggerType.RoomCleared:
-                {
-                    void Handler(RoomClearSignal signal)
-                    {
-                        if (effect.RequireCombatEncounter && !signal.HadCombatEncounter)
-                        {
-                            return;
-                        }
-
-                        Vector3 feedbackPosition = signal.Room != null
-                            ? signal.Room.CameraFocusPosition
-                            : transform.position;
-                        ApplyGameplayEventEffect(effect, feedbackPosition);
-                    }
-
-                    GameplayRuntimeEvents.RoomCleared += Handler;
-                    _eventUnbindActions.Add(() => GameplayRuntimeEvents.RoomCleared -= Handler);
-                    break;
-                }
+                return;
             }
+
+            ItemGameplayEffectTriggerBinderRegistry.TryBind(
+                effect,
+                BuildGameplayEffectBindingContext());
         }
 
         private void ApplyGameplayEventEffect(ItemGameplayEventEffect effect, Vector3 feedbackPosition)
         {
-            switch (effect.EffectType)
+            if (effect == null)
             {
-                case ItemGameplayEventEffectType.AddCoins:
-                    if (playerInventory == null || effect.CoinAmount <= 0)
-                    {
-                        return;
-                    }
+                return;
+            }
 
-                    playerInventory.AddCoins(effect.CoinAmount);
-                    RaiseEffectFeedback(feedbackPosition, ResolveFeedbackLabel(effect, $"+{effect.CoinAmount}C"), new Color(1f, 0.92f, 0.4f, 1f));
-                    break;
+            if (!CanTriggerGameplayEventEffect(effect))
+            {
+                return;
+            }
 
-                case ItemGameplayEventEffectType.ApplyTimedBuff:
-                    if (!TryAddTimedModifier(effect))
-                    {
-                        return;
-                    }
+            bool executed = ItemGameplayEffectExecutorRegistry.TryExecute(
+                effect,
+                BuildGameplayEffectExecutionContext(),
+                feedbackPosition);
 
-                    RaiseEffectFeedback(feedbackPosition, ResolveFeedbackLabel(effect, "SURGE"), new Color(0.48f, 0.9f, 1f, 1f));
-                    break;
+            if (executed)
+            {
+                CommitGameplayEventEffectTrigger(effect);
+            }
+        }
+
+        private ItemGameplayEffectExecutionContext BuildGameplayEffectExecutionContext()
+        {
+            return new ItemGameplayEffectExecutionContext(
+                playerInventory,
+                playerStats,
+                playerHealth,
+                playerActiveItemController,
+                TryAddTimedModifier,
+                RaiseEffectFeedback);
+        }
+
+        private ItemGameplayEffectBindingContext BuildGameplayEffectBindingContext()
+        {
+            return new ItemGameplayEffectBindingContext(
+                playerHealth,
+                transform,
+                IsOwnedByPlayer,
+                ApplyGameplayEventEffect,
+                RegisterEventEffectUnbindAction);
+        }
+
+        private void RegisterEventEffectUnbindAction(Action unbindAction)
+        {
+            if (unbindAction != null)
+            {
+                _eventUnbindActions.Add(unbindAction);
             }
         }
 
@@ -450,12 +460,28 @@ namespace CuteIssac.Player
 
             itemData.BuildModifierStack(_pickupPreviewModifierStack);
             string statSummary = BuildPickupStatSummary(_pickupPreviewModifierStack);
+            string gameplaySummary = BuildPickupGameplayEffectSummary(itemData.GameplayEventEffects);
+            string economySummary = BuildPickupEconomyModifierSummary(itemData.ShopPriceModifiers, itemData.DoorCostModifiers);
+            string rewardSummary = BuildPickupRoomRewardModifierSummary(itemData.RoomRewardModifiers);
+            string modifierSummary = MergePickupSummary(statSummary, gameplaySummary);
+            modifierSummary = MergePickupSummary(modifierSummary, economySummary);
+            modifierSummary = MergePickupSummary(modifierSummary, rewardSummary);
+            if (string.IsNullOrWhiteSpace(modifierSummary) && itemData.IsWeaponRelic)
+            {
+                string reserveLabel = itemData.WeaponProfile.InfiniteReserveAmmo
+                    ? "INF"
+                    : itemData.WeaponProfile.StartingReserveAmmo.ToString();
+                string pelletLabel = itemData.WeaponProfile.ShotsPerTrigger > 1
+                    ? $" | {itemData.WeaponProfile.ShotsPerTrigger} pellets"
+                    : string.Empty;
+                modifierSummary = $"{itemData.WeaponProfile.MagazineCapacity}/{reserveLabel} rounds | {itemData.WeaponProfile.ReloadDuration:0.#}s reload{pelletLabel}";
+            }
             string flavorLine = ResolvePickupFlavorLine(itemData);
-            string subtitle = string.IsNullOrWhiteSpace(statSummary)
+            string subtitle = string.IsNullOrWhiteSpace(modifierSummary)
                 ? flavorLine
                 : string.IsNullOrWhiteSpace(flavorLine)
-                    ? statSummary
-                    : $"{statSummary}\n{flavorLine}";
+                    ? modifierSummary
+                    : $"{modifierSummary}\n{flavorLine}";
 
             GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
                 itemData.DisplayName,
@@ -475,6 +501,570 @@ namespace CuteIssac.Player
             AppendStatSummary(builder, modifierStack.StatModifiers);
             AppendProjectileSummary(builder, modifierStack.ProjectileModifiers);
             return builder.ToString();
+        }
+
+        private static string BuildPickupGameplayEffectSummary(IReadOnlyList<ItemGameplayEventEffect> gameplayEventEffects)
+        {
+            if (gameplayEventEffects == null || gameplayEventEffects.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            StringBuilder builder = new();
+
+            for (int index = 0; index < gameplayEventEffects.Count; index++)
+            {
+                ItemGameplayEventEffect effect = gameplayEventEffects[index];
+                string chunk = ResolveGameplayEffectSummaryChunk(effect);
+
+                if (string.IsNullOrWhiteSpace(chunk))
+                {
+                    continue;
+                }
+
+                AppendSummaryChunk(builder, chunk);
+            }
+
+            return builder.ToString();
+        }
+
+        public int ResolveShopPriceDiscount(ShopCurrencyType currencyType)
+        {
+            BuildOwnedItemsBuffer();
+
+            int totalDiscount = 0;
+
+            for (int itemIndex = 0; itemIndex < _ownedItemsBuffer.Count; itemIndex++)
+            {
+                ItemData itemData = _ownedItemsBuffer[itemIndex];
+                if (itemData == null || itemData.ShopPriceModifiers == null)
+                {
+                    continue;
+                }
+
+                for (int modifierIndex = 0; modifierIndex < itemData.ShopPriceModifiers.Count; modifierIndex++)
+                {
+                    ItemShopPriceModifier modifier = itemData.ShopPriceModifiers[modifierIndex];
+                    if (modifier == null || !modifier.Supports(currencyType))
+                    {
+                        continue;
+                    }
+
+                    totalDiscount += modifier.FlatDiscount;
+                }
+            }
+
+            return Mathf.Max(0, totalDiscount);
+        }
+
+        public int ResolveEffectiveShopPrice(int basePrice, ShopCurrencyType currencyType)
+        {
+            return Mathf.Max(0, Mathf.Max(0, basePrice) - ResolveShopPriceDiscount(currencyType));
+        }
+
+        public bool OwnsItem(ItemData itemData)
+        {
+            if (itemData == null)
+            {
+                return false;
+            }
+
+            if (itemData.IsWeaponRelic)
+            {
+                return playerWeaponLoadout != null && playerWeaponLoadout.OwnsWeaponItem(itemData);
+            }
+
+            if (playerInventory != null)
+            {
+                IReadOnlyList<ItemData> passiveItems = playerInventory.PassiveItems;
+                for (int index = 0; index < passiveItems.Count; index++)
+                {
+                    ItemData ownedItem = passiveItems[index];
+                    if (ownedItem == null)
+                    {
+                        continue;
+                    }
+
+                    if (ReferenceEquals(ownedItem, itemData) || ownedItem.ItemId == itemData.ItemId)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return playerTrinketHolder != null
+                && playerTrinketHolder.EquippedTrinket != null
+                && (ReferenceEquals(playerTrinketHolder.EquippedTrinket, itemData)
+                    || playerTrinketHolder.EquippedTrinket.ItemId == itemData.ItemId);
+        }
+
+        public int ResolveDoorKeyCostReduction(RoomType roomType)
+        {
+            BuildOwnedItemsBuffer();
+
+            int totalReduction = 0;
+
+            for (int itemIndex = 0; itemIndex < _ownedItemsBuffer.Count; itemIndex++)
+            {
+                ItemData itemData = _ownedItemsBuffer[itemIndex];
+                if (itemData == null || itemData.DoorCostModifiers == null)
+                {
+                    continue;
+                }
+
+                for (int modifierIndex = 0; modifierIndex < itemData.DoorCostModifiers.Count; modifierIndex++)
+                {
+                    ItemDoorCostModifier modifier = itemData.DoorCostModifiers[modifierIndex];
+                    if (modifier == null || !modifier.Supports(roomType))
+                    {
+                        continue;
+                    }
+
+                    totalReduction += modifier.KeyDiscount;
+                }
+            }
+
+            return Mathf.Max(0, totalReduction);
+        }
+
+        public float ResolveDoorHealthCostReduction(RoomType roomType)
+        {
+            BuildOwnedItemsBuffer();
+
+            float totalReduction = 0f;
+
+            for (int itemIndex = 0; itemIndex < _ownedItemsBuffer.Count; itemIndex++)
+            {
+                ItemData itemData = _ownedItemsBuffer[itemIndex];
+                if (itemData == null || itemData.DoorCostModifiers == null)
+                {
+                    continue;
+                }
+
+                for (int modifierIndex = 0; modifierIndex < itemData.DoorCostModifiers.Count; modifierIndex++)
+                {
+                    ItemDoorCostModifier modifier = itemData.DoorCostModifiers[modifierIndex];
+                    if (modifier == null || !modifier.Supports(roomType))
+                    {
+                        continue;
+                    }
+
+                    totalReduction += modifier.HealthDiscount;
+                }
+            }
+
+            return Mathf.Max(0f, totalReduction);
+        }
+
+        public int ResolveEffectiveDoorKeyCost(int baseCost, RoomType roomType)
+        {
+            return Mathf.Max(0, Mathf.Max(0, baseCost) - ResolveDoorKeyCostReduction(roomType));
+        }
+
+        public float ResolveEffectiveDoorHealthCost(float baseCost, RoomType roomType)
+        {
+            return Mathf.Max(0f, Mathf.Max(0f, baseCost) - ResolveDoorHealthCostReduction(roomType));
+        }
+
+        public bool TryGetRoomRewardBonus(
+            RoomType roomType,
+            bool allowNonCombatResolve,
+            out int bonusRewardSelections,
+            out int bonusItemRolls,
+            out string title,
+            out string subtitle,
+            out Color accentColor)
+        {
+            bonusRewardSelections = 0;
+            bonusItemRolls = 0;
+            title = string.Empty;
+            subtitle = string.Empty;
+            accentColor = Color.white;
+
+            BuildOwnedItemsBuffer();
+
+            ItemData strongestContributor = null;
+            int contributorCount = 0;
+
+            for (int itemIndex = 0; itemIndex < _ownedItemsBuffer.Count; itemIndex++)
+            {
+                ItemData itemData = _ownedItemsBuffer[itemIndex];
+                if (itemData == null || itemData.RoomRewardModifiers == null)
+                {
+                    continue;
+                }
+
+                bool itemContributed = false;
+
+                for (int modifierIndex = 0; modifierIndex < itemData.RoomRewardModifiers.Count; modifierIndex++)
+                {
+                    ItemRoomRewardModifier modifier = itemData.RoomRewardModifiers[modifierIndex];
+                    if (modifier == null || !modifier.Supports(roomType, allowNonCombatResolve))
+                    {
+                        continue;
+                    }
+
+                    int rewardSelections = modifier.BonusRewardSelections;
+                    int itemRolls = modifier.BonusItemRolls;
+
+                    if (rewardSelections <= 0 && itemRolls <= 0)
+                    {
+                        continue;
+                    }
+
+                    bonusRewardSelections += rewardSelections;
+                    bonusItemRolls += itemRolls;
+                    itemContributed = true;
+                }
+
+                if (!itemContributed)
+                {
+                    continue;
+                }
+
+                contributorCount++;
+
+                if (strongestContributor == null || itemData.Rarity > strongestContributor.Rarity)
+                {
+                    strongestContributor = itemData;
+                }
+            }
+
+            if (bonusRewardSelections <= 0 && bonusItemRolls <= 0)
+            {
+                return false;
+            }
+
+            accentColor = strongestContributor != null
+                ? ResolvePickupAccentColor(strongestContributor.Rarity)
+                : Color.white;
+            title = contributorCount == 1 && strongestContributor != null
+                ? $"{strongestContributor.DisplayName} CACHE"
+                : "ITEM CACHE BONUS";
+            subtitle = BuildRoomRewardBonusSubtitle(
+                roomType,
+                bonusRewardSelections,
+                bonusItemRolls,
+                allowNonCombatResolve);
+            return true;
+        }
+
+        private static string ResolveGameplayEffectSummaryChunk(ItemGameplayEventEffect effect)
+        {
+            if (effect == null)
+            {
+                return string.Empty;
+            }
+
+            string triggerLabel = effect.TriggerType switch
+            {
+                GameplayEventTriggerType.PlayerDamaged => "ON HIT",
+                GameplayEventTriggerType.EnemyKilled => "ON KILL",
+                GameplayEventTriggerType.ProjectileFired => "ON SHOT",
+                GameplayEventTriggerType.RoomCleared => "ON CLEAR",
+                _ => string.Empty
+            };
+
+            string effectLabel = effect.EffectType switch
+            {
+                ItemGameplayEventEffectType.AddCoins when effect.CoinAmount > 0 => $"+{effect.CoinAmount} COIN",
+                ItemGameplayEventEffectType.AddKeys when effect.ResourceAmount > 0 => $"+{effect.ResourceAmount} KEY",
+                ItemGameplayEventEffectType.AddBombs when effect.ResourceAmount > 0 => $"+{effect.ResourceAmount} BOMB",
+                ItemGameplayEventEffectType.RestoreHealth when effect.HealAmount > 0f => $"+{effect.HealAmount:0.#} HP",
+                ItemGameplayEventEffectType.AddActiveCharge when effect.ActiveChargeAmount > 0 => $"+{effect.ActiveChargeAmount} CHARGE",
+                ItemGameplayEventEffectType.GrantInvulnerability when effect.InvulnerabilityDuration > 0f => $"{effect.InvulnerabilityDuration:0.#}S SHIELD",
+                ItemGameplayEventEffectType.ApplyTimedBuff => "SURGE",
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrWhiteSpace(triggerLabel))
+            {
+                return effectLabel;
+            }
+
+            if (string.IsNullOrWhiteSpace(effectLabel))
+            {
+                string triggerDescriptor = ResolveGameplayEffectProcDescriptor(effect);
+                return string.IsNullOrWhiteSpace(triggerDescriptor)
+                    ? triggerLabel
+                    : $"{triggerLabel} {triggerDescriptor}";
+            }
+
+            string summary = $"{triggerLabel} {effectLabel}";
+            string procDescriptor = ResolveGameplayEffectProcDescriptor(effect);
+            return string.IsNullOrWhiteSpace(procDescriptor)
+                ? summary
+                : $"{triggerLabel} {procDescriptor} {effectLabel}";
+        }
+
+        private bool CanTriggerGameplayEventEffect(ItemGameplayEventEffect effect)
+        {
+            if (effect == null)
+            {
+                return false;
+            }
+
+            if (_eventEffectNextTriggerTimes.TryGetValue(effect, out float nextTriggerTime)
+                && Time.time < nextTriggerTime)
+            {
+                return false;
+            }
+
+            float triggerChance = effect.ResolveEffectiveTriggerChance(playerStats != null ? playerStats.CurrentLuck : 0f);
+            if (triggerChance <= 0f)
+            {
+                return false;
+            }
+
+            return triggerChance >= 0.999f || UnityEngine.Random.value <= triggerChance;
+        }
+
+        private void CommitGameplayEventEffectTrigger(ItemGameplayEventEffect effect)
+        {
+            if (effect == null)
+            {
+                return;
+            }
+
+            float cooldown = effect.InternalCooldown;
+            if (cooldown <= 0.01f)
+            {
+                return;
+            }
+
+            _eventEffectNextTriggerTimes[effect] = Time.time + cooldown;
+        }
+
+        private static string ResolveGameplayEffectProcDescriptor(ItemGameplayEventEffect effect)
+        {
+            if (effect == null)
+            {
+                return string.Empty;
+            }
+
+            StringBuilder builder = new();
+            float triggerChance = effect.TriggerChance;
+            if (triggerChance < 0.999f)
+            {
+                builder.Append(Mathf.RoundToInt(triggerChance * 100f)).Append('%');
+
+                if (effect.LuckBonusChancePerPoint > 0.0001f)
+                {
+                    builder.Append("+LCK");
+                }
+            }
+
+            float cooldown = effect.InternalCooldown;
+            if (cooldown > 0.01f)
+            {
+                if (builder.Length > 0)
+                {
+                    builder.Append(" / ");
+                }
+
+                builder.Append(cooldown.ToString("0.#")).Append("S CD");
+            }
+
+            return builder.ToString();
+        }
+
+        private static string BuildPickupRoomRewardModifierSummary(IReadOnlyList<ItemRoomRewardModifier> roomRewardModifiers)
+        {
+            if (roomRewardModifiers == null || roomRewardModifiers.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            StringBuilder builder = new();
+
+            for (int index = 0; index < roomRewardModifiers.Count; index++)
+            {
+                string chunk = ResolveRoomRewardModifierSummaryChunk(roomRewardModifiers[index]);
+                if (string.IsNullOrWhiteSpace(chunk))
+                {
+                    continue;
+                }
+
+                AppendSummaryChunk(builder, chunk);
+            }
+
+            return builder.ToString();
+        }
+
+        private static string BuildPickupEconomyModifierSummary(
+            IReadOnlyList<ItemShopPriceModifier> shopPriceModifiers,
+            IReadOnlyList<ItemDoorCostModifier> doorCostModifiers)
+        {
+            StringBuilder builder = new();
+
+            if (shopPriceModifiers != null)
+            {
+                for (int index = 0; index < shopPriceModifiers.Count; index++)
+                {
+                    string chunk = ResolveShopPriceModifierSummaryChunk(shopPriceModifiers[index]);
+                    if (string.IsNullOrWhiteSpace(chunk))
+                    {
+                        continue;
+                    }
+
+                    AppendSummaryChunk(builder, chunk);
+                }
+            }
+
+            if (doorCostModifiers != null)
+            {
+                for (int index = 0; index < doorCostModifiers.Count; index++)
+                {
+                    string chunk = ResolveDoorCostModifierSummaryChunk(doorCostModifiers[index]);
+                    if (string.IsNullOrWhiteSpace(chunk))
+                    {
+                        continue;
+                    }
+
+                    AppendSummaryChunk(builder, chunk);
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        private static string ResolveRoomRewardModifierSummaryChunk(ItemRoomRewardModifier modifier)
+        {
+            if (modifier == null)
+            {
+                return string.Empty;
+            }
+
+            int bonusRewardSelections = modifier.BonusRewardSelections;
+            int bonusItemRolls = modifier.BonusItemRolls;
+
+            if (bonusRewardSelections <= 0 && bonusItemRolls <= 0)
+            {
+                return string.Empty;
+            }
+
+            string roomLabel = ResolveRoomRewardSummaryLabel(modifier.SupportedRoomTypes, modifier.AllowOnNonCombatResolve);
+            string rewardLabel = bonusRewardSelections > 0 ? $"+{bonusRewardSelections} REWARD" : string.Empty;
+            string itemLabel = bonusItemRolls > 0 ? $"+{bonusItemRolls} ITEM" : string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(rewardLabel) && !string.IsNullOrWhiteSpace(itemLabel))
+            {
+                return $"{roomLabel} {rewardLabel} / {itemLabel}";
+            }
+
+            return $"{roomLabel} {rewardLabel}{itemLabel}".Trim();
+        }
+
+        private static string ResolveShopPriceModifierSummaryChunk(ItemShopPriceModifier modifier)
+        {
+            if (modifier == null || modifier.FlatDiscount <= 0)
+            {
+                return string.Empty;
+            }
+
+            return $"{ResolveCurrencyLabel(modifier.CurrencyType)} SHOP -{modifier.FlatDiscount}";
+        }
+
+        private static string ResolveDoorCostModifierSummaryChunk(ItemDoorCostModifier modifier)
+        {
+            if (modifier == null)
+            {
+                return string.Empty;
+            }
+
+            string roomLabel = modifier.SupportedRoomTypes != null && modifier.SupportedRoomTypes.Count == 1
+                ? $"{ResolveRoomLabel(modifier.SupportedRoomTypes[0])} DOOR"
+                : "DOOR";
+            string keySegment = modifier.KeyDiscount > 0 ? $"-{modifier.KeyDiscount} KEY" : string.Empty;
+            string healthSegment = modifier.HealthDiscount > 0f ? $"-{modifier.HealthDiscount:0.#} HP" : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(keySegment) && string.IsNullOrWhiteSpace(healthSegment))
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(keySegment) && !string.IsNullOrWhiteSpace(healthSegment))
+            {
+                return $"{roomLabel} {keySegment} / {healthSegment}";
+            }
+
+            return $"{roomLabel} {keySegment}{healthSegment}".Trim();
+        }
+
+        private static string MergePickupSummary(string primarySummary, string secondarySummary)
+        {
+            if (string.IsNullOrWhiteSpace(primarySummary))
+            {
+                return secondarySummary ?? string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(secondarySummary))
+            {
+                return primarySummary;
+            }
+
+            return $"{primarySummary}\n{secondarySummary}";
+        }
+
+        private static string BuildRoomRewardBonusSubtitle(
+            RoomType roomType,
+            int bonusRewardSelections,
+            int bonusItemRolls,
+            bool allowNonCombatResolve)
+        {
+            string roomLabel = allowNonCombatResolve
+                ? $"{ResolveRoomLabel(roomType)} CACHE"
+                : $"{ResolveRoomLabel(roomType)} CLEAR";
+            string rewardSegment = bonusRewardSelections > 0 ? $"+REWARD {bonusRewardSelections}" : string.Empty;
+            string itemSegment = bonusItemRolls > 0 ? $"+ITEM {bonusItemRolls}" : string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(rewardSegment) && !string.IsNullOrWhiteSpace(itemSegment))
+            {
+                return $"{roomLabel} / {rewardSegment} / {itemSegment}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(rewardSegment))
+            {
+                return $"{roomLabel} / {rewardSegment}";
+            }
+
+            return $"{roomLabel} / {itemSegment}";
+        }
+
+        private static string ResolveRoomRewardSummaryLabel(IReadOnlyList<RoomType> supportedRoomTypes, bool allowOnNonCombatResolve)
+        {
+            if (supportedRoomTypes != null && supportedRoomTypes.Count == 1)
+            {
+                return ResolveRoomLabel(supportedRoomTypes[0]);
+            }
+
+            return allowOnNonCombatResolve ? "CACHE" : "CLEAR";
+        }
+
+        private static string ResolveRoomLabel(RoomType roomType)
+        {
+            return roomType switch
+            {
+                RoomType.Boss => "BOSS",
+                RoomType.MiniBoss => "ELITE",
+                RoomType.Secret => "SECRET",
+                RoomType.Challenge => "CHALLENGE",
+                RoomType.Curse => "CURSE",
+                RoomType.Trap => "TRAP",
+                RoomType.Shop => "SHOP",
+                RoomType.Treasure => "TREASURE",
+                _ => "CLEAR"
+            };
+        }
+
+        private static string ResolveCurrencyLabel(ShopCurrencyType currencyType)
+        {
+            return currencyType switch
+            {
+                ShopCurrencyType.Keys => "KEY",
+                ShopCurrencyType.Bombs => "BOMB",
+                _ => "COIN"
+            };
         }
 
         private static void AppendStatSummary(StringBuilder builder, IReadOnlyList<StatModifier> statModifiers)
@@ -585,6 +1175,11 @@ namespace CuteIssac.Player
             if (!string.IsNullOrWhiteSpace(itemData.FlavorText))
             {
                 return itemData.FlavorText.Trim();
+            }
+
+            if (itemData.IsWeaponRelic && !string.IsNullOrWhiteSpace(itemData.WeaponMotif))
+            {
+                return itemData.WeaponMotif.Trim();
             }
 
             return itemData.ItemCategory switch

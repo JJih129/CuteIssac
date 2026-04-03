@@ -35,6 +35,9 @@ namespace CuteIssac.Enemy
         private Vector2 _preparedBurstAimDirection = Vector2.right;
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
+        private float _crossfireCueWindowRemaining;
+        private Vector2 _crossfireCueAnchor = Vector2.right;
+        private int _lastCrossfireCueSerial;
 
         protected override void HandleInitialized()
         {
@@ -54,6 +57,9 @@ namespace CuteIssac.Enemy
             _strafeSwapRemaining = strafeSwapInterval;
             _burstTelegraphRemaining = 0f;
             _preparedBurstAimDirection = Vector2.right;
+            _crossfireCueWindowRemaining = 0f;
+            _crossfireCueAnchor = Vector2.right;
+            _lastCrossfireCueSerial = 0;
             Controller?.EnemyVisual?.StopAttackTelegraph();
         }
 
@@ -65,6 +71,15 @@ namespace CuteIssac.Enemy
 
         public override void TickBrain(float fixedDeltaTime)
         {
+            EnemyFormationTactics.TryPrimeCrossfireCue(
+                FormationModifier,
+                ref _lastCrossfireCueSerial,
+                ref _crossfireCueWindowRemaining,
+                ref _crossfireCueAnchor,
+                ref _shotCooldown,
+                fixedDeltaTime,
+                0.12f);
+
             if (_burstTelegraphRemaining > 0f)
             {
                 _burstTelegraphRemaining -= fixedDeltaTime;
@@ -106,18 +121,41 @@ namespace CuteIssac.Enemy
 
         private Vector2 ResolveMoveDirection(Vector2 aimDirection, float distance)
         {
+            Vector2 fallbackDirection;
+
             if (distance > preferredRange)
             {
-                return aimDirection;
+                fallbackDirection = aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    preferredRange,
+                    0.88f);
             }
 
             if (distance < retreatRange)
             {
-                return -aimDirection;
+                fallbackDirection = -aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    preferredRange,
+                    0.88f);
             }
 
             Vector2 strafeDirection = new Vector2(-aimDirection.y, aimDirection.x * _strafeSign);
-            return strafeDirection * Mathf.Clamp01(strafeBlend);
+            fallbackDirection = strafeDirection * Mathf.Clamp01(strafeBlend);
+            return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                fallbackDirection,
+                preferredRange,
+                0.88f);
         }
 
         private void TryFire(Vector2 aimDirection, float distance)
@@ -132,20 +170,29 @@ namespace CuteIssac.Enemy
                 return;
             }
 
+            Vector2 preparedAimDirection = EnemyFormationTactics.ResolveCueAimDirection(
+                Controller.Position,
+                aimDirection,
+                _crossfireCueWindowRemaining,
+                _crossfireCueAnchor);
+
             if (_shotsRemainingInBurst <= 0)
             {
                 _shotsRemainingInBurst = Mathf.Max(1, shotsPerBurst);
 
                 if (burstTelegraphDuration > 0f)
                 {
-                    _preparedBurstAimDirection = aimDirection;
-                    _burstTelegraphRemaining = burstTelegraphDuration * _runtimeTelegraphDurationMultiplier;
+                    _preparedBurstAimDirection = preparedAimDirection;
+                    _burstTelegraphRemaining = EnemyFormationTactics.ResolveCueTelegraphDuration(
+                        burstTelegraphDuration,
+                        _crossfireCueWindowRemaining,
+                        0.56f) * _runtimeTelegraphDurationMultiplier;
                     Controller.EnemyVisual?.StartAttackTelegraph(burstTelegraphColor);
                     return;
                 }
             }
 
-            FireBurstShot(aimDirection);
+            FireBurstShot(preparedAimDirection);
         }
 
         private void FireBurstShot(Vector2 aimDirection)

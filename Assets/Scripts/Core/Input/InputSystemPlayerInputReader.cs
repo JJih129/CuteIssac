@@ -22,6 +22,9 @@ namespace CuteIssac.Core.Input
             "        { \"name\": \"Aim\", \"type\": \"Value\", \"id\": \"6dd16b54-ac8e-4c64-ac35-cba5cdbba93d\", \"expectedControlType\": \"Vector2\", \"processors\": \"\", \"interactions\": \"\", \"initialStateCheck\": true },\n" +
             "        { \"name\": \"Bomb\", \"type\": \"Button\", \"id\": \"01ce467b-58cd-4242-9a8d-8bc10f5f73e0\", \"expectedControlType\": \"Button\", \"processors\": \"\", \"interactions\": \"\", \"initialStateCheck\": false },\n" +
             "        { \"name\": \"ActiveItem\", \"type\": \"Button\", \"id\": \"f317e723-592c-4b0e-b67a-e0cc1c9a5f74\", \"expectedControlType\": \"Button\", \"processors\": \"\", \"interactions\": \"\", \"initialStateCheck\": false },\n" +
+            "        { \"name\": \"ReloadWeapon\", \"type\": \"Button\", \"id\": \"462f4a1f-a83c-4a11-93b1-fd2525d0d4a1\", \"expectedControlType\": \"Button\", \"processors\": \"\", \"interactions\": \"\", \"initialStateCheck\": false },\n" +
+            "        { \"name\": \"CycleWeapon\", \"type\": \"Button\", \"id\": \"17ee37a9-2050-4d4f-bd5c-f90ee11b2a17\", \"expectedControlType\": \"Button\", \"processors\": \"\", \"interactions\": \"\", \"initialStateCheck\": false },\n" +
+            "        { \"name\": \"DropWeapon\", \"type\": \"Button\", \"id\": \"7d08a12f-d020-48e8-9de5-9a4fa7705c61\", \"expectedControlType\": \"Button\", \"processors\": \"\", \"interactions\": \"\", \"initialStateCheck\": false },\n" +
             "        { \"name\": \"ToggleMinimap\", \"type\": \"Button\", \"id\": \"8a80785a-b0da-4ed8-9649-c936669ebd17\", \"expectedControlType\": \"Button\", \"processors\": \"\", \"interactions\": \"\", \"initialStateCheck\": false }\n" +
             "      ],\n" +
             "      \"bindings\": [\n" +
@@ -42,7 +45,13 @@ namespace CuteIssac.Core.Input
             "        { \"name\": \"\", \"id\": \"b8eb44e0-3c14-4d23-b8d3-44fdb7171242\", \"path\": \"<Keyboard>/leftShift\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Keyboard&Mouse\", \"action\": \"ActiveItem\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
             "        { \"name\": \"\", \"id\": \"ff845a52-c93d-46a3-ad39-90e5de91bc9a\", \"path\": \"<Keyboard>/e\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Keyboard&Mouse\", \"action\": \"ActiveItem\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
             "        { \"name\": \"\", \"id\": \"58fb0e27-f405-4ff0-82fe-a27d8303488a\", \"path\": \"<Gamepad>/leftShoulder\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Gamepad\", \"action\": \"ActiveItem\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
-            "        { \"name\": \"\", \"id\": \"f4c69bc2-0b68-4c9f-89d2-96fb9466580a\", \"path\": \"<Keyboard>/tab\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Keyboard&Mouse\", \"action\": \"ToggleMinimap\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
+            "        { \"name\": \"\", \"id\": \"8f50c915-6f71-4728-877f-56ab5260e6ce\", \"path\": \"<Keyboard>/r\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Keyboard&Mouse\", \"action\": \"ReloadWeapon\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
+            "        { \"name\": \"\", \"id\": \"cfc95f8c-79f5-49f1-98a5-93ef3560f4db\", \"path\": \"<Gamepad>/buttonWest\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Gamepad\", \"action\": \"ReloadWeapon\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
+            "        { \"name\": \"\", \"id\": \"74f26c29-0d42-4d14-a5cb-50d80f9fbe3a\", \"path\": \"<Keyboard>/tab\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Keyboard&Mouse\", \"action\": \"CycleWeapon\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
+            "        { \"name\": \"\", \"id\": \"7efb0b87-9bf9-43c4-ac2b-a557f6e4dcc0\", \"path\": \"<Gamepad>/rightShoulder\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Gamepad\", \"action\": \"CycleWeapon\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
+            "        { \"name\": \"\", \"id\": \"4eaf07ea-2456-4637-bf71-c241abd4db8a\", \"path\": \"<Keyboard>/g\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Keyboard&Mouse\", \"action\": \"DropWeapon\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
+            "        { \"name\": \"\", \"id\": \"c1602739-aeeb-4759-b1cd-855de817cb77\", \"path\": \"<Gamepad>/rightStickPress\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Gamepad\", \"action\": \"DropWeapon\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
+            "        { \"name\": \"\", \"id\": \"f4c69bc2-0b68-4c9f-89d2-96fb9466580a\", \"path\": \"<Keyboard>/m\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Keyboard&Mouse\", \"action\": \"ToggleMinimap\", \"isComposite\": false, \"isPartOfComposite\": false },\n" +
             "        { \"name\": \"\", \"id\": \"b1985a1d-9337-4b6d-97d8-c7b6614f4c09\", \"path\": \"<Gamepad>/select\", \"interactions\": \"\", \"processors\": \"\", \"groups\": \"Gamepad\", \"action\": \"ToggleMinimap\", \"isComposite\": false, \"isPartOfComposite\": false }\n" +
             "      ]\n" +
             "    }\n" +
@@ -54,6 +63,9 @@ namespace CuteIssac.Core.Input
         private const string AimActionName = "Aim";
         private const string BombActionName = "Bomb";
         private const string ActiveItemActionName = "ActiveItem";
+        private const string ReloadWeaponActionName = "ReloadWeapon";
+        private const string CycleWeaponActionName = "CycleWeapon";
+        private const string DropWeaponActionName = "DropWeapon";
         private const string ToggleMinimapActionName = "ToggleMinimap";
 
         [Header("Input Asset")]
@@ -66,9 +78,17 @@ namespace CuteIssac.Core.Input
         private InputAction _aimAction;
         private InputAction _bombAction;
         private InputAction _activeItemAction;
+        private InputAction _reloadWeaponAction;
+        private InputAction _cycleWeaponAction;
+        private InputAction _dropWeaponAction;
         private InputAction _toggleMinimapAction;
         private bool _initializationFailed;
         private bool _warnedMissingAsset;
+        private bool _weaponCarouselHorizontalLatched;
+        private int _weaponCarouselHorizontalDirection;
+        private bool _weaponCarouselDownLatched;
+        private int _cachedStateFrame = -1;
+        private PlayerGameplayInputState _cachedState;
 
         private void Awake()
         {
@@ -83,6 +103,7 @@ namespace CuteIssac.Core.Input
         private void OnDisable()
         {
             _playerMap?.Disable();
+            _cachedStateFrame = -1;
         }
 
         private void OnDestroy()
@@ -100,9 +121,34 @@ namespace CuteIssac.Core.Input
                 return default;
             }
 
+            if (_cachedStateFrame == Time.frameCount)
+            {
+                return _cachedState;
+            }
+
+            _cachedState = BuildState();
+            _cachedStateFrame = Time.frameCount;
+            return _cachedState;
+        }
+
+        private PlayerGameplayInputState BuildState()
+        {
             Vector2 move = _moveAction?.ReadValue<Vector2>() ?? Vector2.zero;
             Vector2 aim = _aimAction?.ReadValue<Vector2>() ?? Vector2.zero;
-            bool hasAimInput = aim.sqrMagnitude > 0.0001f;
+            bool weaponCarouselHeld = ResolveWeaponCarouselHeld();
+
+            if (!weaponCarouselHeld)
+            {
+                _weaponCarouselHorizontalLatched = false;
+                _weaponCarouselHorizontalDirection = 0;
+                _weaponCarouselDownLatched = false;
+            }
+
+            int weaponCarouselSelectionDelta = weaponCarouselHeld
+                ? ResolveWeaponCarouselSelectionDelta(aim)
+                : 0;
+            bool weaponCarouselDropPressed = weaponCarouselHeld && ResolveWeaponCarouselDropPressed(aim);
+            bool hasAimInput = !weaponCarouselHeld && aim.sqrMagnitude > 0.0001f;
 
             if (!hasAimInput)
             {
@@ -115,7 +161,13 @@ namespace CuteIssac.Core.Input
                 hasAimInput,
                 WasPressedThisFrame(_bombAction),
                 WasPressedThisFrame(_activeItemAction),
-                WasPressedThisFrame(_toggleMinimapAction));
+                ResolveMinimapTogglePressed(),
+                !weaponCarouselHeld && ResolveReloadPressed(),
+                !weaponCarouselHeld && ResolveCycleWeaponPressed(),
+                !weaponCarouselHeld && ResolveDropWeaponPressed(),
+                weaponCarouselHeld,
+                weaponCarouselSelectionDelta,
+                weaponCarouselDropPressed);
         }
 
         [ContextMenu("Enable Gameplay Input")]
@@ -185,6 +237,9 @@ namespace CuteIssac.Core.Input
                 _aimAction = _playerMap.FindAction(AimActionName, true);
                 _bombAction = _playerMap.FindAction(BombActionName, true);
                 _activeItemAction = _playerMap.FindAction(ActiveItemActionName, true);
+                _reloadWeaponAction = _playerMap.FindAction(ReloadWeaponActionName, false);
+                _cycleWeaponAction = _playerMap.FindAction(CycleWeaponActionName, false);
+                _dropWeaponAction = _playerMap.FindAction(DropWeaponActionName, false);
                 _toggleMinimapAction = _playerMap.FindAction(ToggleMinimapActionName, true);
 
                 if (isActiveAndEnabled)
@@ -201,6 +256,109 @@ namespace CuteIssac.Core.Input
         private static bool WasPressedThisFrame(InputAction action)
         {
             return action != null && action.WasPressedThisFrame();
+        }
+
+        private bool ResolveReloadPressed()
+        {
+            return WasPressedThisFrame(_reloadWeaponAction)
+                || WasKeyboardPressedThisFrame(Key.R);
+        }
+
+        private bool ResolveCycleWeaponPressed()
+        {
+            if (WasPressedThisFrame(_cycleWeaponAction))
+            {
+                return true;
+            }
+
+            if (_toggleMinimapAction != null && _cycleWeaponAction == null)
+            {
+                return WasKeyboardPressedThisFrame(Key.C);
+            }
+
+            return WasKeyboardPressedThisFrame(Key.Tab);
+        }
+
+        private bool ResolveDropWeaponPressed()
+        {
+            return WasPressedThisFrame(_dropWeaponAction)
+                || WasKeyboardPressedThisFrame(Key.G);
+        }
+
+        private bool ResolveMinimapTogglePressed()
+        {
+            return WasPressedThisFrame(_toggleMinimapAction)
+                || (_toggleMinimapAction == null && WasKeyboardPressedThisFrame(Key.M));
+        }
+
+        private bool ResolveWeaponCarouselHeld()
+        {
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.tabKey.isPressed)
+            {
+                return true;
+            }
+
+            return _cycleWeaponAction != null && _cycleWeaponAction.IsPressed();
+        }
+
+        private int ResolveWeaponCarouselSelectionDelta(Vector2 rawAim)
+        {
+            const float engageThreshold = 0.6f;
+            const float releaseThreshold = 0.25f;
+
+            float horizontal = rawAim.x;
+
+            if (Mathf.Abs(horizontal) <= releaseThreshold)
+            {
+                _weaponCarouselHorizontalLatched = false;
+                _weaponCarouselHorizontalDirection = 0;
+                return 0;
+            }
+
+            int direction = horizontal < 0f ? -1 : 1;
+
+            if (_weaponCarouselHorizontalLatched && _weaponCarouselHorizontalDirection == direction)
+            {
+                return 0;
+            }
+
+            if (Mathf.Abs(horizontal) < engageThreshold)
+            {
+                return 0;
+            }
+
+            _weaponCarouselHorizontalLatched = true;
+            _weaponCarouselHorizontalDirection = direction;
+            return direction;
+        }
+
+        private bool ResolveWeaponCarouselDropPressed(Vector2 rawAim)
+        {
+            const float engageThreshold = -0.6f;
+            const float releaseThreshold = -0.25f;
+
+            float vertical = rawAim.y;
+
+            if (vertical >= releaseThreshold)
+            {
+                _weaponCarouselDownLatched = false;
+                return false;
+            }
+
+            if (_weaponCarouselDownLatched || vertical > engageThreshold)
+            {
+                return false;
+            }
+
+            _weaponCarouselDownLatched = true;
+            return true;
+        }
+
+        private static bool WasKeyboardPressedThisFrame(Key key)
+        {
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null && keyboard[key].wasPressedThisFrame;
         }
 
         private void FailInitialization(string message, Exception exception)

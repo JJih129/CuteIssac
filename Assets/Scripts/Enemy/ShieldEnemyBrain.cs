@@ -41,16 +41,26 @@ namespace CuteIssac.Enemy
             float distance = toTarget.magnitude;
             Vector2 facingDirection = toTarget / distance;
             Controller.EnemyVisual?.SetMoveDirection(facingDirection);
+            Vector2 moveDirection = distance <= enemyData.ContactRange
+                ? facingDirection * 0.25f
+                : facingDirection;
+            moveDirection = EnemyFormationTactics.ResolveEscortFrontlineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                moveDirection,
+                1.08f,
+                0.24f);
 
             if (distance <= enemyData.ContactRange)
             {
                 Controller.SetMoveSpeedMultiplier(0.6f);
-                Controller.SetDesiredMoveDirection(facingDirection * 0.25f);
+                Controller.SetDesiredMoveDirection(moveDirection);
                 return;
             }
 
             Controller.SetMoveSpeedMultiplier(enemyData.AdvanceSpeedMultiplier);
-            Controller.SetDesiredMoveDirection(facingDirection);
+            Controller.SetDesiredMoveDirection(moveDirection);
         }
 
         private void Reset()

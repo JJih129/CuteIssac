@@ -18,6 +18,7 @@ namespace CuteIssac.Enemy
         [SerializeField] private EnemyVisual enemyVisual;
         [SerializeField] private DamageArea damageArea;
         [SerializeField] private Collider2D ownerCollider;
+        [SerializeField] [Min(1f)] private float minimumMutationHealthMultiplier = 1.6f;
 
         [Header("Volatile Champion")]
         [SerializeField] [Min(0.1f)] private float volatileExplosionRadius = 1.8f;
@@ -114,7 +115,8 @@ namespace CuteIssac.Enemy
             VariantAccentColor = variant.AccentColor;
 
             enemyMovement?.SetBaseMoveSpeed(_baselineMoveSpeed * variant.MoveSpeedMultiplier);
-            enemyHealth?.SetMaxHealth(_baselineBaseMaxHealth * variant.MaxHealthMultiplier);
+            float resolvedHealthMultiplier = Mathf.Max(minimumMutationHealthMultiplier, variant.MaxHealthMultiplier);
+            enemyHealth?.SetMaxHealth(_baselineBaseMaxHealth * resolvedHealthMultiplier);
             enemyController?.SetContactDamage(_baselineContactDamage * variant.ContactDamageMultiplier);
             enemyVisual?.ApplyChampionPresentation(variant.VariantId, variant.AccentColor, variant.ColorBlend, variant.VisualScaleMultiplier);
         }

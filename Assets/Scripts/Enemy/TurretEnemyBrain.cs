@@ -28,6 +28,9 @@ namespace CuteIssac.Enemy
         private Vector2 _preparedAimDirection = Vector2.right;
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
+        private float _crossfireCueWindowRemaining;
+        private Vector2 _crossfireCueAnchor = Vector2.right;
+        private int _lastCrossfireCueSerial;
 
         protected override void HandleInitialized()
         {
@@ -46,6 +49,9 @@ namespace CuteIssac.Enemy
             _shotsRemainingInVolley = 0;
             _nextShotIndexInVolley = 0;
             _preparedAimDirection = Vector2.right;
+            _crossfireCueWindowRemaining = 0f;
+            _crossfireCueAnchor = Vector2.right;
+            _lastCrossfireCueSerial = 0;
             Controller?.EnemyVisual?.StopAttackTelegraph();
         }
 
@@ -57,6 +63,15 @@ namespace CuteIssac.Enemy
 
         public override void TickBrain(float fixedDeltaTime)
         {
+            EnemyFormationTactics.TryPrimeCrossfireCue(
+                FormationModifier,
+                ref _lastCrossfireCueSerial,
+                ref _crossfireCueWindowRemaining,
+                ref _crossfireCueAnchor,
+                ref _shotCooldown,
+                fixedDeltaTime,
+                0.16f);
+
             if (!Controller.HasTarget)
             {
                 Controller.StopMovement();
@@ -106,14 +121,25 @@ namespace CuteIssac.Enemy
 
                 if (telegraphDuration > 0f)
                 {
-                    _preparedAimDirection = aimDirection;
-                    _telegraphRemaining = telegraphDuration * _runtimeTelegraphDurationMultiplier;
+                    _preparedAimDirection = EnemyFormationTactics.ResolveCueAimDirection(
+                        Controller.Position,
+                        aimDirection,
+                        _crossfireCueWindowRemaining,
+                        _crossfireCueAnchor);
+                    _telegraphRemaining = EnemyFormationTactics.ResolveCueTelegraphDuration(
+                        telegraphDuration,
+                        _crossfireCueWindowRemaining,
+                        0.54f) * _runtimeTelegraphDurationMultiplier;
                     Controller.EnemyVisual?.StartAttackTelegraph(telegraphColor);
                     return;
                 }
             }
 
-            FireVolleyShot(aimDirection);
+            FireVolleyShot(EnemyFormationTactics.ResolveCueAimDirection(
+                Controller.Position,
+                aimDirection,
+                _crossfireCueWindowRemaining,
+                _crossfireCueAnchor));
         }
 
         private void FireVolleyShot(Vector2 aimDirection)

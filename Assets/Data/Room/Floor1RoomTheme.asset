@@ -13,11 +13,73 @@ MonoBehaviour:
   m_Name: Floor1RoomTheme
   m_EditorClassIdentifier: 
   themeId: floor_1_theme
-  displayName: Basement Echo
+  displayName: Candy Village
+  roomVisualPrefab: {fileID: 900000100, guid: 9f1a1ce1d4d74f98b6d14ca7a6c00111, type: 3}
+  hideFallbackGeometryWhenRoomVisualIsPresent: 1
   floorVisualPrefab: {fileID: 0}
   wallVisualPrefab: {fileID: 0}
-  doorVisualPrefab: {fileID: 0}
+  doorVisualPrefab: {fileID: 990001000, guid: 2a4ef9378c134a3882d6ee4cb9e7a910, type: 3}
   decorationPrefabs: []
-  floorColor: {r: 0.16, g: 0.23, b: 0.35, a: 0.22}
-  wallColor: {r: 0.11, g: 0.16, b: 0.25, a: 0.95}
-  doorColor: {r: 0.45, g: 0.75, b: 0.96, a: 0.9}
+  roomTypeLandmarks:
+  - roomType: 0
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.15}
+    rotationZ: 0
+    scale: {x: 1.05, y: 1.05, z: 1}
+  - roomType: 2
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.12}
+    rotationZ: 0
+    scale: {x: 1, y: 1, z: 1}
+  - roomType: 3
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.08}
+    rotationZ: 0
+    scale: {x: 1, y: 1, z: 1}
+  - roomType: 4
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.16}
+    rotationZ: 0
+    scale: {x: 1.16, y: 1.16, z: 1}
+  - roomType: 5
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.08}
+    rotationZ: 0
+    scale: {x: 0.96, y: 0.96, z: 1}
+  - roomType: 6
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.1}
+    rotationZ: 0
+    scale: {x: 1.02, y: 1.02, z: 1}
+  - roomType: 7
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.14}
+    rotationZ: 0
+    scale: {x: 1.06, y: 1.06, z: 1}
+  - roomType: 8
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.02}
+    rotationZ: 0
+    scale: {x: 1, y: 1, z: 1}
+  - roomType: 9
+    landmarkPrefab: {fileID: 0}
+    useRuntimeFallback: 1
+    localOffset: {x: 0, y: 0.08}
+    rotationZ: 0
+    scale: {x: 1.02, y: 1.02, z: 1}
+  primaryAccentColor: {r: 0.98, g: 0.8, b: 0.86, a: 1}
+  secondaryAccentColor: {r: 0.76, g: 0.92, b: 0.86, a: 1}
+  tertiaryAccentColor: {r: 0.97, g: 0.9, b: 0.6, a: 1}
+  highlightAccentColor: {r: 0.99, g: 0.96, b: 0.94, a: 1}
+  shadowAccentColor: {r: 0.45, g: 0.31, b: 0.28, a: 1}
+  floorColor: {r: 0.92, g: 0.86, b: 0.9, a: 0.16}
+  wallColor: {r: 0.88, g: 0.71, b: 0.78, a: 0.48}
+  doorColor: {r: 0.98, g: 0.9, b: 0.66, a: 0.9}

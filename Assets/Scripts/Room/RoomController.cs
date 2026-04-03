@@ -194,6 +194,27 @@ namespace CuteIssac.Room
             }
         }
 
+        public void CollectAliveEnemies(List<EnemyHealth> targetBuffer)
+        {
+            if (targetBuffer == null)
+            {
+                return;
+            }
+
+            targetBuffer.Clear();
+
+            for (int i = 0; i < _registeredEnemies.Count; i++)
+            {
+                EnemyHealth enemy = _registeredEnemies[i];
+                if (enemy == null || enemy.IsDead)
+                {
+                    continue;
+                }
+
+                targetBuffer.Add(enemy);
+            }
+        }
+
         public void SetCurrentRoom(bool isCurrent)
         {
             IsCurrentRoom = isCurrent;

@@ -21,6 +21,8 @@ namespace CuteIssac.Player
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private PlayerVisual playerVisual;
         [SerializeField] private Rigidbody2D playerRigidbody;
+        [SerializeField] private PlayerRoutePlanCarryController routePlanCarryController;
+        [SerializeField] private PlayerWeaponLoadout weaponLoadout;
 
         [Header("Attack Data")]
         [SerializeField] private PlayerAttackDefinition attackDefinition;
@@ -30,11 +32,66 @@ namespace CuteIssac.Player
         private IPlayerInputReader _inputReader;
         private float _shotCooldown;
         private Vector2 _lastAttackDirection = Vector2.right;
+        private float _lastAimInputTimestamp = float.NegativeInfinity;
 
-        public PlayerAttackDefinition AttackDefinition => attackDefinition;
+        public PlayerAttackDefinition StartingAttackDefinition => attackDefinition;
+        public PlayerAttackDefinition AttackDefinition => weaponLoadout != null && weaponLoadout.CurrentAttackDefinition != null
+            ? weaponLoadout.CurrentAttackDefinition
+            : attackDefinition;
+        public Vector2 LastAttackDirection => _lastAttackDirection;
 
         private void Awake()
         {
+            if (GetComponent<PlayerCombatMomentumController>() == null)
+            {
+                gameObject.AddComponent<PlayerCombatMomentumController>();
+            }
+
+            if (GetComponent<PlayerCombatMomentumVisual>() == null)
+            {
+                gameObject.AddComponent<PlayerCombatMomentumVisual>();
+            }
+
+            if (GetComponent<PlayerCombatMomentumExecutionController>() == null)
+            {
+                gameObject.AddComponent<PlayerCombatMomentumExecutionController>();
+            }
+
+            if (GetComponent<PlayerRoutePlanCarryController>() == null)
+            {
+                gameObject.AddComponent<PlayerRoutePlanCarryController>();
+            }
+
+            if (GetComponent<CombatOpeningTargetHintController>() == null)
+            {
+                gameObject.AddComponent<CombatOpeningTargetHintController>();
+            }
+
+            if (GetComponent<PlayerRoutePlanCarryBurstVisual>() == null)
+            {
+                gameObject.AddComponent<PlayerRoutePlanCarryBurstVisual>();
+            }
+
+            if (GetComponent<PlayerLoadoutDeltaPresentation>() == null)
+            {
+                gameObject.AddComponent<PlayerLoadoutDeltaPresentation>();
+            }
+
+            if (GetComponent<PlayerLoadoutDeltaController>() == null)
+            {
+                gameObject.AddComponent<PlayerLoadoutDeltaController>();
+            }
+
+            if (GetComponent<PlayerWeaponLoadout>() == null)
+            {
+                gameObject.AddComponent<PlayerWeaponLoadout>();
+            }
+
+            if (GetComponent<EnemyAmmoDropSpawner>() == null)
+            {
+                gameObject.AddComponent<EnemyAmmoDropSpawner>();
+            }
+
             if (!TryResolveProjectileSpawner() || !TryResolveInputReader())
             {
                 enabled = false;
@@ -61,6 +118,16 @@ namespace CuteIssac.Player
                 playerRigidbody = GetComponent<Rigidbody2D>();
             }
 
+            if (routePlanCarryController == null)
+            {
+                routePlanCarryController = GetComponent<PlayerRoutePlanCarryController>();
+            }
+
+            if (weaponLoadout == null)
+            {
+                weaponLoadout = GetComponent<PlayerWeaponLoadout>();
+            }
+
             if (playerVisual != null && playerVisual.MuzzleAnchor != null)
             {
                 projectileSpawner.SetSpawnOrigin(playerVisual.MuzzleAnchor);
@@ -69,17 +136,24 @@ namespace CuteIssac.Player
 
         private void Update()
         {
+            if (_inputReader == null && !TryResolveInputReader())
+            {
+                return;
+            }
+
             if (_shotCooldown > 0f)
             {
                 _shotCooldown -= Time.deltaTime;
             }
 
-            if (attackDefinition == null || !attackDefinition.IsValid)
+            PlayerGameplayInputState inputState = _inputReader.ReadState();
+            weaponLoadout?.ProcessInput(inputState, Time.deltaTime);
+            PlayerAttackDefinition resolvedAttackDefinition = AttackDefinition;
+
+            if (resolvedAttackDefinition == null || !resolvedAttackDefinition.IsValid)
             {
                 return;
             }
-
-            PlayerGameplayInputState inputState = _inputReader.ReadState();
 
             if (!inputState.HasAimInput)
             {
@@ -94,46 +168,87 @@ namespace CuteIssac.Player
             }
 
             _lastAttackDirection = attackDirection;
+            _lastAimInputTimestamp = Time.unscaledTime;
             playerVisual?.SetAimDirection(attackDirection);
-            TryFire(attackDirection);
+            TryFire(attackDirection, resolvedAttackDefinition);
         }
 
-        private void TryFire(Vector2 attackDirection)
+        public bool TryGetRecentAimDirection(float freshnessWindow, out Vector2 aimDirection)
+        {
+            aimDirection = _lastAttackDirection;
+
+            if (_lastAttackDirection.sqrMagnitude <= 0.0001f)
+            {
+                return false;
+            }
+
+            float clampedWindow = Mathf.Max(0.01f, freshnessWindow);
+            return Time.unscaledTime - _lastAimInputTimestamp <= clampedWindow;
+        }
+
+        private void TryFire(Vector2 attackDirection, PlayerAttackDefinition resolvedAttackDefinition)
         {
             if (_shotCooldown > 0f)
             {
                 return;
             }
 
-            int shotCount = ResolveShotCount();
+            if (weaponLoadout != null && !weaponLoadout.TryConsumeShot())
+            {
+                return;
+            }
+
+            int baseShotCount = ResolveShotCount();
+            int shotCount = routePlanCarryController != null
+                ? routePlanCarryController.ResolveRecentOpeningCadenceHitRoleShotCount(
+                    routePlanCarryController.ResolveOpeningCadenceShotCount(baseShotCount))
+                : baseShotCount;
             Vector2 fireDirection = attackDirection.normalized;
             Vector2 inheritedVelocity = ResolveInheritedVelocity();
 
             for (int shotIndex = 0; shotIndex < shotCount; shotIndex++)
             {
                 Vector2 shotDirection = ResolveShotDirection(fireDirection, shotIndex, shotCount);
-                ProjectileSpawnRequest spawnRequest = BuildSpawnRequest(shotDirection, inheritedVelocity);
+                shotDirection = ResolveRouteAssistedShotDirection(shotDirection, resolvedAttackDefinition);
+                shotDirection = routePlanCarryController != null
+                    ? routePlanCarryController.ResolveOpeningCadenceShotDirection(shotDirection, shotIndex, shotCount)
+                    : shotDirection;
+                if (routePlanCarryController != null && projectileSpawner != null && resolvedAttackDefinition != null)
+                {
+                    Vector2 shotOrigin = projectileSpawner.GetSpawnPosition(shotDirection, resolvedAttackDefinition.MuzzleOffset);
+                    shotDirection = routePlanCarryController.ResolveRecentOpeningCadenceHitRoleShotDirection(shotOrigin, shotDirection, shotIndex, shotCount);
+                }
+                ProjectileSpawnRequest spawnRequest = BuildSpawnRequest(shotDirection, inheritedVelocity, resolvedAttackDefinition);
+                routePlanCarryController?.ApplyOpeningCadenceToSpawnRequest(ref spawnRequest, shotIndex, shotCount);
+                routePlanCarryController?.ApplyRecentOpeningCadenceHitRoleToSpawnRequest(ref spawnRequest, shotIndex, shotCount);
                 projectileSpawner.Spawn(in spawnRequest);
             }
 
             playerVisual?.HandleFired(attackDirection);
             GameplayRuntimeEvents.RaiseProjectileFired(new ProjectileFiredSignal(
                 transform,
-                projectileSpawner.GetSpawnPosition(fireDirection, attackDefinition.MuzzleOffset),
+                projectileSpawner.GetSpawnPosition(fireDirection, resolvedAttackDefinition.MuzzleOffset),
                 fireDirection,
                 shotCount));
             GameAudioEvents.Raise(GameAudioEventType.ProjectileFired, transform.position);
-            _shotCooldown = ResolveFireInterval();
+            float resolvedFireInterval = ResolveFireInterval();
+            if (routePlanCarryController != null)
+            {
+                resolvedFireInterval = routePlanCarryController.ResolveOpeningCadenceFireInterval(resolvedFireInterval);
+                resolvedFireInterval = routePlanCarryController.ResolveRecentOpeningCadenceHitRoleFireInterval(resolvedFireInterval);
+            }
+
+            _shotCooldown = resolvedFireInterval;
         }
 
-        private ProjectileSpawnRequest BuildSpawnRequest(Vector2 attackDirection, Vector2 inheritedVelocity)
+        private ProjectileSpawnRequest BuildSpawnRequest(Vector2 attackDirection, Vector2 inheritedVelocity, PlayerAttackDefinition resolvedAttackDefinition)
         {
-            ProjectileDefinition projectileDefinition = attackDefinition.ProjectileDefinition;
+            ProjectileDefinition projectileDefinition = resolvedAttackDefinition.ProjectileDefinition;
 
             return new ProjectileSpawnRequest
             {
                 ProjectilePrefab = projectileDefinition.ProjectilePrefab,
-                Position = projectileSpawner.GetSpawnPosition(attackDirection, attackDefinition.MuzzleOffset),
+                Position = projectileSpawner.GetSpawnPosition(attackDirection, resolvedAttackDefinition.MuzzleOffset),
                 Direction = attackDirection,
                 InheritedVelocity = inheritedVelocity,
                 Damage = ResolveDamage(projectileDefinition),
@@ -143,6 +258,7 @@ namespace CuteIssac.Player
                 Knockback = ResolveKnockback(),
                 PierceCount = ResolvePierceCount(),
                 HomingStrength = ResolveHomingStrength(),
+                Traits = ResolveProjectileTraits(),
                 Instigator = transform,
                 InstigatorCollider = ownerCollider,
                 DamageTarget = ProjectileDamageTarget.EnemyOnly
@@ -166,7 +282,10 @@ namespace CuteIssac.Player
                 return playerStats.CurrentFireInterval;
             }
 
-            return attackDefinition.FireInterval;
+            PlayerAttackDefinition resolvedAttackDefinition = AttackDefinition;
+            return resolvedAttackDefinition != null
+                ? resolvedAttackDefinition.FireInterval
+                : 0.3f;
         }
 
         private float ResolveProjectileSpeed(ProjectileDefinition projectileDefinition)
@@ -201,12 +320,14 @@ namespace CuteIssac.Player
 
         private float ResolveKnockback()
         {
+            float baseKnockback = 0f;
+
             if (playerStats != null)
             {
-                return playerStats.CurrentKnockback;
+                baseKnockback = playerStats.CurrentKnockback;
             }
 
-            return 0f;
+            return baseKnockback * (weaponLoadout != null ? weaponLoadout.CurrentKnockbackMultiplier : 1f);
         }
 
         private int ResolvePierceCount()
@@ -229,6 +350,13 @@ namespace CuteIssac.Player
             return Mathf.Max(0f, playerStats.CurrentHomingStrength);
         }
 
+        private ProjectileTraitState ResolveProjectileTraits()
+        {
+            return playerStats != null
+                ? playerStats.CurrentProjectileTraits
+                : ProjectileTraitState.Default;
+        }
+
         private int ResolveShotCount()
         {
             if (playerStats == null)
@@ -246,7 +374,9 @@ namespace CuteIssac.Player
                 guaranteedShots += 1;
             }
 
-            return guaranteedShots;
+            return weaponLoadout != null
+                ? weaponLoadout.ResolveShotCount(guaranteedShots)
+                : guaranteedShots;
         }
 
         private Vector2 ResolveShotDirection(Vector2 baseDirection, int shotIndex, int shotCount)
@@ -257,7 +387,10 @@ namespace CuteIssac.Player
             }
 
             float centerIndex = (shotCount - 1) * 0.5f;
-            float angleOffset = (shotIndex - centerIndex) * multishotSpreadDegrees;
+            float spreadDegrees = weaponLoadout != null
+                ? weaponLoadout.ResolveSpreadDegrees(multishotSpreadDegrees)
+                : multishotSpreadDegrees;
+            float angleOffset = (shotIndex - centerIndex) * spreadDegrees;
             return Rotate(baseDirection, angleOffset).normalized;
         }
 
@@ -269,6 +402,24 @@ namespace CuteIssac.Player
             }
 
             return playerRigidbody.linearVelocity * inertiaFactor;
+        }
+
+        private Vector2 ResolveRouteAssistedShotDirection(Vector2 baseDirection, PlayerAttackDefinition resolvedAttackDefinition)
+        {
+            if (routePlanCarryController == null
+                || projectileSpawner == null
+                || resolvedAttackDefinition == null)
+            {
+                return baseDirection;
+            }
+
+            Vector2 normalizedDirection = baseDirection.sqrMagnitude > 0.0001f
+                ? baseDirection.normalized
+                : Vector2.right;
+            Vector2 shotOrigin = projectileSpawner.GetSpawnPosition(normalizedDirection, resolvedAttackDefinition.MuzzleOffset);
+            return routePlanCarryController.TryResolveBreakthroughShotDirection(shotOrigin, normalizedDirection, out Vector2 adjustedDirection)
+                ? adjustedDirection
+                : normalizedDirection;
         }
 
         private static Vector2 Rotate(Vector2 direction, float angleDegrees)
@@ -331,6 +482,7 @@ namespace CuteIssac.Player
             playerVisual = GetComponent<PlayerVisual>();
             playerRigidbody = GetComponent<Rigidbody2D>();
             ownerCollider = GetComponent<Collider2D>();
+            weaponLoadout = GetComponent<PlayerWeaponLoadout>();
         }
 
         private void OnValidate()
@@ -358,6 +510,16 @@ namespace CuteIssac.Player
             if (ownerCollider == null)
             {
                 ownerCollider = GetComponent<Collider2D>();
+            }
+
+            if (routePlanCarryController == null)
+            {
+                routePlanCarryController = GetComponent<PlayerRoutePlanCarryController>();
+            }
+
+            if (weaponLoadout == null)
+            {
+                weaponLoadout = GetComponent<PlayerWeaponLoadout>();
             }
         }
 

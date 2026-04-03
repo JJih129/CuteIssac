@@ -53,6 +53,13 @@ namespace CuteIssac.Enemy
             }
 
             Vector2 moveDirection = ResolveMoveDirection(enemyData, chaseDirection, distance);
+            moveDirection = EnemyFormationTactics.ResolveEscortFrontlineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                moveDirection,
+                1.32f,
+                0.52f);
             float speedMultiplier = distance > enemyData.EngageRange ? enemyData.SurgeSpeedMultiplier : 1f;
             Controller.SetMoveSpeedMultiplier(speedMultiplier);
             Controller.SetDesiredMoveDirection(moveDirection);

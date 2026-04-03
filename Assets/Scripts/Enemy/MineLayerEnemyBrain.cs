@@ -18,6 +18,10 @@ namespace CuteIssac.Enemy
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
         private bool _hasPrewarmedMine;
+        private float _siegeCueWindowRemaining;
+        private Vector2 _siegeCueAnchor = Vector2.right;
+        private int _lastSiegeCueSerial;
+        private bool _siegeCueRaisedForCurrentTelegraph;
 
         protected override void HandleInitialized()
         {
@@ -32,6 +36,10 @@ namespace CuteIssac.Enemy
             _telegraphRemaining = 0f;
             _strafeSign = (GetInstanceID() & 1) == 0 ? 1f : -1f;
             _strafeSwapRemaining = enemyData != null ? enemyData.StrafeSwapInterval : 1f;
+            _siegeCueWindowRemaining = 0f;
+            _siegeCueAnchor = Vector2.right;
+            _lastSiegeCueSerial = 0;
+            _siegeCueRaisedForCurrentTelegraph = false;
             Controller?.EnemyVisual?.StopAttackTelegraph();
             TryPrewarmMine(enemyData);
         }
@@ -44,6 +52,15 @@ namespace CuteIssac.Enemy
 
         public override void TickBrain(float fixedDeltaTime)
         {
+            EnemyFormationTactics.TryPrimeSiegeCue(
+                FormationModifier,
+                ref _lastSiegeCueSerial,
+                ref _siegeCueWindowRemaining,
+                ref _siegeCueAnchor,
+                ref _layCooldown,
+                fixedDeltaTime,
+                0.24f);
+
             MineLayerEnemyData enemyData = configurator != null ? configurator.EnemyData : null;
 
             if (enemyData == null)
@@ -67,6 +84,12 @@ namespace CuteIssac.Enemy
 
             if (_telegraphRemaining > 0f)
             {
+                if (!_siegeCueRaisedForCurrentTelegraph)
+                {
+                    EnemyFormationTactics.BroadcastSiegeCue(FormationModifier, Controller.TargetPosition, 0.86f, 1f);
+                    _siegeCueRaisedForCurrentTelegraph = true;
+                }
+
                 _telegraphRemaining -= fixedDeltaTime;
                 Controller.SetMoveSpeedMultiplier(enemyData.MoveSpeedWhileTelegraphing);
                 Controller.StopMovement();
@@ -97,32 +120,57 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _telegraphRemaining = enemyData.TelegraphDuration * _runtimeTelegraphDurationMultiplier;
-            Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TelegraphColor);
+            BeginLayTelegraph(enemyData);
         }
 
         private Vector2 ResolveMoveDirection(MineLayerEnemyData enemyData, Vector2 aimDirection, float distance)
         {
+            Vector2 fallbackDirection;
+
             if (distance > enemyData.PreferredRange)
             {
-                return aimDirection;
+                fallbackDirection = aimDirection;
+                return EnemyFormationTactics.ResolveSiegeBacklineMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    0.68f);
             }
 
             if (distance < enemyData.RetreatRange)
             {
-                return -aimDirection;
+                fallbackDirection = -aimDirection;
+                return EnemyFormationTactics.ResolveSiegeBacklineMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    0.68f);
             }
 
             Vector2 strafeDirection = new(-aimDirection.y, aimDirection.x * _strafeSign);
-            return strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            fallbackDirection = strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            return EnemyFormationTactics.ResolveSiegeBacklineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                fallbackDirection,
+                0.68f);
         }
 
         private void LayMine(MineLayerEnemyData enemyData, Vector2 aimDirection)
         {
             Controller.EnemyVisual?.StopAttackTelegraph();
+            _siegeCueRaisedForCurrentTelegraph = false;
 
-            Vector2 right = new(aimDirection.y, -aimDirection.x);
-            Vector2 dropOffset = (aimDirection * enemyData.MineDropOffset.y) + (right * enemyData.MineDropOffset.x);
+            Vector2 coordinatedAimDirection = EnemyFormationTactics.ResolveCueAimDirection(
+                Controller.Position,
+                aimDirection,
+                _siegeCueWindowRemaining,
+                _siegeCueAnchor);
+            Vector2 right = new(coordinatedAimDirection.y, -coordinatedAimDirection.x);
+            Vector2 dropOffset = (coordinatedAimDirection * enemyData.MineDropOffset.y) + (right * enemyData.MineDropOffset.x);
             Vector3 spawnPosition = Controller.Position + dropOffset;
             EnemyMineController spawnedMine = GameplaySpawnFactory.SpawnComponent(
                 enemyData.MinePrefab,
@@ -146,6 +194,17 @@ namespace CuteIssac.Enemy
 
             Controller.EnemyVisual?.HandleAttack();
             _layCooldown = enemyData.LayInterval;
+        }
+
+        private void BeginLayTelegraph(MineLayerEnemyData enemyData)
+        {
+            _telegraphRemaining = EnemyFormationTactics.ResolveCueTelegraphDuration(
+                enemyData.TelegraphDuration,
+                _siegeCueWindowRemaining,
+                0.58f) * _runtimeTelegraphDurationMultiplier;
+            _siegeCueRaisedForCurrentTelegraph = true;
+            Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TelegraphColor);
+            EnemyFormationTactics.BroadcastSiegeCue(FormationModifier, Controller.TargetPosition, 0.86f, 1f);
         }
 
         private void TryPrewarmMine(MineLayerEnemyData enemyData)

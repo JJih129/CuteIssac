@@ -5,6 +5,7 @@ namespace CuteIssac.Data.Item
         Passive = 0,
         Active = 1,
         Trinket = 2,
-        Consumable = 3
+        Consumable = 3,
+        Weapon = 4
     }
 }

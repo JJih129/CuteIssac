@@ -19,6 +19,9 @@ namespace CuteIssac.Combat
         public float Knockback;
         public int PierceCount;
         public float HomingStrength;
+        public ProjectileTraitState Traits;
+        public OpeningCadenceVolleyRole OpeningCadenceRole;
+        public float OpeningCadenceRoleWeight;
         public Transform Instigator;
         public Collider2D InstigatorCollider;
         public ProjectileDamageTarget DamageTarget;

@@ -116,6 +116,13 @@ namespace CuteIssac.Enemy
         [SerializeField] [Range(1f, 2.5f)] private float enragedChargeSpeedMultiplier = 1.35f;
         [SerializeField] [Range(1f, 2f)] private float enragedVolleyCountMultiplier = 1.34f;
 
+        [Header("Runtime Tuning")]
+        [SerializeField] [Range(1f, 4f)] private float globalPatternCooldownMultiplier = 2.6f;
+        [SerializeField] [Range(1f, 3f)] private float globalTelegraphDurationMultiplier = 1.7f;
+        [SerializeField] [Range(1f, 3f)] private float globalPatternCadenceMultiplier = 2.1f;
+        [SerializeField] [Range(0.2f, 1f)] private float globalProjectileSpeedMultiplier = 0.42f;
+        [SerializeField] [Range(0.2f, 1f)] private float globalChargeSpeedMultiplier = 0.58f;
+
         private BossBrainState _state;
         private float _stateTimer;
         private float _burstCooldownRemaining;
@@ -190,6 +197,7 @@ namespace CuteIssac.Enemy
             _shockwaveCurrentAngle = 0f;
             _crossfireCurrentAngle = 0f;
             Controller.SetMoveSpeedMultiplier(1f);
+            enemyCombat?.SetProjectileSpeedMultiplier(globalProjectileSpeedMultiplier);
             Controller.StopMovement();
             ClearTelegraph();
         }
@@ -212,6 +220,7 @@ namespace CuteIssac.Enemy
             _stateTimer = 0f;
             _state = BossBrainState.Neutral;
             Controller.SetMoveSpeedMultiplier(1f);
+            enemyCombat?.SetProjectileSpeedMultiplier(globalProjectileSpeedMultiplier);
             Controller.StopMovement();
             ClearTelegraph();
             SetPhaseTransitionState(false);
@@ -223,6 +232,7 @@ namespace CuteIssac.Enemy
             _stateTimer = Mathf.Max(0f, duration);
             _phaseTransitionRemaining = _stateTimer;
             Controller.SetMoveSpeedMultiplier(1f);
+            enemyCombat?.SetProjectileSpeedMultiplier(globalProjectileSpeedMultiplier);
             Controller.StopMovement();
             ClearTelegraph();
 
@@ -517,7 +527,7 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _stateTimer = volleyShotInterval;
+            _stateTimer = GetPatternCadenceInterval(volleyShotInterval);
         }
 
         private void FireVolleySalvo(Vector2 aimDirection)
@@ -569,7 +579,7 @@ namespace CuteIssac.Enemy
             }
 
             _state = BossBrainState.Charging;
-            _stateTimer = chargeDuration;
+            _stateTimer = GetChargeDuration();
             Controller.SetMoveSpeedMultiplier(GetChargeSpeedMultiplier());
             bossVisual?.HandleAttack();
         }
@@ -741,7 +751,7 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _stateTimer = sweepShotInterval;
+            _stateTimer = GetPatternCadenceInterval(sweepShotInterval);
         }
 
         private void TickSpiralFiring(float fixedDeltaTime)
@@ -769,7 +779,7 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _stateTimer = spiralShotInterval;
+            _stateTimer = GetPatternCadenceInterval(spiralShotInterval);
         }
 
         private void TickFanFiring(float fixedDeltaTime)
@@ -797,7 +807,7 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _stateTimer = fanShotInterval;
+            _stateTimer = GetPatternCadenceInterval(fanShotInterval);
         }
 
         private void TickShockwaveFiring(float fixedDeltaTime)
@@ -824,7 +834,7 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _stateTimer = shockwaveShotInterval;
+            _stateTimer = GetPatternCadenceInterval(shockwaveShotInterval);
         }
 
         private void TickCrossfireFiring(float fixedDeltaTime)
@@ -852,7 +862,7 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _stateTimer = crossfireShotInterval;
+            _stateTimer = GetPatternCadenceInterval(crossfireShotInterval);
         }
 
         private void FireSweepSalvo(Vector2 aimDirection)
@@ -975,55 +985,57 @@ namespace CuteIssac.Enemy
 
         private float GetBurstCooldown()
         {
-            float cooldown = burstCooldown * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.BurstCooldownMultiplier : 1f);
+            float cooldown = burstCooldown * globalPatternCooldownMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.BurstCooldownMultiplier : 1f);
             return _isEnraged ? cooldown * enragedCooldownMultiplier : cooldown;
         }
 
         private float GetChargeCooldown()
         {
-            float cooldown = chargeCooldown * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ChargeCooldownMultiplier : 1f);
+            float cooldown = chargeCooldown * globalPatternCooldownMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ChargeCooldownMultiplier : 1f);
             return _isEnraged ? cooldown * enragedCooldownMultiplier : cooldown;
         }
 
         private float GetSweepCooldown()
         {
-            float cooldown = sweepCooldown * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.SweepCooldownMultiplier : 1f);
+            float cooldown = sweepCooldown * globalPatternCooldownMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.SweepCooldownMultiplier : 1f);
             return _isEnraged ? cooldown * enragedCooldownMultiplier : cooldown;
         }
 
         private float GetSpiralCooldown()
         {
-            float cooldown = spiralCooldown * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.SpiralCooldownMultiplier : 1f);
+            float cooldown = spiralCooldown * globalPatternCooldownMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.SpiralCooldownMultiplier : 1f);
             return _isEnraged ? cooldown * enragedCooldownMultiplier : cooldown;
         }
 
         private float GetFanCooldown()
         {
-            float cooldown = fanCooldown * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.FanCooldownMultiplier : 1f);
+            float cooldown = fanCooldown * globalPatternCooldownMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.FanCooldownMultiplier : 1f);
             return _isEnraged ? cooldown * enragedCooldownMultiplier : cooldown;
         }
 
         private float GetShockwaveCooldown()
         {
-            float cooldown = shockwaveCooldown * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ShockwaveCooldownMultiplier : 1f);
+            float cooldown = shockwaveCooldown * globalPatternCooldownMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ShockwaveCooldownMultiplier : 1f);
             return _isEnraged ? cooldown * enragedCooldownMultiplier : cooldown;
         }
 
         private float GetCrossfireCooldown()
         {
-            float cooldown = crossfireCooldown * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.CrossfireCooldownMultiplier : 1f);
+            float cooldown = crossfireCooldown * globalPatternCooldownMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.CrossfireCooldownMultiplier : 1f);
             return _isEnraged ? cooldown * enragedCooldownMultiplier : cooldown;
         }
 
         private float GetVolleyCooldown()
         {
-            float cooldown = volleyCooldown * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.VolleyCooldownMultiplier : 1f);
+            float cooldown = volleyCooldown * globalPatternCooldownMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.VolleyCooldownMultiplier : 1f);
             return _isEnraged ? cooldown * enragedCooldownMultiplier : cooldown;
         }
 
         private float GetChargeSpeedMultiplier()
         {
-            float multiplier = chargeSpeedMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ChargeSpeedMultiplier : 1f);
+            float multiplier = chargeSpeedMultiplier
+                * globalChargeSpeedMultiplier
+                * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ChargeSpeedMultiplier : 1f);
             return _isEnraged ? multiplier * enragedChargeSpeedMultiplier : multiplier;
         }
 
@@ -1052,50 +1064,60 @@ namespace CuteIssac.Enemy
 
         private float GetBurstTelegraphDuration()
         {
-            float duration = burstTelegraphDuration * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.BurstTelegraphMultiplier : 1f);
+            float duration = burstTelegraphDuration * globalTelegraphDurationMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.BurstTelegraphMultiplier : 1f);
             return _isEnraged ? duration * 0.8f : duration;
         }
 
         private float GetVolleyTelegraphDuration()
         {
-            float duration = volleyTelegraphDuration * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.VolleyTelegraphMultiplier : 1f);
+            float duration = volleyTelegraphDuration * globalTelegraphDurationMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.VolleyTelegraphMultiplier : 1f);
             return _isEnraged ? duration * 0.75f : duration;
         }
 
         private float GetChargeTelegraphDuration()
         {
-            float duration = chargeTelegraphDuration * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ChargeTelegraphMultiplier : 1f);
+            float duration = chargeTelegraphDuration * globalTelegraphDurationMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ChargeTelegraphMultiplier : 1f);
             return _isEnraged ? duration * 0.8f : duration;
         }
 
         private float GetSweepTelegraphDuration()
         {
-            float duration = sweepTelegraphDuration * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.SweepTelegraphMultiplier : 1f);
+            float duration = sweepTelegraphDuration * globalTelegraphDurationMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.SweepTelegraphMultiplier : 1f);
             return _isEnraged ? duration * 0.78f : duration;
         }
 
         private float GetSpiralTelegraphDuration()
         {
-            float duration = spiralTelegraphDuration * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.SpiralTelegraphMultiplier : 1f);
+            float duration = spiralTelegraphDuration * globalTelegraphDurationMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.SpiralTelegraphMultiplier : 1f);
             return _isEnraged ? duration * 0.76f : duration;
         }
 
         private float GetFanTelegraphDuration()
         {
-            float duration = fanTelegraphDuration * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.FanTelegraphMultiplier : 1f);
+            float duration = fanTelegraphDuration * globalTelegraphDurationMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.FanTelegraphMultiplier : 1f);
             return _isEnraged ? duration * 0.78f : duration;
         }
 
         private float GetShockwaveTelegraphDuration()
         {
-            float duration = shockwaveTelegraphDuration * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ShockwaveTelegraphMultiplier : 1f);
+            float duration = shockwaveTelegraphDuration * globalTelegraphDurationMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.ShockwaveTelegraphMultiplier : 1f);
             return _isEnraged ? duration * 0.8f : duration;
         }
 
         private float GetCrossfireTelegraphDuration()
         {
-            float duration = crossfireTelegraphDuration * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.CrossfireTelegraphMultiplier : 1f);
+            float duration = crossfireTelegraphDuration * globalTelegraphDurationMultiplier * GetPhaseMultiplier(_currentPhaseDefinition != null ? _currentPhaseDefinition.CrossfireTelegraphMultiplier : 1f);
             return _isEnraged ? duration * 0.8f : duration;
+        }
+
+        private float GetChargeDuration()
+        {
+            return Mathf.Max(0.05f, chargeDuration * globalPatternCadenceMultiplier);
+        }
+
+        private float GetPatternCadenceInterval(float baseInterval)
+        {
+            return Mathf.Max(0.05f, baseInterval * globalPatternCadenceMultiplier);
         }
 
         private float GetBurstCountMultiplier()

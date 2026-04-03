@@ -630,7 +630,17 @@ MonoBehaviour:
   roomController: {fileID: 980000103}
   roomEnemySpawner: {fileID: 980000105}
   obstacleRoot: {fileID: 980000241}
-  spawnOnlyForCombatRooms: 1
+  spawnOnlyForCombatRooms: 0
+  useRandomizedPlacement: 1
+  spawnInStartRooms: 0
+  minimumRandomObstacleCount: 4
+  maximumRandomObstacleCount: 6
+  placementAttemptsPerObstacle: 18
+  roomEdgePadding: 0.9
+  obstacleSpacingPadding: 0.55
+  doorSafeHalfWidth: 1.45
+  doorSafeDepth: 2.9
+  obstacleScaleMultiplier: 0.6
   obstacles:
   - prefab: {fileID: 710000100, guid: 66352ee41a73493fb3ca72adef308022, type: 3}
     localPosition: {x: -2.55, y: 1.2}
@@ -1325,7 +1335,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0, y: 0.225}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -1532,7 +1542,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0.225, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -1739,7 +1749,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0, y: -0.225}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -1946,7 +1956,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: -0.225, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}

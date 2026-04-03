@@ -181,7 +181,9 @@ namespace CuteIssac.Dungeon
                     continue;
                 }
 
-                neighbors.Add(new SecretNeighbor(neighborRoom, RoomDirectionUtility.Opposite(direction)));
+                // `direction` already points from the secret candidate toward the adjacent room.
+                // Flipping it here inverts the actual door placement while the room grid position stays correct.
+                neighbors.Add(new SecretNeighbor(neighborRoom, direction));
                 bestDistance = Mathf.Min(bestDistance, neighborRoom.DistanceFromStart + 1);
             }
 

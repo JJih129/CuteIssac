@@ -16,6 +16,7 @@ namespace CuteIssac.Enemy
         private float _postTeleportPauseRemaining;
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
+        private bool _crossfireCueRaisedForCurrentTelegraph;
 
         protected override void HandleInitialized()
         {
@@ -29,6 +30,7 @@ namespace CuteIssac.Enemy
             _teleportCooldown = _runtimeFirstAttackDelayBonus;
             _telegraphRemaining = 0f;
             _postTeleportPauseRemaining = 0f;
+            _crossfireCueRaisedForCurrentTelegraph = false;
             Controller?.EnemyVisual?.StopAttackTelegraph();
         }
 
@@ -65,6 +67,12 @@ namespace CuteIssac.Enemy
 
             if (_telegraphRemaining > 0f)
             {
+                if (!_crossfireCueRaisedForCurrentTelegraph)
+                {
+                    EnemyFormationTactics.BroadcastCrossfireCue(FormationModifier, Controller.TargetPosition, 0.9f, 1.05f);
+                    _crossfireCueRaisedForCurrentTelegraph = true;
+                }
+
                 _telegraphRemaining -= fixedDeltaTime;
                 Controller.StopMovement();
                 Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TeleportTelegraphColor);
@@ -87,8 +95,7 @@ namespace CuteIssac.Enemy
 
             if (_teleportCooldown <= 0f && distance <= enemyData.MaxTeleportDistance + 1f)
             {
-                _telegraphRemaining = enemyData.TeleportTelegraphDuration * _runtimeTelegraphDurationMultiplier;
-                Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TeleportTelegraphColor);
+                BeginTeleportTelegraph(enemyData);
             }
         }
 
@@ -97,10 +104,23 @@ namespace CuteIssac.Enemy
             if (distance <= enemyData.OrbitRange)
             {
                 Vector2 perpendicular = new(-chaseDirection.y, chaseDirection.x * _orbitSign);
-                return ((chaseDirection * (1f - enemyData.OrbitBlend)) + (perpendicular * enemyData.OrbitBlend)).normalized;
+                Vector2 fallbackDirection = ((chaseDirection * (1f - enemyData.OrbitBlend)) + (perpendicular * enemyData.OrbitBlend)).normalized;
+                return EnemyFormationTactics.ResolveCrossfireControllerMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    enemyData.OrbitRange + 0.4f,
+                    0.78f);
             }
 
-            return chaseDirection;
+            return EnemyFormationTactics.ResolveCrossfireControllerMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                chaseDirection,
+                enemyData.OrbitRange + 0.4f,
+                0.78f);
         }
 
         private void PerformTeleport(TeleporterEnemyData enemyData)
@@ -140,6 +160,16 @@ namespace CuteIssac.Enemy
             _teleportCooldown = enemyData.TeleportInterval;
             _postTeleportPauseRemaining = enemyData.PostTeleportPause;
             _orbitSign *= -1f;
+            _crossfireCueRaisedForCurrentTelegraph = false;
+            EnemyFormationTactics.BroadcastCrossfireCue(FormationModifier, Controller.TargetPosition, 0.96f, 1.2f);
+        }
+
+        private void BeginTeleportTelegraph(TeleporterEnemyData enemyData)
+        {
+            _telegraphRemaining = enemyData.TeleportTelegraphDuration * _runtimeTelegraphDurationMultiplier;
+            _crossfireCueRaisedForCurrentTelegraph = true;
+            Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TeleportTelegraphColor);
+            EnemyFormationTactics.BroadcastCrossfireCue(FormationModifier, Controller.TargetPosition, 0.9f, 1.05f);
         }
 
         private bool IsBlocked(Vector3 candidate, float checkRadius)

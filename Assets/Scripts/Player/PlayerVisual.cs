@@ -49,6 +49,15 @@ namespace CuteIssac.Player
         [Tooltip("Optional visual asset set. Swap this in the inspector to replace prototype player art without touching logic.")]
         [SerializeField] private PlayerVisualSet visualSet;
 
+        [Header("Fallback Sprite Animation")]
+        [Tooltip("Used when no animator controller is assigned. The body sprite swaps through these frames while moving.")]
+        [SerializeField] private bool useSpriteSequenceAnimation = true;
+        [SerializeField] private Sprite idleBodySprite;
+        [SerializeField] private Sprite[] walkLeftBodySprites;
+        [SerializeField] [Min(1f)] private float walkAnimationFramesPerSecond = 10f;
+        [SerializeField] [Min(0f)] private float walkAnimationMoveThreshold = 0.08f;
+        [SerializeField] private bool animateVerticalMovementWithWalkCycle = true;
+
         [Header("Effect Anchors")]
         [Tooltip("Projectile, muzzle flash, and future fire VFX should use this anchor.")]
         [SerializeField] private Transform muzzleAnchor;
@@ -59,6 +68,7 @@ namespace CuteIssac.Player
 
         [Header("Facing")]
         [SerializeField] private FacingMode facingMode = FacingMode.FlipX;
+        [SerializeField] private bool bodySpriteFacesRightByDefault = true;
         [SerializeField] private bool useMoveDirectionWhenAimMissing = true;
         [SerializeField] private bool moveMuzzleAnchorWithAim = true;
 
@@ -99,16 +109,24 @@ namespace CuteIssac.Player
         private Vector3 _initialHitFeedbackLocalPosition;
         private bool _hasInitialHitFeedbackLocalPosition;
         private Vector3 _currentHitVisualOffset;
+        private Vector2 _lastMoveInput;
+        private float _walkAnimationTime;
+        private bool _wasWalkAnimationActive;
 
         private void Awake()
         {
             ResolveReferences();
+            if (GetComponent<PlayerHeldWeaponVisual>() == null)
+            {
+                gameObject.AddComponent<PlayerHeldWeaponVisual>();
+            }
             ApplyConfiguredVisualSet();
             ApplySpawnOrigin();
             ApplyBodyColor(baseColor);
             CacheMuzzleAnchorLocalPosition();
             CacheHitFeedbackLocalPosition();
             UpdateMuzzleAnchor(_lastAimDirection);
+            RefreshSpriteSequenceFrame(resetAnimationTime: true);
         }
 
         private void OnEnable()
@@ -121,6 +139,8 @@ namespace CuteIssac.Player
                 playerHealth.DamagedWithInfo += HandleDamaged;
                 playerHealth.Died += HandleDied;
             }
+
+            RefreshSpriteSequenceFrame(resetAnimationTime: true);
         }
 
         private void OnDisable()
@@ -136,6 +156,7 @@ namespace CuteIssac.Player
 
         private void Update()
         {
+            UpdateSpriteSequenceAnimation();
             UpdateHitVisualOffset();
 
             if (_damagedFlashRemaining <= 0f)
@@ -160,12 +181,22 @@ namespace CuteIssac.Player
 
         public void SetMoveInput(Vector2 moveInput)
         {
-            if (!HasAimDirection() && useMoveDirectionWhenAimMissing && moveInput.sqrMagnitude > 0.0001f)
+            _lastMoveInput = moveInput;
+
+            bool usedHorizontalMoveFacing = ShouldUseSpriteSequenceAnimation()
+                && Mathf.Abs(moveInput.x) > walkAnimationMoveThreshold;
+
+            if (usedHorizontalMoveFacing)
+            {
+                ApplyFacing(new Vector2(moveInput.x, 0f));
+            }
+            else if (!HasAimDirection() && useMoveDirectionWhenAimMissing && moveInput.sqrMagnitude > 0.0001f)
             {
                 ApplyFacing(moveInput.normalized);
             }
 
             UpdateAnimatorMove(moveInput);
+            RefreshSpriteSequenceFrame(resetAnimationTime: false);
         }
 
         public void SetAimDirection(Vector2 aimDirection)
@@ -256,7 +287,13 @@ namespace CuteIssac.Player
 
                     if (Mathf.Abs(facingDirection.x) > 0.0001f)
                     {
-                        localScale.x = Mathf.Abs(localScale.x) * Mathf.Sign(facingDirection.x);
+                        float horizontalSign = Mathf.Sign(facingDirection.x);
+                        if (!bodySpriteFacesRightByDefault)
+                        {
+                            horizontalSign *= -1f;
+                        }
+
+                        localScale.x = Mathf.Abs(localScale.x) * horizontalSign;
                         target.localScale = localScale;
                     }
 
@@ -355,6 +392,7 @@ namespace CuteIssac.Player
         {
             if (visualSet == null)
             {
+                RefreshSpriteSequenceFrame(resetAnimationTime: true);
                 return;
             }
 
@@ -383,6 +421,7 @@ namespace CuteIssac.Player
             hitFlashColor = visualSet.HitFlashColor;
             damagedColor = visualSet.DamagedColor;
             deadColor = visualSet.DeadColor;
+            RefreshSpriteSequenceFrame(resetAnimationTime: true);
         }
 
         private void CacheMuzzleAnchorLocalPosition()
@@ -504,6 +543,121 @@ namespace CuteIssac.Player
             bodySpriteRenderer.color = color;
         }
 
+        private void UpdateSpriteSequenceAnimation()
+        {
+            if (!ShouldUseSpriteSequenceAnimation())
+            {
+                return;
+            }
+
+            if (!ShouldPlayWalkAnimation())
+            {
+                if (_wasWalkAnimationActive)
+                {
+                    RefreshSpriteSequenceFrame(resetAnimationTime: true);
+                }
+
+                return;
+            }
+
+            _wasWalkAnimationActive = true;
+            _walkAnimationTime += Time.deltaTime * Mathf.Max(1f, walkAnimationFramesPerSecond);
+            ApplyAnimatedBodySprite(ResolveCurrentWalkSprite());
+        }
+
+        private void RefreshSpriteSequenceFrame(bool resetAnimationTime)
+        {
+            if (!ShouldUseSpriteSequenceAnimation())
+            {
+                return;
+            }
+
+            if (resetAnimationTime)
+            {
+                _walkAnimationTime = 0f;
+            }
+
+            if (ShouldPlayWalkAnimation())
+            {
+                _wasWalkAnimationActive = true;
+                ApplyAnimatedBodySprite(ResolveCurrentWalkSprite());
+                return;
+            }
+
+            _wasWalkAnimationActive = false;
+            ApplyAnimatedBodySprite(ResolveIdleSprite());
+        }
+
+        private bool ShouldUseSpriteSequenceAnimation()
+        {
+            bool hasAnimatorController = bodyAnimator != null && bodyAnimator.runtimeAnimatorController != null;
+            return useSpriteSequenceAnimation
+                && bodySpriteRenderer != null
+                && !hasAnimatorController
+                && (idleBodySprite != null || (walkLeftBodySprites != null && walkLeftBodySprites.Length > 0));
+        }
+
+        private bool ShouldPlayWalkAnimation()
+        {
+            if (walkLeftBodySprites == null || walkLeftBodySprites.Length == 0)
+            {
+                return false;
+            }
+
+            float threshold = Mathf.Max(0f, walkAnimationMoveThreshold);
+            if (_lastMoveInput.sqrMagnitude <= threshold * threshold)
+            {
+                return false;
+            }
+
+            return animateVerticalMovementWithWalkCycle || Mathf.Abs(_lastMoveInput.x) > threshold;
+        }
+
+        private Sprite ResolveIdleSprite()
+        {
+            if (idleBodySprite != null)
+            {
+                return idleBodySprite;
+            }
+
+            if (walkLeftBodySprites != null)
+            {
+                for (int index = 0; index < walkLeftBodySprites.Length; index++)
+                {
+                    if (walkLeftBodySprites[index] != null)
+                    {
+                        return walkLeftBodySprites[index];
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private Sprite ResolveCurrentWalkSprite()
+        {
+            if (walkLeftBodySprites == null || walkLeftBodySprites.Length == 0)
+            {
+                return ResolveIdleSprite();
+            }
+
+            int frameIndex = Mathf.Abs(Mathf.FloorToInt(_walkAnimationTime));
+            frameIndex %= walkLeftBodySprites.Length;
+
+            Sprite resolvedSprite = walkLeftBodySprites[frameIndex];
+            return resolvedSprite != null ? resolvedSprite : ResolveIdleSprite();
+        }
+
+        private void ApplyAnimatedBodySprite(Sprite sprite)
+        {
+            if (bodySpriteRenderer == null || sprite == null || bodySpriteRenderer.sprite == sprite)
+            {
+                return;
+            }
+
+            bodySpriteRenderer.sprite = sprite;
+        }
+
         private void SetAnimatorFloat(string parameterName, float value)
         {
             if (bodyAnimator == null || string.IsNullOrWhiteSpace(parameterName))
@@ -547,6 +701,7 @@ namespace CuteIssac.Player
             ApplyConfiguredVisualSet();
             CacheMuzzleAnchorLocalPosition();
             CacheHitFeedbackLocalPosition();
+            RefreshSpriteSequenceFrame(resetAnimationTime: true);
         }
     }
 }

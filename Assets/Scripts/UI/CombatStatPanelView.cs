@@ -1,3 +1,4 @@
+using CuteIssac.Combat;
 using CuteIssac.Player;
 using CuteIssac.Room;
 using UnityEngine;
@@ -21,6 +22,8 @@ namespace CuteIssac.UI
         [SerializeField] private Text fireRateValueText;
         [SerializeField] private Text projectileSpeedValueText;
         [SerializeField] private Text luckValueText;
+        [SerializeField] private Text momentumStatusText;
+        [SerializeField] private Text projectileTraitStatusText;
 
         [Header("Top Bar Layout")]
         [SerializeField] [Min(0f)] private float topBarPadding = 8f;
@@ -40,8 +43,16 @@ namespace CuteIssac.UI
         [SerializeField] [Min(0)] private int compactTopBarValueFontSize = 22;
         [SerializeField] [Min(20f)] private float topBarRowHeight = 38f;
         [SerializeField] [Min(20f)] private float compactTopBarRowHeight = 34f;
+        [SerializeField] [Min(14f)] private float topBarMomentumRowHeight = 24f;
+        [SerializeField] [Min(14f)] private float compactTopBarMomentumRowHeight = 18f;
+        [SerializeField] [Min(14f)] private float topBarTraitRowHeight = 22f;
+        [SerializeField] [Min(14f)] private float compactTopBarTraitRowHeight = 17f;
         [SerializeField] [Min(24f)] private float topBarBackgroundHeight = 86f;
         [SerializeField] [Min(24f)] private float compactTopBarBackgroundHeight = 78f;
+        [SerializeField] [Min(0f)] private float topBarMomentumTopGap = 6f;
+        [SerializeField] [Min(0f)] private float compactTopBarMomentumTopGap = 4f;
+        [SerializeField] [Min(0f)] private float topBarTraitTopGap = 4f;
+        [SerializeField] [Min(0f)] private float compactTopBarTraitTopGap = 3f;
         [SerializeField] [Min(0.5f)] private float topBarLineSpacing = 0.9f;
 
         [Header("Styling")]
@@ -52,6 +63,9 @@ namespace CuteIssac.UI
         [SerializeField] private Color challengeBaselinePanelTint = new(0.34f, 0.22f, 0.1f, 0.24f);
         [SerializeField] private Color challengeBaselineLabelColor = new(1f, 0.94f, 0.82f, 0.78f);
         [SerializeField] private Color challengeBaselineValueColor = new(1f, 0.9f, 0.62f, 1f);
+        [SerializeField] private Color momentumReadyLabelColor = new(0.82f, 0.94f, 1f, 0.9f);
+        [SerializeField] private Color momentumReadyValueColor = new(0.96f, 1f, 0.98f, 1f);
+        [SerializeField] [Range(0f, 1f)] private float momentumPanelTintStrength = 0.24f;
         [SerializeField] [Range(0.5f, 1.2f)] private float compactPanelAlphaScale = 0.84f;
         [SerializeField] [Range(0.5f, 1.2f)] private float compactLabelAlphaScale = 1.02f;
         [SerializeField] [Range(0.5f, 1.2f)] private float compactValueAlphaScale = 1.08f;
@@ -66,6 +80,9 @@ namespace CuteIssac.UI
         private Color _challengeThreatAccentColor = Color.white;
         private string _challengeThreatBadgeLabel = string.Empty;
         private ChallengeThreatStage _challengeThreatStage;
+        private PlayerCombatMomentumController _momentumController;
+        private PlayerRoutePlanCarryController _routePlanCarryController;
+        private PlayerStats _playerStats;
 
         public void ConfigureRuntimeView(
             GameObject root,
@@ -73,7 +90,9 @@ namespace CuteIssac.UI
             Text attackValue,
             Text fireRateValue,
             Text projectileSpeedValue,
-            Text luckValue)
+            Text luckValue,
+            Text momentumStatus = null,
+            Text projectileTraitStatus = null)
         {
             panelRoot = root;
             backgroundImage = background;
@@ -81,6 +100,29 @@ namespace CuteIssac.UI
             fireRateValueText = fireRateValue;
             projectileSpeedValueText = projectileSpeedValue;
             luckValueText = luckValue;
+            momentumStatusText = momentumStatus;
+            projectileTraitStatusText = projectileTraitStatus;
+        }
+
+        public void SetMomentumStateSource(PlayerCombatMomentumController momentumController)
+        {
+            _momentumController = momentumController;
+            EnsureMomentumStatusText();
+            RefreshMomentumStatus(Time.unscaledTime);
+        }
+
+        public void SetRoutePlanStateSource(PlayerRoutePlanCarryController routePlanCarryController)
+        {
+            _routePlanCarryController = routePlanCarryController;
+            EnsureMomentumStatusText();
+            RefreshMomentumStatus(Time.unscaledTime);
+        }
+
+        public void SetProjectileTraitStateSource(PlayerStats playerStats)
+        {
+            _playerStats = playerStats;
+            EnsureProjectileTraitStatusText();
+            RefreshProjectileTraitStatus(Time.unscaledTime);
         }
 
         public void ShowPlaceholder()
@@ -115,6 +157,8 @@ namespace CuteIssac.UI
                 luckValueText.text = FormatStat("LUCK", "--");
             }
 
+            RefreshMomentumStatus(Time.unscaledTime);
+            RefreshProjectileTraitStatus(Time.unscaledTime);
             ApplyThreatTheme(Time.unscaledTime);
         }
 
@@ -158,6 +202,8 @@ namespace CuteIssac.UI
                 luckValueText.text = FormatStat("LUCK", snapshot.Luck.ToString("0.0"));
             }
 
+            RefreshMomentumStatus(Time.unscaledTime);
+            RefreshProjectileTraitStatus(Time.unscaledTime);
             ApplyThreatTheme(Time.unscaledTime);
         }
 
@@ -200,15 +246,23 @@ namespace CuteIssac.UI
                 ? Mathf.Max(topBarPadding, (width - compactBlockWidth) * 0.5f)
                 : topBarPadding;
             float secondRowTop = contentTopInset + rowHeight + rowGap;
+            float momentumTop = secondRowTop + rowHeight + (_compactTopBarMode ? compactTopBarMomentumTopGap : topBarMomentumTopGap);
+            float momentumRowHeight = _compactTopBarMode ? compactTopBarMomentumRowHeight : topBarMomentumRowHeight;
+            float traitTop = momentumTop + momentumRowHeight + (_compactTopBarMode ? compactTopBarTraitTopGap : topBarTraitTopGap);
+            float traitRowHeight = _compactTopBarMode ? compactTopBarTraitRowHeight : topBarTraitRowHeight;
 
             LayoutStatText(attackValueText, new Vector2(leftInset, -contentTopInset), columnWidth, rowHeight);
             LayoutStatText(fireRateValueText, new Vector2(leftInset + columnWidth + columnGap, -contentTopInset), columnWidth, rowHeight);
             LayoutStatText(projectileSpeedValueText, new Vector2(leftInset, -secondRowTop), columnWidth, rowHeight);
             LayoutStatText(luckValueText, new Vector2(leftInset + columnWidth + columnGap, -secondRowTop), columnWidth, rowHeight);
+            LayoutStatusText(momentumStatusText, new Vector2(leftInset, -momentumTop), compactBlockWidth, momentumRowHeight);
+            LayoutStatusText(projectileTraitStatusText, new Vector2(leftInset, -traitTop), compactBlockWidth, traitRowHeight);
             ApplyCompactTextShadow(attackValueText);
             ApplyCompactTextShadow(fireRateValueText);
             ApplyCompactTextShadow(projectileSpeedValueText);
             ApplyCompactTextShadow(luckValueText);
+            ApplyCompactTextShadow(momentumStatusText);
+            ApplyCompactTextShadow(projectileTraitStatusText);
         }
 
         public void SetChallengeThreatTheme(bool active, Color accentColor, string badgeLabel, ChallengeThreatStage stage)
@@ -222,6 +276,8 @@ namespace CuteIssac.UI
 
         private void Update()
         {
+            RefreshMomentumStatus(Time.unscaledTime);
+            RefreshProjectileTraitStatus(Time.unscaledTime);
             ApplyThreatTheme(Time.unscaledTime);
         }
 
@@ -258,8 +314,43 @@ namespace CuteIssac.UI
             backgroundRect.pivot = new Vector2(0f, 1f);
             float topInset = _compactTopBarMode ? compactTopBarBackgroundTopInset : topBarBackgroundTopInset;
             float height = _compactTopBarMode ? compactTopBarBackgroundHeight : topBarBackgroundHeight;
+
+            if (momentumStatusText != null)
+            {
+                height += (_compactTopBarMode ? compactTopBarMomentumRowHeight : topBarMomentumRowHeight)
+                    + (_compactTopBarMode ? compactTopBarMomentumTopGap : topBarMomentumTopGap);
+            }
+
+            if (projectileTraitStatusText != null)
+            {
+                height += (_compactTopBarMode ? compactTopBarTraitRowHeight : topBarTraitRowHeight)
+                    + (_compactTopBarMode ? compactTopBarTraitTopGap : topBarTraitTopGap);
+            }
+
             backgroundRect.anchoredPosition = new Vector2(0f, -topInset);
             backgroundRect.sizeDelta = new Vector2(width, height);
+        }
+
+        private void LayoutStatusText(Text text, Vector2 anchoredPosition, float width, float rowHeight)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            RectTransform rectTransform = text.rectTransform;
+            rectTransform.anchorMin = new Vector2(0f, 1f);
+            rectTransform.anchorMax = new Vector2(0f, 1f);
+            rectTransform.pivot = new Vector2(0f, 1f);
+            rectTransform.anchoredPosition = anchoredPosition;
+            rectTransform.sizeDelta = new Vector2(width, rowHeight);
+            text.alignment = TextAnchor.MiddleCenter;
+            text.fontSize = _compactTopBarMode ? compactTopBarLabelFontSize : topBarLabelFontSize;
+            text.lineSpacing = 1f;
+            text.supportRichText = true;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+            text.raycastTarget = false;
         }
 
         private string FormatStat(string label, string value)
@@ -294,17 +385,32 @@ namespace CuteIssac.UI
 
         private Color ResolveBackgroundColor(float unscaledTime)
         {
+            Color resolvedColor;
+
             if (!_hasChallengeThreatTheme)
             {
-                return ApplyCompactAlpha(panelTint, compactPanelAlphaScale);
+                resolvedColor = panelTint;
+            }
+            else
+            {
+                float stageStrength = Mathf.Clamp01((ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage) - 0.92f) / 0.33f);
+                float pulseCycles = Mathf.Max(1.4f, ChallengeThreatPresentationResolver.ResolveBannerPulseCycles(_challengeThreatStage) - 0.8f);
+                float pulse = 0.5f + (0.5f * Mathf.Sin(unscaledTime * (1.1f + pulseCycles)));
+                float tintStrength = challengePanelTintStrength * Mathf.Lerp(0.72f, 1f, stageStrength) * Mathf.Lerp(0.82f, 1.08f, pulse);
+                Color baseTint = UsesChallengeBaselineTheme() ? challengeBaselinePanelTint : panelTint;
+                resolvedColor = Color.Lerp(baseTint, Color.Lerp(baseTint, _challengeThreatAccentColor, 0.34f), Mathf.Clamp01(tintStrength));
             }
 
-            float stageStrength = Mathf.Clamp01((ChallengeThreatPresentationResolver.ResolveStatusThemeStrength(_challengeThreatStage) - 0.92f) / 0.33f);
-            float pulseCycles = Mathf.Max(1.4f, ChallengeThreatPresentationResolver.ResolveBannerPulseCycles(_challengeThreatStage) - 0.8f);
-            float pulse = 0.5f + (0.5f * Mathf.Sin(unscaledTime * (1.1f + pulseCycles)));
-            float tintStrength = challengePanelTintStrength * Mathf.Lerp(0.72f, 1f, stageStrength) * Mathf.Lerp(0.82f, 1.08f, pulse);
-            Color baseTint = UsesChallengeBaselineTheme() ? challengeBaselinePanelTint : panelTint;
-            return ApplyCompactAlpha(Color.Lerp(baseTint, Color.Lerp(baseTint, _challengeThreatAccentColor, 0.34f), Mathf.Clamp01(tintStrength)), compactPanelAlphaScale);
+            if (_momentumController != null && _momentumController.IsMomentumActive)
+            {
+                float momentumPulse = 0.5f + (0.5f * Mathf.Sin(unscaledTime * 6.4f));
+                float momentumStrength = momentumPanelTintStrength
+                    * Mathf.Lerp(0.72f, 1f, momentumPulse)
+                    * Mathf.Lerp(0.7f, 1f, _momentumController.RemainingDurationNormalized);
+                resolvedColor = Color.Lerp(resolvedColor, Color.Lerp(resolvedColor, _momentumController.AccentColor, 0.46f), Mathf.Clamp01(momentumStrength));
+            }
+
+            return ApplyCompactAlpha(resolvedColor, compactPanelAlphaScale);
         }
 
         private Color ResolveLabelColor(float unscaledTime)
@@ -381,6 +487,350 @@ namespace CuteIssac.UI
                 "RATE" => "RPS",
                 "LUCK" => "LUK",
                 _ => label
+            };
+        }
+
+        private void EnsureMomentumStatusText()
+        {
+            if (momentumStatusText != null)
+            {
+                return;
+            }
+
+            Transform parent = panelRoot != null ? panelRoot.transform : transform;
+            if (parent == null)
+            {
+                return;
+            }
+
+            GameObject textObject = new("MomentumStatus", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            textObject.transform.SetParent(parent, false);
+            momentumStatusText = textObject.GetComponent<Text>();
+            momentumStatusText.font = attackValueText != null && attackValueText.font != null
+                ? attackValueText.font
+                : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            LocalizedUiFontProvider.Apply(momentumStatusText);
+            momentumStatusText.fontStyle = FontStyle.Bold;
+            momentumStatusText.raycastTarget = false;
+        }
+
+        private void EnsureProjectileTraitStatusText()
+        {
+            if (projectileTraitStatusText != null)
+            {
+                return;
+            }
+
+            Transform parent = panelRoot != null ? panelRoot.transform : transform;
+            if (parent == null)
+            {
+                return;
+            }
+
+            GameObject textObject = new("ProjectileTraitStatus", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            textObject.transform.SetParent(parent, false);
+            projectileTraitStatusText = textObject.GetComponent<Text>();
+            projectileTraitStatusText.font = attackValueText != null && attackValueText.font != null
+                ? attackValueText.font
+                : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            LocalizedUiFontProvider.Apply(projectileTraitStatusText);
+            projectileTraitStatusText.fontStyle = FontStyle.Bold;
+            projectileTraitStatusText.raycastTarget = false;
+        }
+
+        private void RefreshMomentumStatus(float unscaledTime)
+        {
+            EnsureMomentumStatusText();
+
+            if (momentumStatusText == null)
+            {
+                return;
+            }
+
+            Color labelColor = ApplyCompactAlpha(momentumReadyLabelColor, compactLabelAlphaScale);
+            Color valueColor = ApplyCompactAlpha(momentumReadyValueColor, compactValueAlphaScale);
+            string headline = "FLOW";
+            string detail = "READY";
+
+            if (_routePlanCarryController != null && _routePlanCarryController.IsOpeningActive)
+            {
+                headline = _compactTopBarMode
+                    ? (_routePlanCarryController.ActiveHeldPlan ? "OPEN" : "PIVOT")
+                    : _routePlanCarryController.ActiveOpeningHeadline;
+
+                int remainingPercent = Mathf.RoundToInt(_routePlanCarryController.RemainingOpeningNormalized * 100f);
+                string openerLabel = ResolveRouteOpeningLabel(_routePlanCarryController.ActiveReasonTag);
+                string recentPreferredDriveLabel = _routePlanCarryController.HasRecentPreferredImpactDrive
+                    ? _routePlanCarryController.RecentPreferredImpactDriveCompactTag
+                    : string.Empty;
+                string recentPreferredHitLabel = _routePlanCarryController.HasRecentPreferredImpactHit
+                    ? _routePlanCarryController.RecentPreferredImpactHitCompactTag
+                    : string.Empty;
+                string preferredHoldLabel = _routePlanCarryController.HasPreferredImpactHoldDrive
+                    ? _routePlanCarryController.PreferredImpactHoldDriveCompactTag
+                    : string.Empty;
+                string targetCompactTag = _routePlanCarryController.HasOpeningTargetHint
+                    ? _routePlanCarryController.OpeningTargetCompactTag
+                    : string.Empty;
+                string recentRoleBurstLabel = _routePlanCarryController.HasRecentOpeningCadenceHitRoleBurst
+                    ? _routePlanCarryController.RecentOpeningCadenceHitRoleCompactTag
+                    : string.Empty;
+                string cadenceLabel = _routePlanCarryController.HasOpeningCadenceFeedback
+                    ? _routePlanCarryController.OpeningCadenceLabel
+                    : string.Empty;
+                string resolvedTargetLabel = !string.IsNullOrWhiteSpace(recentPreferredDriveLabel)
+                    ? recentPreferredDriveLabel
+                    : !string.IsNullOrWhiteSpace(recentPreferredHitLabel)
+                    ? recentPreferredHitLabel
+                    : !string.IsNullOrWhiteSpace(preferredHoldLabel)
+                    ? preferredHoldLabel
+                    : !string.IsNullOrWhiteSpace(recentRoleBurstLabel)
+                    ? recentRoleBurstLabel
+                    : !string.IsNullOrWhiteSpace(cadenceLabel)
+                    ? cadenceLabel
+                    : !string.IsNullOrWhiteSpace(targetCompactTag)
+                        ? targetCompactTag
+                        : openerLabel;
+                detail = _compactTopBarMode
+                    ? $"{resolvedTargetLabel} {remainingPercent:00}%"
+                    : $"{resolvedTargetLabel} OPEN {remainingPercent:00}%";
+                Color routeAccent = _routePlanCarryController.HasRecentPreferredImpactDrive
+                    ? _routePlanCarryController.RecentPreferredImpactDriveAccentColor
+                    : _routePlanCarryController.HasRecentPreferredImpactHit
+                    ? _routePlanCarryController.RecentPreferredImpactHitAccentColor
+                    : _routePlanCarryController.HasPreferredImpactHoldDrive
+                    ? _routePlanCarryController.PreferredImpactHoldDriveAccentColor
+                    : _routePlanCarryController.ActiveAccentColor;
+                labelColor = ApplyCompactAlpha(Color.Lerp(momentumReadyLabelColor, routeAccent, 0.6f), compactLabelAlphaScale);
+                valueColor = ApplyCompactAlpha(Color.Lerp(momentumReadyValueColor, routeAccent, 0.38f), compactValueAlphaScale);
+            }
+            else if (_momentumController != null && _momentumController.IsMomentumActive)
+            {
+                headline = _momentumController.ChainCount > 1
+                    ? $"FLOW x{_momentumController.ChainCount}"
+                    : "FLOW OPEN";
+
+                string formationLabel = ResolveMomentumFormationLabel(_momentumController.ActiveFormationId);
+                int remainingPercent = Mathf.RoundToInt(_momentumController.RemainingDurationNormalized * 100f);
+                detail = _compactTopBarMode
+                    ? $"{formationLabel} {remainingPercent:00}%"
+                    : $"{formationLabel} WINDOW {remainingPercent:00}%";
+                labelColor = ApplyCompactAlpha(Color.Lerp(momentumReadyLabelColor, _momentumController.AccentColor, 0.58f), compactLabelAlphaScale);
+                valueColor = ApplyCompactAlpha(Color.Lerp(momentumReadyValueColor, _momentumController.AccentColor, 0.34f), compactValueAlphaScale);
+            }
+
+            string labelHex = ColorUtility.ToHtmlStringRGBA(labelColor);
+            string valueHex = ColorUtility.ToHtmlStringRGBA(valueColor);
+            int labelSize = _compactTopBarMode ? compactTopBarLabelFontSize : topBarLabelFontSize;
+            int valueSize = _compactTopBarMode ? compactTopBarValueFontSize - 6 : topBarValueFontSize - 8;
+            momentumStatusText.text =
+                $"<size={labelSize}><color=#{labelHex}>{headline}</color></size> " +
+                $"<size={valueSize}><b><color=#{valueHex}>{detail}</color></b></size>";
+        }
+
+        private void RefreshProjectileTraitStatus(float unscaledTime)
+        {
+            EnsureProjectileTraitStatusText();
+
+            if (projectileTraitStatusText == null)
+            {
+                return;
+            }
+
+            string detail = ResolveProjectileTraitDetail();
+            Color accentColor = ResolveProjectileTraitAccent();
+            Color labelColor = ApplyCompactAlpha(Color.Lerp(momentumReadyLabelColor, accentColor, 0.18f), compactLabelAlphaScale);
+            Color valueColor = ApplyCompactAlpha(Color.Lerp(momentumReadyValueColor, accentColor, 0.52f), compactValueAlphaScale);
+            float pulse = 0.5f + (0.5f * Mathf.Sin(unscaledTime * 4.6f));
+            valueColor = Color.Lerp(valueColor, Color.Lerp(valueColor, accentColor, 0.28f), pulse * 0.32f);
+
+            string labelHex = ColorUtility.ToHtmlStringRGBA(labelColor);
+            string valueHex = ColorUtility.ToHtmlStringRGBA(valueColor);
+            int labelSize = _compactTopBarMode ? compactTopBarLabelFontSize : topBarLabelFontSize;
+            int valueSize = _compactTopBarMode ? compactTopBarValueFontSize - 8 : topBarValueFontSize - 10;
+            projectileTraitStatusText.text =
+                $"<size={labelSize}><color=#{labelHex}>SHOT</color></size> " +
+                $"<size={valueSize}><b><color=#{valueHex}>{detail}</color></b></size>";
+        }
+
+        private string ResolveProjectileTraitDetail()
+        {
+            string recentPreferredDriveLabel = _routePlanCarryController != null && _routePlanCarryController.HasRecentPreferredImpactDrive
+                ? _routePlanCarryController.RecentPreferredImpactDriveCompactTag
+                : string.Empty;
+            string recentPreferredHitLabel = _routePlanCarryController != null && _routePlanCarryController.HasRecentPreferredImpactHit
+                ? _routePlanCarryController.RecentPreferredImpactHitCompactTag
+                : string.Empty;
+            string preferredHoldLabel = _routePlanCarryController != null && _routePlanCarryController.HasPreferredImpactHoldDrive
+                ? _routePlanCarryController.PreferredImpactHoldDriveCompactTag
+                : string.Empty;
+            string recentRoleBurstLabel = _routePlanCarryController != null && _routePlanCarryController.HasRecentOpeningCadenceHitRoleBurst
+                ? _routePlanCarryController.RecentOpeningCadenceHitRoleCompactTag
+                : string.Empty;
+            ProjectileTraitState traits = _playerStats != null
+                ? _playerStats.CurrentProjectileTraits
+                : ProjectileTraitState.Default;
+
+            string[] labels = new string[7];
+            int count = 0;
+
+            if (traits.IsLaser)
+            {
+                labels[count++] = "LASER";
+            }
+
+            if (traits.IsOrbiting)
+            {
+                labels[count++] = "ORBIT";
+            }
+
+            if (traits.IsShielded)
+            {
+                labels[count++] = "SHIELD";
+            }
+
+            if (traits.IsSplit)
+            {
+                labels[count++] = "SPLIT";
+            }
+
+            if (traits.IsExplosive)
+            {
+                labels[count++] = "BLAST";
+            }
+
+            if (traits.Has(ProjectileTraitFlags.Lifesteal))
+            {
+                labels[count++] = "LEECH";
+            }
+
+            if (traits.Has(ProjectileTraitFlags.Bounce))
+            {
+                labels[count++] = "BOUNCE";
+            }
+
+            if (count == 0)
+            {
+                string baseLabel = _compactTopBarMode ? "BASE" : "BASELINE";
+                return !string.IsNullOrWhiteSpace(recentPreferredDriveLabel)
+                    ? $"{recentPreferredDriveLabel} / {baseLabel}"
+                    : !string.IsNullOrWhiteSpace(recentPreferredHitLabel)
+                    ? $"{recentPreferredHitLabel} / {baseLabel}"
+                    : !string.IsNullOrWhiteSpace(preferredHoldLabel)
+                    ? $"{preferredHoldLabel} / {baseLabel}"
+                    : !string.IsNullOrWhiteSpace(recentRoleBurstLabel)
+                    ? $"{recentRoleBurstLabel} / {baseLabel}"
+                    : baseLabel;
+            }
+
+            string traitLabel;
+            if (count <= 2)
+            {
+                traitLabel = count == 2
+                    ? $"{labels[0]} / {labels[1]}"
+                    : labels[0];
+            }
+            else
+            {
+                traitLabel = $"{labels[0]} / {labels[1]} / +{count - 2}";
+            }
+
+            return !string.IsNullOrWhiteSpace(recentPreferredDriveLabel)
+                ? $"{recentPreferredDriveLabel} / {traitLabel}"
+                : !string.IsNullOrWhiteSpace(recentPreferredHitLabel)
+                ? $"{recentPreferredHitLabel} / {traitLabel}"
+                : !string.IsNullOrWhiteSpace(preferredHoldLabel)
+                ? $"{preferredHoldLabel} / {traitLabel}"
+                : !string.IsNullOrWhiteSpace(recentRoleBurstLabel)
+                ? $"{recentRoleBurstLabel} / {traitLabel}"
+                : traitLabel;
+        }
+
+        private Color ResolveProjectileTraitAccent()
+        {
+            if (_routePlanCarryController != null && _routePlanCarryController.HasRecentPreferredImpactDrive)
+            {
+                return _routePlanCarryController.RecentPreferredImpactDriveAccentColor;
+            }
+
+            if (_routePlanCarryController != null && _routePlanCarryController.HasRecentPreferredImpactHit)
+            {
+                return _routePlanCarryController.RecentPreferredImpactHitAccentColor;
+            }
+
+            if (_routePlanCarryController != null && _routePlanCarryController.HasPreferredImpactHoldDrive)
+            {
+                return _routePlanCarryController.PreferredImpactHoldDriveAccentColor;
+            }
+
+            if (_routePlanCarryController != null && _routePlanCarryController.HasRecentOpeningCadenceHitRoleBurst)
+            {
+                return _routePlanCarryController.RecentOpeningCadenceHitRoleAccentColor;
+            }
+
+            ProjectileTraitState traits = _playerStats != null
+                ? _playerStats.CurrentProjectileTraits
+                : ProjectileTraitState.Default;
+
+            if (traits.IsOrbiting)
+            {
+                return new Color(1f, 0.84f, 0.42f, 1f);
+            }
+
+            if (traits.IsShielded)
+            {
+                return new Color(0.46f, 0.92f, 1f, 1f);
+            }
+
+            if (traits.IsLaser)
+            {
+                return new Color(1f, 0.48f, 0.52f, 1f);
+            }
+
+            if (traits.IsExplosive)
+            {
+                return new Color(1f, 0.66f, 0.36f, 1f);
+            }
+
+            if (traits.Has(ProjectileTraitFlags.Lifesteal))
+            {
+                return new Color(0.56f, 1f, 0.62f, 1f);
+            }
+
+            if (traits.IsSplit)
+            {
+                return new Color(1f, 0.62f, 0.82f, 1f);
+            }
+
+            if (traits.Has(ProjectileTraitFlags.Bounce))
+            {
+                return new Color(0.86f, 0.92f, 1f, 1f);
+            }
+
+            return new Color(0.78f, 0.9f, 1f, 1f);
+        }
+
+        private static string ResolveMomentumFormationLabel(string formationId)
+        {
+            return formationId switch
+            {
+                "escort" => "ESCORT",
+                "crossfire" => "CROSSFIRE",
+                "siege" => "SIEGE",
+                _ => "PUSH"
+            };
+        }
+
+        private static string ResolveRouteOpeningLabel(string reasonTag)
+        {
+            return reasonTag switch
+            {
+                "PRESS ADVANTAGE" => "ADV",
+                "RECOVERY ONLINE" => "SAFE",
+                "SUPPLY WINDOW" => "SUPPLY",
+                "LOADOUT FIND" => "BUILD",
+                "SAFE UPGRADE" => "CLEAN",
+                _ => "OPEN"
             };
         }
 

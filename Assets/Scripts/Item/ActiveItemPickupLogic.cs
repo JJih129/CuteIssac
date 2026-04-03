@@ -9,6 +9,8 @@ namespace CuteIssac.Item
     {
         [SerializeField] private ActiveItemData activeItemData;
 
+        public ActiveItemData ActiveItemData => activeItemData;
+
         protected override void OnEnable()
         {
             base.OnEnable();

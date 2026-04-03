@@ -86,6 +86,7 @@ namespace CuteIssac.Room
             floorExitVisual?.SetWorldPromptEnabled(true);
             floorExitVisual?.Configure(targetFloorIndex, accentColor);
             floorExitVisual?.SetPromptVisible(false);
+            GetOrAddGuidanceBeacon().ShowPortalGuidance(accentColor, 0f);
             GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
                 transform.position + Vector3.up * 1.2f,
                 $"FLOOR {targetFloorIndex} PORTAL",
@@ -149,8 +150,21 @@ namespace CuteIssac.Room
             }
 
             _isActivated = true;
+            GetOrAddGuidanceBeacon().Hide();
             floorExitVisual?.PlayActivateFeedback();
             Activated?.Invoke(this);
+        }
+
+        private TraversalGuidanceBeacon GetOrAddGuidanceBeacon()
+        {
+            TraversalGuidanceBeacon beacon = GetComponent<TraversalGuidanceBeacon>();
+
+            if (beacon == null)
+            {
+                beacon = gameObject.AddComponent<TraversalGuidanceBeacon>();
+            }
+
+            return beacon;
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Run;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using Random = UnityEngine.Random;
 
 namespace CuteIssac.Core.Run
@@ -16,6 +17,7 @@ namespace CuteIssac.Core.Run
         [SerializeField] [Min(1)] private int fallbackStartingFloorIndex = 1;
         [SerializeField] private bool useFixedSeed;
         [SerializeField] private int fixedSeed = 12345;
+        [SerializeField] private bool enableDevelopmentFloorHotkeys = true;
 
         public event Action<RunState> StateChanged;
         public event Action<RunContext> RunStarted;
@@ -42,19 +44,37 @@ namespace CuteIssac.Core.Run
             }
         }
 
+        private void Update()
+        {
+            HandleDevelopmentFloorHotkeys();
+        }
+
         [ContextMenu("Start New Run")]
         public void StartNewRun()
         {
             EnsureBootstrapped();
+            StartNewRunAtFloor(ResolveStartingFloorIndex());
+        }
+
+        public bool StartNewRunAtFloor(int floorIndex)
+        {
+            EnsureBootstrapped();
+
+            int requestedFloorIndex = Mathf.Max(1, floorIndex);
+
+            if (_runConfiguration != null && !_runConfiguration.HasFloor(requestedFloorIndex))
+            {
+                UnityEngine.Debug.LogWarning($"RunManager ignored floor-start hotkey because floor {requestedFloorIndex} is not configured.", this);
+                return false;
+            }
 
             ChangeState(RunState.StartingRun);
 
             int seed = ResolveSeed();
-            int startingFloorIndex = ResolveStartingFloorIndex();
-
-            _context.Initialize(seed, startingFloorIndex);
+            _context.Initialize(seed, requestedFloorIndex);
             ChangeState(RunState.InRun);
             RunStarted?.Invoke(_context);
+            return true;
         }
 
         public void StartRestoredRun(RunSaveData saveData)
@@ -196,6 +216,34 @@ namespace CuteIssac.Core.Run
             return useFixedSeed
                 ? fixedSeed
                 : Random.Range(int.MinValue, int.MaxValue);
+        }
+
+        private void HandleDevelopmentFloorHotkeys()
+        {
+            if (!enableDevelopmentFloorHotkeys)
+            {
+                return;
+            }
+
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard == null)
+            {
+                return;
+            }
+
+            if (keyboard.f1Key != null && keyboard.f1Key.wasPressedThisFrame)
+            {
+                StartNewRunAtFloor(1);
+            }
+            else if (keyboard.f2Key != null && keyboard.f2Key.wasPressedThisFrame)
+            {
+                StartNewRunAtFloor(2);
+            }
+            else if (keyboard.f3Key != null && keyboard.f3Key.wasPressedThisFrame)
+            {
+                StartNewRunAtFloor(3);
+            }
         }
 
         public bool TryGetFloorConfig(int floorIndex, out FloorConfig floorConfig)

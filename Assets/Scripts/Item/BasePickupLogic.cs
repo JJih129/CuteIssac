@@ -29,6 +29,8 @@ namespace CuteIssac.Item
         public event Action<BasePickupLogic> Collected;
 
         protected PickupVisual PickupVisual => pickupVisual;
+        public string PreviewFeedbackLabel => BuildPickupFeedbackLabel();
+        public Color PreviewFeedbackColor => ResolvePickupFeedbackColor();
 
         protected virtual void Awake()
         {

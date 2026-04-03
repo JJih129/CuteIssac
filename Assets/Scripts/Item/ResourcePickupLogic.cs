@@ -13,6 +13,15 @@ namespace CuteIssac.Item
         [SerializeField] private ResourcePickupType resourceType;
         [SerializeField] [Min(1)] private int amount = 1;
 
+        public ResourcePickupType ResourceType => resourceType;
+        public int Amount => amount;
+
+        public void Configure(ResourcePickupType nextResourceType, int nextAmount)
+        {
+            resourceType = nextResourceType;
+            amount = Mathf.Max(1, nextAmount);
+        }
+
         protected override bool TryCollect(PlayerInventory inventory, PlayerHealth health, PlayerItemManager itemManager)
         {
             if (inventory == null || amount <= 0)
@@ -40,10 +49,10 @@ namespace CuteIssac.Item
         {
             string resourceLabel = resourceType switch
             {
-                ResourcePickupType.Coin => "코인",
-                ResourcePickupType.Key => "열쇠",
-                ResourcePickupType.Bomb => "폭탄",
-                _ => "자원"
+                ResourcePickupType.Coin => "COIN",
+                ResourcePickupType.Key => "KEY",
+                ResourcePickupType.Bomb => "BOMB",
+                _ => "RESOURCE"
             };
 
             return amount > 1

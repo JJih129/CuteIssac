@@ -114,18 +114,41 @@ namespace CuteIssac.Enemy
 
         private Vector2 ResolveMoveDirection(SupportHealerEnemyData enemyData, Vector2 aimDirection, float distanceToPlayer)
         {
+            Vector2 fallbackDirection;
+
             if (distanceToPlayer > enemyData.PreferredRange)
             {
-                return aimDirection;
+                fallbackDirection = aimDirection;
+                return EnemyFormationTactics.ResolveEscortSupportMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    1.26f,
+                    0.82f);
             }
 
             if (distanceToPlayer < enemyData.RetreatRange)
             {
-                return -aimDirection;
+                fallbackDirection = -aimDirection;
+                return EnemyFormationTactics.ResolveEscortSupportMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    1.26f,
+                    0.82f);
             }
 
             Vector2 strafeDirection = new(-aimDirection.y, aimDirection.x * _strafeSign);
-            return strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            fallbackDirection = strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            return EnemyFormationTactics.ResolveEscortSupportMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                fallbackDirection,
+                1.26f,
+                0.82f);
         }
 
         private void ExecuteHeal(SupportHealerEnemyData enemyData)

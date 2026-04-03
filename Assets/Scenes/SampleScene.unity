@@ -119,6 +119,97 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &143757779
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 143757780}
+  - component: {fileID: 143757781}
+  m_Layer: 0
+  m_Name: Backdrop
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &143757780
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 143757779}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 833695104}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &143757781
+SpriteRenderer:
+  serializedVersion: 2
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 143757779}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: 66591e03ee76f0f4c9bd27449665256e, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 10.24, y: 5.59}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -397,12 +488,18 @@ MonoBehaviour:
   playerActiveItemController: {fileID: 0}
   playerTrinketHolder: {fileID: 0}
   playerStats: {fileID: 0}
+  playerWeaponLoadout: {fileID: 0}
+  playerCombatMomentumController: {fileID: 0}
+  playerRoutePlanCarryController: {fileID: 0}
   roomNavigationController: {fileID: 0}
+  roomTraversalGuidanceController: {fileID: 0}
   healthPanelView: {fileID: 0}
   resourcePanelView: {fileID: 0}
   activeItemPanelView: {fileID: 0}
   combatStatPanelView: {fileID: 0}
   trinketPanelView: {fileID: 0}
+  weaponPanelView: {fileID: 0}
+  loadoutHistoryPanelView: {fileID: 0}
   bossHpPanelView: {fileID: 820000234}
   minimapPanelView: {fileID: 0}
   topHudBarView: {fileID: 820000104}
@@ -411,6 +508,12 @@ MonoBehaviour:
   runManager: {fileID: 0}
   challengeStatusRefreshInterval: 0.15
   secretRevealStatusDuration: 3.5
+  momentumRewardTransitionStatusDuration: 2.4
+  momentumRewardClaimStatusDuration: 1.8
+  choiceRouteStatusDuration: 2.2
+  loadoutRecapStatusDuration: 3.2
+  maxLoadoutHistoryEntries: 3
+  loadoutHistoryEntryLifetime: 18
 --- !u!114 &820000103
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2693,6 +2796,8 @@ MonoBehaviour:
   fireRateValueText: {fileID: 820000292}
   projectileSpeedValueText: {fileID: 820000296}
   luckValueText: {fileID: 820000300}
+  momentumStatusText: {fileID: 0}
+  projectileTraitStatusText: {fileID: 0}
   topBarPadding: 8
   topBarBackgroundTopInset: 8
   compactTopBarBackgroundTopInset: 10
@@ -2710,8 +2815,16 @@ MonoBehaviour:
   compactTopBarValueFontSize: 22
   topBarRowHeight: 38
   compactTopBarRowHeight: 34
+  topBarMomentumRowHeight: 24
+  compactTopBarMomentumRowHeight: 18
+  topBarTraitRowHeight: 22
+  compactTopBarTraitRowHeight: 17
   topBarBackgroundHeight: 86
   compactTopBarBackgroundHeight: 78
+  topBarMomentumTopGap: 6
+  compactTopBarMomentumTopGap: 4
+  topBarTraitTopGap: 4
+  compactTopBarTraitTopGap: 3
   topBarLineSpacing: 0.9
   panelTint: {r: 0.2, g: 0.28, b: 0.38, a: 0.24}
   statTextColor: {r: 0.98, g: 0.99, b: 1, a: 1}
@@ -2720,6 +2833,9 @@ MonoBehaviour:
   challengeBaselinePanelTint: {r: 0.34, g: 0.22, b: 0.1, a: 0.24}
   challengeBaselineLabelColor: {r: 1, g: 0.94, b: 0.82, a: 0.78}
   challengeBaselineValueColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  momentumReadyLabelColor: {r: 0.82, g: 0.94, b: 1, a: 0.9}
+  momentumReadyValueColor: {r: 0.96, g: 1, b: 0.98, a: 1}
+  momentumPanelTintStrength: 0.24
   compactPanelAlphaScale: 0.84
   compactLabelAlphaScale: 1.02
   compactValueAlphaScale: 1.08
@@ -3518,6 +3634,38 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!1 &833695103
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 833695104}
+  m_Layer: 0
+  m_Name: CandyStageRoomVisual
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &833695104
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 833695103}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -347.25, y: -1.31984, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 143757780}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &900000100
 GameObject:
   m_ObjectHideFlags: 0
@@ -3543,6 +3691,7 @@ GameObject:
   - component: {fileID: 900000115}
   - component: {fileID: 900000116}
   - component: {fileID: 900000117}
+  - component: {fileID: 900000118}
   m_Layer: 0
   m_Name: PlayerRoot
   m_TagString: Player
@@ -3581,6 +3730,7 @@ MonoBehaviour:
   maxHealth: 6
   startingHealth: 4
   invulnerabilityDuration: 1
+  enableDevelopmentHotkeys: 1
   playerStats: {fileID: 0}
   playerVisual: {fileID: 0}
 --- !u!114 &900000103
@@ -3724,6 +3874,8 @@ MonoBehaviour:
   playerStats: {fileID: 900000111}
   playerVisual: {fileID: 900000112}
   playerRigidbody: {fileID: 900000104}
+  routePlanCarryController: {fileID: 0}
+  weaponLoadout: {fileID: 0}
   attackDefinition: {fileID: 11400000, guid: ef5f63d1a265450e9c9702da0aa16407, type: 2}
   multishotSpreadDegrees: 9
   inertiaFactor: 0.22
@@ -3743,6 +3895,8 @@ MonoBehaviour:
   playerTrinketHolder: {fileID: 0}
   playerStats: {fileID: 900000111}
   playerHealth: {fileID: 0}
+  playerActiveItemController: {fileID: 0}
+  playerWeaponLoadout: {fileID: 0}
   runItemPoolService: {fileID: 0}
   debugPickupItem: {fileID: 0}
 --- !u!114 &900000111
@@ -3772,6 +3926,9 @@ MonoBehaviour:
   fallbackProjectilePierce: 0
   fallbackHomingStrength: 0
   fallbackMaxHealth: 6
+  fireIntervalModifierToShotsPerSecondScale: 2.4
+  minimumShotsPerSecond: 1
+  maximumShotsPerSecond: 8
 --- !u!114 &900000112
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3795,10 +3952,21 @@ MonoBehaviour:
   bodySpriteRenderer: {fileID: 900000132}
   bodyAnimator: {fileID: 0}
   visualSet: {fileID: 0}
+  useSpriteSequenceAnimation: 1
+  idleBodySprite: {fileID: -5115618752126089108, guid: 95acb54aac5fe2c449cf265355267053, type: 3}
+  walkLeftBodySprites:
+  - {fileID: -1387404944917472376, guid: 2f5265ccf857fce4aafa5c1d2c901328, type: 3}
+  - {fileID: 3691505829983384436, guid: 5d79e8965c846114eb6aca4b099742d1, type: 3}
+  - {fileID: -2314172788027130779, guid: 95cb6762e501cfd428aecb0b70f3eb04, type: 3}
+  - {fileID: 7952475427389446626, guid: 390227437256301419d6a4cc1d99efce, type: 3}
+  walkAnimationFramesPerSecond: 10
+  walkAnimationMoveThreshold: 0.08
+  animateVerticalMovementWithWalkCycle: 1
   muzzleAnchor: {fileID: 900000141}
   hitEffectAnchor: {fileID: 900000151}
   deathEffectAnchor: {fileID: 900000161}
   facingMode: 1
+  bodySpriteFacesRightByDefault: 0
   useMoveDirectionWhenAimMissing: 1
   moveMuzzleAnchorWithAim: 1
   baseColor: {r: 1, g: 1, b: 1, a: 1}
@@ -3903,6 +4071,30 @@ MonoBehaviour:
   bombSpawnAnchor: {fileID: 900000101}
   placementOffset: 0
   placementCooldown: 0.15
+--- !u!114 &900000118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: deff7ef81b824814a86305023a49d2b7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerVisual: {fileID: 900000112}
+  playerCombat: {fileID: 900000109}
+  weaponLoadout: {fileID: 0}
+  weaponVisualParent: {fileID: 900000121}
+  weaponVisualRoot: {fileID: 0}
+  weaponSpriteRenderer: {fileID: 0}
+  handBackOffset: 0.15
+  lateralOffset: 0.035
+  worldScale: 0.55
+  frontSortingOffset: 1
+  backSortingOffset: -1
+  spriteTint: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &900000120
 GameObject:
   m_ObjectHideFlags: 0
@@ -3967,7 +4159,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.05, z: 0}
-  m_LocalScale: {x: 0.72, y: 0.92, z: 1}
+  m_LocalScale: {x: 0.04, y: 0.04, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 900000121}
@@ -4021,7 +4213,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 96b04b3bdb7b4c0f9678b7db7e6fc79b, type: 3}
+  m_Sprite: {fileID: -5115618752126089108, guid: 95acb54aac5fe2c449cf265355267053, type: 3}
   m_Color: {r: 1, g: 0.88, b: 0.92, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4140,7 +4332,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &900000171
 Transform:
   m_ObjectHideFlags: 0
@@ -4360,6 +4552,9 @@ MonoBehaviour:
   transitionCooldown: 0.15
   cameraLerpSpeed: 7.5
   constrainCameraToRoomBounds: 1
+  cameraTraversalHandoffDuration: 0.26
+  cameraTraversalHandoffDistance: 0.88
+  guidedTraversalCameraBonus: 0.28
 --- !u!114 &910000306
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4454,6 +4649,7 @@ MonoBehaviour:
   fallbackStartingFloorIndex: 1
   useFixedSeed: 0
   fixedSeed: 12345
+  enableDevelopmentFloorHotkeys: 1
 --- !u!114 &910000310
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4630,6 +4826,8 @@ MonoBehaviour:
   rewardTable: {fileID: 11400000, guid: bbbc5ce53b52490eb55b256693fcb2d6, type: 2}
   rewardSpawnAnchor: {fileID: 970000121}
   spawnedRewardParent: {fileID: 0}
+  momentumRewardController: {fileID: 0}
+  playerItemManager: {fileID: 0}
   roomTypeForRewards: 1
   preferLastEnemyDeathPosition: 1
   scatterRadius: 0.8
@@ -4643,6 +4841,10 @@ MonoBehaviour:
   challengeRevealArcLift: 0.18
   challengeRevealEliteSpreadBoost: 0.18
   challengeRevealDeadlySpreadBoost: 0.36
+  momentumRevealForwardOffset: 1.08
+  momentumRevealSpacing: 0.92
+  momentumRevealRowOffset: 0.58
+  momentumRevealArcLift: 0.18
 --- !u!114 &970000105
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4675,6 +4877,26 @@ MonoBehaviour:
   preferredSpawnSeparation: 2.2
   roomCandidateSamples: 8
   roomBoundsInsetRatio: 0.16
+  globalEnemyCountMultiplier: 1.45
+  enableSpawnTelegraph: 1
+  spawnTelegraphMinDuration: 0.28
+  spawnTelegraphMaxDuration: 0.72
+  spawnTelegraphRevealRatio: 0.58
+  spawnTelegraphVisibleLeadTime: 0.18
+  spawnTelegraphScale: 1.12
+  spawnTelegraphPulseSpeed: 5.4
+  spawnTelegraphOpacity: 0.58
+  spawnTelegraphLocalOffset: {x: 0, y: -0.28}
+  enableEncounterSynergy: 1
+  escortFrontlineSpeedMultiplier: 1.14
+  escortFrontlineContactMultiplier: 1.18
+  crossfireAggroDelayScale: 0.72
+  crossfireControllerSpeedMultiplier: 1.12
+  siegeUnitSpeedMultiplier: 1.08
+  siegeDeathPulseRadius: 0.9
+  siegeDeathPulseTelegraphDuration: 0.55
+  siegeDeathPulseDamage: 1
+  siegeDeathPulseKnockback: 4.6
   allowChampionPromotions: 1
   championProfile: {fileID: 0}
 --- !u!1 &970000120
@@ -5197,3 +5419,4 @@ SceneRoots:
   - {fileID: 980100101}
   - {fileID: 980200101}
   - {fileID: 970000101}
+  - {fileID: 833695104}

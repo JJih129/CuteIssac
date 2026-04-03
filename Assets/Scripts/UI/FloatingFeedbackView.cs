@@ -902,6 +902,7 @@ namespace CuteIssac.UI
                     FloatingFeedbackVisualProfile.PlayerDamage => playerDamageBackdropColor,
                     FloatingFeedbackVisualProfile.Pickup => pickupBackdropColor,
                     FloatingFeedbackVisualProfile.EventLabel => eventLabelBackdropColor,
+                    FloatingFeedbackVisualProfile.Momentum => Color.Lerp(eventLabelBackdropColor, pickupBackdropColor, 0.34f),
                     _ => new Color(0.04f, 0.05f, 0.09f, 0.86f)
                 };
             }
@@ -929,6 +930,7 @@ namespace CuteIssac.UI
                     FloatingFeedbackVisualProfile.PlayerDamage => playerDamageGlowColor,
                     FloatingFeedbackVisualProfile.Pickup => pickupGlowColor,
                     FloatingFeedbackVisualProfile.EventLabel => eventLabelGlowColor,
+                    FloatingFeedbackVisualProfile.Momentum => Color.Lerp(eventLabelGlowColor, pickupGlowColor, 0.38f),
                     _ => new Color(_baseColor.r, _baseColor.g, _baseColor.b, 0.16f)
                 };
             }
@@ -959,6 +961,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageTextColor,
                 FloatingFeedbackVisualProfile.Pickup => pickupTextColor,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelTextColor,
+                FloatingFeedbackVisualProfile.Momentum => _baseColor,
                 _ => _baseColor
             };
         }
@@ -976,6 +979,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageAccentAlpha,
                 FloatingFeedbackVisualProfile.Pickup => pickupAccentAlpha,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelAccentAlpha,
+                FloatingFeedbackVisualProfile.Momentum => Mathf.Lerp(eventLabelAccentAlpha, pickupAccentAlpha, 0.5f),
                 _ => 0.92f
             };
         }
@@ -993,6 +997,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageShadowAlpha,
                 FloatingFeedbackVisualProfile.Pickup => pickupShadowAlpha,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelShadowAlpha,
+                FloatingFeedbackVisualProfile.Momentum => Mathf.Lerp(eventLabelShadowAlpha, pickupShadowAlpha, 0.5f),
                 _ => 0.22f
             };
         }
@@ -1005,6 +1010,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageFontSize,
                 FloatingFeedbackVisualProfile.Pickup => pickupFontSize,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelFontSize,
+                FloatingFeedbackVisualProfile.Momentum => Mathf.Max(eventLabelFontSize, pickupFontSize),
                 _ => fallbackFontSize
             };
         }
@@ -1017,6 +1023,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageCharacterSize,
                 FloatingFeedbackVisualProfile.Pickup => pickupCharacterSize,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelCharacterSize,
+                FloatingFeedbackVisualProfile.Momentum => Mathf.Lerp(eventLabelCharacterSize, pickupCharacterSize, 0.5f),
                 _ => Mathf.Max(_baseCharacterSize > 0f ? _baseCharacterSize : 0f, fallbackCharacterSize)
             };
         }
@@ -1029,6 +1036,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageLineSpacing,
                 FloatingFeedbackVisualProfile.Pickup => pickupLineSpacing,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelLineSpacing,
+                FloatingFeedbackVisualProfile.Momentum => Mathf.Lerp(eventLabelLineSpacing, pickupLineSpacing, 0.5f),
                 _ => Mathf.Min(_baseLineSpacing > 0f ? _baseLineSpacing : 1f, 0.96f)
             };
         }
@@ -1041,6 +1049,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageGlowSize,
                 FloatingFeedbackVisualProfile.Pickup => pickupGlowSize,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelGlowSize,
+                FloatingFeedbackVisualProfile.Momentum => Vector2.Lerp(eventLabelGlowSize, pickupGlowSize, 0.4f),
                 _ => _baseGlowSize
             };
         }
@@ -1053,6 +1062,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageBackdropSize,
                 FloatingFeedbackVisualProfile.Pickup => pickupBackdropSize,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelBackdropSize,
+                FloatingFeedbackVisualProfile.Momentum => Vector2.Lerp(eventLabelBackdropSize, pickupBackdropSize, 0.4f),
                 _ => _baseBackdropSize
             };
         }
@@ -1065,6 +1075,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageAccentSize,
                 FloatingFeedbackVisualProfile.Pickup => pickupAccentSize,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelAccentSize,
+                FloatingFeedbackVisualProfile.Momentum => Vector2.Lerp(eventLabelAccentSize, pickupAccentSize, 0.4f),
                 _ => _baseAccentSize
             };
         }
@@ -1077,6 +1088,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamageShadowSize,
                 FloatingFeedbackVisualProfile.Pickup => pickupShadowSize,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelShadowSize,
+                FloatingFeedbackVisualProfile.Momentum => Vector2.Lerp(eventLabelShadowSize, pickupShadowSize, 0.4f),
                 _ => _baseShadowSize
             };
         }
@@ -1089,6 +1101,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamagePulseAmplitude,
                 FloatingFeedbackVisualProfile.Pickup => pickupPulseAmplitude,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelPulseAmplitude,
+                FloatingFeedbackVisualProfile.Momentum => Mathf.Lerp(eventLabelPulseAmplitude, pickupPulseAmplitude, 0.5f),
                 _ => 1f
             };
         }
@@ -1101,6 +1114,7 @@ namespace CuteIssac.UI
                 FloatingFeedbackVisualProfile.PlayerDamage => playerDamagePulseFrequency,
                 FloatingFeedbackVisualProfile.Pickup => pickupPulseFrequency,
                 FloatingFeedbackVisualProfile.EventLabel => eventLabelPulseFrequency,
+                FloatingFeedbackVisualProfile.Momentum => Mathf.Lerp(eventLabelPulseFrequency, pickupPulseFrequency, 0.5f),
                 _ => 1f
             };
         }

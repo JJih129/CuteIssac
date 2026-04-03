@@ -1,5 +1,6 @@
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Room;
+using UnityEngine;
 
 namespace CuteIssac.Core.Gameplay
 {
@@ -20,8 +21,12 @@ namespace CuteIssac.Core.Gameplay
         public ChallengePressureTier ChallengePressureTier => Summary.ChallengePressureTier;
         public int BonusRewardSelections => Summary.BonusRewardSelections;
         public int BonusItemRolls => Summary.BonusItemRolls;
+        public int MomentumBonusRewardSelections => Summary.MomentumBonusRewardSelections;
+        public int MomentumBonusItemRolls => Summary.MomentumBonusItemRolls;
+        public Color MomentumAccentColor => Summary.MomentumAccentColor;
         public bool IsChallengeFinale => Summary.IsChallengeFinale;
         public bool HasRewards => Summary.HasRewards;
         public bool HasChallengeBonusPresentation => Summary.HasChallengeBonusPresentation;
+        public bool HasMomentumBonusPresentation => Summary.HasMomentumBonusPresentation;
     }
 }

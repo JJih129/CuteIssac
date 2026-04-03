@@ -9,6 +9,7 @@ using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
 using CuteIssac.Data.Room;
 using CuteIssac.Item;
+using CuteIssac.Player;
 using UnityEngine;
 
 namespace CuteIssac.Room
@@ -29,6 +30,10 @@ namespace CuteIssac.Room
         [SerializeField] private Transform rewardSpawnAnchor;
         [Tooltip("Optional parent for spawned pickup instances.")]
         [SerializeField] private Transform spawnedRewardParent;
+        [Tooltip("Optional room-level combat bonus tracker that can add extra clear rewards.")]
+        [SerializeField] private RoomMomentumRewardController momentumRewardController;
+        [Tooltip("Optional player item manager that can inject passive clear reward bonuses before rewards spawn.")]
+        [SerializeField] private PlayerItemManager playerItemManager;
 
         [Header("Reward Rules")]
         [Tooltip("Current room category used to filter reward table entries. Dungeon generation can override this later.")]
@@ -48,6 +53,12 @@ namespace CuteIssac.Room
         [SerializeField] [Min(0f)] private float challengeRevealArcLift = 0.18f;
         [SerializeField] [Range(0f, 1f)] private float challengeRevealEliteSpreadBoost = 0.18f;
         [SerializeField] [Range(0f, 1f)] private float challengeRevealDeadlySpreadBoost = 0.36f;
+
+        [Header("Momentum Reveal Layout")]
+        [SerializeField] [Min(0f)] private float momentumRevealForwardOffset = 1.08f;
+        [SerializeField] [Min(0.2f)] private float momentumRevealSpacing = 0.92f;
+        [SerializeField] [Min(0f)] private float momentumRevealRowOffset = 0.58f;
+        [SerializeField] [Min(0f)] private float momentumRevealArcLift = 0.18f;
 
         private readonly List<RoomRewardEntry> _candidateEntries = new();
         private readonly List<RoomRewardEntry> _selectionPool = new();
@@ -168,6 +179,21 @@ namespace CuteIssac.Room
             {
                 _runItemPoolService = FindFirstObjectByType<RunItemPoolService>(FindObjectsInactive.Exclude);
             }
+
+            if (playerItemManager == null)
+            {
+                playerItemManager = FindFirstObjectByType<PlayerItemManager>(FindObjectsInactive.Exclude);
+            }
+
+            if (momentumRewardController == null)
+            {
+                momentumRewardController = GetComponent<RoomMomentumRewardController>();
+
+                if (momentumRewardController == null)
+                {
+                    momentumRewardController = gameObject.AddComponent<RoomMomentumRewardController>();
+                }
+            }
         }
 
         private RoomRewardTable ResolveRewardTable()
@@ -196,6 +222,16 @@ namespace CuteIssac.Room
             int pressureBonusItemRolls = ResolveChallengePressureBonusItemRolls(challengePressureTier);
             int secretBonusRewardSelections = ResolveSecretBonusRewardSelections(allowNonCombatRewards);
             int secretBonusItemRolls = ResolveSecretBonusItemRolls(allowNonCombatRewards);
+            int passiveBonusRewardSelections = 0;
+            int passiveBonusItemRolls = 0;
+            string passiveBonusTitle = string.Empty;
+            string passiveBonusSubtitle = string.Empty;
+            Color passiveBonusAccentColor = Color.white;
+            int momentumBonusRewardSelections = 0;
+            int momentumBonusItemRolls = 0;
+            string momentumBonusTitle = string.Empty;
+            string momentumBonusSubtitle = string.Empty;
+            Color momentumBonusAccentColor = Color.white;
 
             if (_isShuttingDown || _hasSpawnedRewards || resolvedRoom == null || roomController != resolvedRoom)
             {
@@ -207,26 +243,61 @@ namespace CuteIssac.Room
                 return default;
             }
 
+            if (momentumRewardController != null)
+            {
+                momentumRewardController.TryConsumeRewardBonus(
+                    resolvedRoom,
+                    allowNonCombatRewards,
+                    out momentumBonusRewardSelections,
+                    out momentumBonusItemRolls,
+                    out momentumBonusTitle,
+                    out momentumBonusSubtitle,
+                    out momentumBonusAccentColor);
+            }
+
+            if (playerItemManager != null)
+            {
+                playerItemManager.TryGetRoomRewardBonus(
+                    roomTypeForRewards,
+                    allowNonCombatRewards,
+                    out passiveBonusRewardSelections,
+                    out passiveBonusItemRolls,
+                    out passiveBonusTitle,
+                    out passiveBonusSubtitle,
+                    out passiveBonusAccentColor);
+            }
+
+            int expectedStandardRewardSpawnCount = EstimateRewardSpawnCount(
+                resolvedRewardTable,
+                bonusRewardSelections + pressureBonusRewardSelections + passiveBonusRewardSelections,
+                secretBonusRewardSelections,
+                bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls,
+                secretBonusItemRolls);
             int expectedRewardSpawnCount = EstimateRewardSpawnCount(
                 resolvedRewardTable,
-                bonusRewardSelections + pressureBonusRewardSelections,
+                bonusRewardSelections + pressureBonusRewardSelections + passiveBonusRewardSelections + momentumBonusRewardSelections,
                 secretBonusRewardSelections,
-                bonusItemRolls + pressureBonusItemRolls,
+                bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls + momentumBonusItemRolls,
                 secretBonusItemRolls);
             _activeRewardPhaseSummary = new RoomRewardPhaseSummary(
                 expectedRewardSpawnCount,
                 challengeClearRank,
                 challengePressureTier,
-                bonusRewardSelections + pressureBonusRewardSelections,
-                bonusItemRolls + pressureBonusItemRolls,
-                IsChallengeFinale(resolvedRoom, allowNonCombatRewards));
-            _activeRewardLayoutCount = expectedRewardSpawnCount;
+                bonusRewardSelections + pressureBonusRewardSelections + passiveBonusRewardSelections + momentumBonusRewardSelections,
+                bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls + momentumBonusItemRolls,
+                IsChallengeFinale(resolvedRoom, allowNonCombatRewards),
+                momentumBonusRewardSelections,
+                momentumBonusItemRolls,
+                momentumBonusAccentColor);
+            _activeRewardLayoutCount = expectedStandardRewardSpawnCount;
 
             int spawnIndex = 0;
+            int momentumSpawnIndex = 0;
 
             if (resolvedRewardTable != null)
             {
                 resolvedRewardTable.CollectCandidates(ResolveRewardFilterRoomType(), _candidateEntries);
+                FilterRoomClearRewardCandidates(_candidateEntries);
 
                 if (_candidateEntries.Count == 0)
                 {
@@ -240,50 +311,49 @@ namespace CuteIssac.Room
                     _selectionPool.Clear();
                     _selectionPool.AddRange(_candidateEntries);
 
-                    int selectionCount = resolvedRewardTable.AllowDuplicateSelections
+                    int baseSelectionCount = resolvedRewardTable.AllowDuplicateSelections
                         ? resolvedRewardTable.GetSelectionCount()
                         : Mathf.Min(resolvedRewardTable.GetSelectionCount(), _selectionPool.Count);
-                    selectionCount += bonusRewardSelections;
-                    selectionCount += pressureBonusRewardSelections;
-                    selectionCount += secretBonusRewardSelections;
-
-                    for (int selectionIndex = 0; selectionIndex < selectionCount; selectionIndex++)
-                    {
-                        if (_selectionPool.Count == 0)
-                        {
-                            break;
-                        }
-
-                        int selectedIndex = SelectWeightedIndex(_selectionPool);
-
-                        if (selectedIndex < 0)
-                        {
-                            break;
-                        }
-
-                        RoomRewardEntry selectedEntry = _selectionPool[selectedIndex];
-
-                        for (int quantityIndex = 0; quantityIndex < selectedEntry.Quantity; quantityIndex++)
-                        {
-                            SpawnRewardInstance(selectedEntry, spawnIndex);
-                            spawnIndex++;
-                        }
-
-                        if (!resolvedRewardTable.AllowDuplicateSelections)
-                        {
-                            _selectionPool.RemoveAt(selectedIndex);
-                        }
-                    }
+                    int standardBonusSelectionCount = bonusRewardSelections
+                        + pressureBonusRewardSelections
+                        + passiveBonusRewardSelections
+                        + secretBonusRewardSelections;
+                    spawnIndex += SpawnRewardSelectionsFromPool(
+                        resolvedRewardTable,
+                        baseSelectionCount + standardBonusSelectionCount,
+                        spawnIndex,
+                        false,
+                        ref momentumSpawnIndex,
+                        momentumBonusAccentColor);
+                    spawnIndex += SpawnRewardSelectionsFromPool(
+                        resolvedRewardTable,
+                        momentumBonusRewardSelections,
+                        spawnIndex,
+                        true,
+                        ref momentumSpawnIndex,
+                        momentumBonusAccentColor);
                 }
             }
 
-            int itemRollCount = ShouldSpawnItemPoolReward()
-                ? 1 + bonusItemRolls + pressureBonusItemRolls + secretBonusItemRolls
+            int standardItemRollCount = ShouldSpawnItemPoolReward()
+                ? 1 + bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls + secretBonusItemRolls
                 : 0;
 
-            for (int itemRollIndex = 0; itemRollIndex < itemRollCount; itemRollIndex++)
+            for (int itemRollIndex = 0; itemRollIndex < standardItemRollCount; itemRollIndex++)
             {
                 spawnIndex += SpawnItemRewardFromPool(spawnIndex);
+            }
+
+            int standardSpawnCount = spawnIndex;
+
+            for (int momentumItemRollIndex = 0; momentumItemRollIndex < momentumBonusItemRolls; momentumItemRollIndex++)
+            {
+                spawnIndex += SpawnItemRewardFromPool(
+                    spawnIndex,
+                    markMomentumBonus: true,
+                    momentumSpawnIndex: momentumSpawnIndex,
+                    momentumAccentColor: momentumBonusAccentColor);
+                momentumSpawnIndex++;
             }
 
             _hasSpawnedRewards = spawnIndex > 0;
@@ -301,19 +371,34 @@ namespace CuteIssac.Room
             RaiseChallengeRewardFeedback(
                 challengeClearRank,
                 challengePressureTier,
-                bonusRewardSelections + pressureBonusRewardSelections,
-                bonusItemRolls + pressureBonusItemRolls);
+                bonusRewardSelections + pressureBonusRewardSelections + momentumBonusRewardSelections,
+                bonusItemRolls + pressureBonusItemRolls + momentumBonusItemRolls);
             RaiseSecretRewardFeedback(secretBonusRewardSelections, secretBonusItemRolls);
+            RaisePassiveRewardFeedback(
+                passiveBonusRewardSelections,
+                passiveBonusItemRolls,
+                passiveBonusTitle,
+                passiveBonusSubtitle,
+                passiveBonusAccentColor);
+            RaiseMomentumRewardFeedback(
+                momentumBonusRewardSelections,
+                momentumBonusItemRolls,
+                momentumBonusTitle,
+                momentumBonusSubtitle,
+                momentumBonusAccentColor);
 
             RoomRewardPhaseSummary result = new RoomRewardPhaseSummary(
                 spawnIndex,
                 challengeClearRank,
                 challengePressureTier,
-                bonusRewardSelections + pressureBonusRewardSelections,
-                bonusItemRolls + pressureBonusItemRolls,
-                IsChallengeFinale(resolvedRoom, allowNonCombatRewards));
+                bonusRewardSelections + pressureBonusRewardSelections + passiveBonusRewardSelections + momentumBonusRewardSelections,
+                bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls + momentumBonusItemRolls,
+                IsChallengeFinale(resolvedRoom, allowNonCombatRewards),
+                momentumBonusRewardSelections,
+                momentumBonusItemRolls,
+                momentumBonusAccentColor);
             _activeRewardPhaseSummary = result;
-            _activeRewardLayoutCount = Mathf.Max(_activeRewardLayoutCount, spawnIndex);
+            _activeRewardLayoutCount = Mathf.Max(_activeRewardLayoutCount, standardSpawnCount);
             return result;
         }
 
@@ -327,7 +412,68 @@ namespace CuteIssac.Room
             _isShuttingDown = true;
         }
 
-        private void SpawnRewardInstance(RoomRewardEntry rewardEntry, int spawnIndex)
+        private int SpawnRewardSelectionsFromPool(
+            RoomRewardTable resolvedRewardTable,
+            int selectionCount,
+            int startSpawnIndex,
+            bool markMomentumBonus,
+            ref int momentumSpawnIndex,
+            Color momentumAccentColor)
+        {
+            if (resolvedRewardTable == null || selectionCount <= 0)
+            {
+                return 0;
+            }
+
+            int spawnedCount = 0;
+
+            for (int selectionIndex = 0; selectionIndex < selectionCount; selectionIndex++)
+            {
+                if (_selectionPool.Count == 0)
+                {
+                    break;
+                }
+
+                int selectedIndex = SelectWeightedIndex(_selectionPool);
+
+                if (selectedIndex < 0)
+                {
+                    break;
+                }
+
+                RoomRewardEntry selectedEntry = _selectionPool[selectedIndex];
+
+                for (int quantityIndex = 0; quantityIndex < selectedEntry.Quantity; quantityIndex++)
+                {
+                    SpawnRewardInstance(
+                        selectedEntry,
+                        startSpawnIndex + spawnedCount,
+                        markMomentumBonus,
+                        markMomentumBonus ? momentumSpawnIndex : -1,
+                        momentumAccentColor);
+                    spawnedCount++;
+
+                    if (markMomentumBonus)
+                    {
+                        momentumSpawnIndex++;
+                    }
+                }
+
+                if (!resolvedRewardTable.AllowDuplicateSelections)
+                {
+                    _selectionPool.RemoveAt(selectedIndex);
+                }
+            }
+
+            return spawnedCount;
+        }
+
+        private void SpawnRewardInstance(
+            RoomRewardEntry rewardEntry,
+            int spawnIndex,
+            bool markMomentumBonus = false,
+            int momentumSpawnIndex = -1,
+            Color momentumAccentColor = default)
         {
             GameObject pickupPrefab = rewardEntry.PickupPrefab;
 
@@ -338,7 +484,9 @@ namespace CuteIssac.Room
 
             PrewarmPickupIfNeeded(pickupPrefab, rewardEntry.Quantity);
 
-            Vector3 spawnPosition = ResolveSpawnPosition(spawnIndex);
+            Vector3 spawnPosition = markMomentumBonus
+                ? ResolveMomentumRewardSpawnPosition(momentumSpawnIndex)
+                : ResolveSpawnPosition(spawnIndex);
             Quaternion spawnRotation = Quaternion.identity;
             GameObject spawnedPickup = GameplaySpawnFactory.SpawnGameObject(
                 pickupPrefab,
@@ -353,10 +501,27 @@ namespace CuteIssac.Room
                 return;
             }
 
-            ConfigureRewardPickupTracking(spawnedPickup);
+            ConfigureRewardPickupTracking(
+                spawnedPickup,
+                markMomentumBonus,
+                false,
+                momentumAccentColor);
+
+            if (markMomentumBonus)
+            {
+                ConfigureMomentumRewardPresentation(
+                    spawnedPickup,
+                    momentumAccentColor,
+                    isHighValue: false,
+                    momentumSpawnIndex);
+            }
         }
 
-        private int SpawnItemRewardFromPool(int spawnIndex)
+        private int SpawnItemRewardFromPool(
+            int spawnIndex,
+            bool markMomentumBonus = false,
+            int momentumSpawnIndex = -1,
+            Color momentumAccentColor = default)
         {
             if (!ShouldSpawnItemPoolReward())
             {
@@ -374,7 +539,9 @@ namespace CuteIssac.Room
 
             PrewarmPickupIfNeeded(_runtimeItemRewardPickupPrefab, 1);
 
-            Vector3 spawnPosition = ResolveSpawnPosition(spawnIndex);
+            Vector3 spawnPosition = markMomentumBonus
+                ? ResolveMomentumRewardSpawnPosition(momentumSpawnIndex)
+                : ResolveSpawnPosition(spawnIndex);
             GameObject rewardObject = GameplaySpawnFactory.SpawnGameObject(
                 _runtimeItemRewardPickupPrefab,
                 spawnPosition,
@@ -387,7 +554,20 @@ namespace CuteIssac.Room
                 return 0;
             }
 
-            ConfigureRewardPickupTracking(rewardObject);
+            ConfigureRewardPickupTracking(
+                rewardObject,
+                markMomentumBonus,
+                markMomentumBonus,
+                momentumAccentColor);
+
+            if (markMomentumBonus)
+            {
+                ConfigureMomentumRewardPresentation(
+                    rewardObject,
+                    momentumAccentColor,
+                    isHighValue: true,
+                    momentumSpawnIndex);
+            }
 
             if (rewardObject.TryGetComponent(out ItemPickupLogic itemPickupLogic))
             {
@@ -408,7 +588,11 @@ namespace CuteIssac.Room
             return 0;
         }
 
-        private void ConfigureRewardPickupTracking(GameObject rewardObject)
+        private void ConfigureRewardPickupTracking(
+            GameObject rewardObject,
+            bool isMomentumReward = false,
+            bool isHighValueMomentumReward = false,
+            Color momentumAccentColor = default)
         {
             if (rewardObject == null || roomController == null)
             {
@@ -429,7 +613,29 @@ namespace CuteIssac.Room
                 rewardPickupTracker = rewardObject.AddComponent<RoomRewardPickupTracker>();
             }
 
-            rewardPickupTracker.Configure(roomController, roomTypeForRewards);
+            rewardPickupTracker.Configure(
+                roomController,
+                roomTypeForRewards,
+                isMomentumReward,
+                isHighValueMomentumReward,
+                momentumAccentColor);
+        }
+
+        private static void ConfigureMomentumRewardPresentation(GameObject rewardObject, Color accentColor, bool isHighValue, int momentumSpawnIndex)
+        {
+            if (rewardObject == null)
+            {
+                return;
+            }
+
+            MomentumRewardPickupPresentation presentation = rewardObject.GetComponent<MomentumRewardPickupPresentation>();
+
+            if (presentation == null)
+            {
+                presentation = rewardObject.AddComponent<MomentumRewardPickupPresentation>();
+            }
+
+            presentation.Configure(accentColor, isHighValue, momentumSpawnIndex);
         }
 
         private void PrewarmPickupIfNeeded(GameObject pickupPrefab, int expectedSpawnCount)
@@ -467,6 +673,37 @@ namespace CuteIssac.Room
             float radius = scatterRadius * Mathf.Clamp01(0.45f + (0.22f * spawnIndex));
             Vector2 offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
             return center + new Vector3(offset.x, offset.y, 0f);
+        }
+
+        private Vector3 ResolveMomentumRewardSpawnPosition(int momentumSpawnIndex)
+        {
+            Vector3 center = rewardSpawnAnchor != null ? rewardSpawnAnchor.position : transform.position;
+
+            if (preferLastEnemyDeathPosition && roomController != null && roomController.TryGetLastEnemyDeathPosition(out Vector3 lastEnemyDeathPosition))
+            {
+                center = lastEnemyDeathPosition;
+            }
+
+            int totalMomentumCount = Mathf.Max(
+                1,
+                _activeRewardPhaseSummary.MomentumBonusRewardSelections + _activeRewardPhaseSummary.MomentumBonusItemRolls);
+
+            if (momentumSpawnIndex < 0)
+            {
+                momentumSpawnIndex = 0;
+            }
+
+            int columns = totalMomentumCount >= 4 ? 3 : totalMomentumCount;
+            int rowIndex = columns > 0 ? momentumSpawnIndex / columns : 0;
+            int columnIndex = columns > 0 ? momentumSpawnIndex % columns : 0;
+            float centerColumn = (columns - 1) * 0.5f;
+            float normalizedColumn = centerColumn > 0f
+                ? (columnIndex - centerColumn) / centerColumn
+                : 0f;
+            float horizontalOffset = normalizedColumn * momentumRevealSpacing;
+            float verticalOffset = momentumRevealForwardOffset - (rowIndex * momentumRevealRowOffset);
+            verticalOffset += (1f - Mathf.Abs(normalizedColumn)) * momentumRevealArcLift;
+            return center + new Vector3(horizontalOffset, verticalOffset, 0f);
         }
 
         private bool ShouldUseChallengeRevealLayout()
@@ -518,6 +755,7 @@ namespace CuteIssac.Room
             if (resolvedRewardTable != null)
             {
                 resolvedRewardTable.CollectCandidates(ResolveRewardFilterRoomType(), _candidateEntries);
+                FilterRoomClearRewardCandidates(_candidateEntries);
                 if (_candidateEntries.Count > 0)
                 {
                     int selectionCount = resolvedRewardTable.GetSelectionCount()
@@ -607,6 +845,19 @@ namespace CuteIssac.Room
                 || roomTypeForRewards == RoomType.Trap
                 || roomTypeForRewards == RoomType.Curse;
         }
+
+    private static void FilterRoomClearRewardCandidates(List<RoomRewardEntry> candidates)
+    {
+        if (candidates == null || candidates.Count == 0)
+        {
+            return;
+        }
+
+        candidates.RemoveAll(static entry =>
+            entry.RewardType != RoomRewardType.Bomb &&
+            entry.RewardType != RoomRewardType.Key &&
+            entry.RewardType != RoomRewardType.PassiveItem);
+    }
 
         private ChallengeClearRank ResolveChallengeClearRank(RoomController resolvedRoom, bool allowNonCombatRewards)
         {
@@ -800,6 +1051,52 @@ namespace CuteIssac.Room
                 subtitle,
                 new Color(0.88f, 0.62f, 1f, 1f),
                 1.9f));
+        }
+
+        private static void RaiseMomentumRewardFeedback(
+            int bonusRewardSelections,
+            int bonusItemRolls,
+            string title,
+            string subtitle,
+            Color accentColor)
+        {
+            if (bonusRewardSelections <= 0 && bonusItemRolls <= 0)
+            {
+                return;
+            }
+
+            GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
+                string.IsNullOrWhiteSpace(title) ? "Momentum Payout" : title,
+                string.IsNullOrWhiteSpace(subtitle)
+                    ? bonusItemRolls > 0
+                        ? $"+Reward {bonusRewardSelections} / +Item {bonusItemRolls}"
+                        : $"+Reward {bonusRewardSelections}"
+                    : subtitle,
+                accentColor.a > 0.01f ? accentColor : new Color(1f, 0.84f, 0.36f, 1f),
+                1.65f));
+        }
+
+        private static void RaisePassiveRewardFeedback(
+            int bonusRewardSelections,
+            int bonusItemRolls,
+            string title,
+            string subtitle,
+            Color accentColor)
+        {
+            if (bonusRewardSelections <= 0 && bonusItemRolls <= 0)
+            {
+                return;
+            }
+
+            GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
+                string.IsNullOrWhiteSpace(title) ? "ITEM CACHE BONUS" : title,
+                string.IsNullOrWhiteSpace(subtitle)
+                    ? bonusItemRolls > 0
+                        ? $"+REWARD {bonusRewardSelections} / +ITEM {bonusItemRolls}"
+                        : $"+REWARD {bonusRewardSelections}"
+                    : subtitle,
+                accentColor.a > 0.01f ? accentColor : new Color(0.72f, 0.86f, 1f, 1f),
+                1.72f));
         }
 
         private RoomType ResolveRewardFilterRoomType()

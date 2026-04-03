@@ -4,6 +4,7 @@ using CuteIssac.Core.Audio;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace CuteIssac.Player
 {
@@ -17,7 +18,8 @@ namespace CuteIssac.Player
         [Header("Health")]
         [SerializeField] [Min(1f)] private float maxHealth = 6f;
         [SerializeField] [Min(0f)] private float startingHealth = -1f;
-        [SerializeField] [Min(0f)] private float invulnerabilityDuration = 1f;
+        [SerializeField] [Min(0f)] private float invulnerabilityDuration = 0.2f;
+        [SerializeField] private bool enableDevelopmentHotkeys = true;
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private PlayerVisual playerVisual;
 
@@ -35,6 +37,8 @@ namespace CuteIssac.Player
 
         private float _invulnerabilityRemaining;
         private float _runtimeMaxHealthBonus;
+        private float _routeBreakthroughDamageMultiplier = 1f;
+        private float _routeBreakthroughInvulnerabilityBonus;
 
         private void Awake()
         {
@@ -71,6 +75,8 @@ namespace CuteIssac.Player
 
         private void Update()
         {
+            HandleDevelopmentHotkeys();
+
             if (!IsInvulnerable)
             {
                 return;
@@ -160,6 +166,16 @@ namespace CuteIssac.Player
             return true;
         }
 
+        public bool TryGrantTemporaryInvulnerability(float duration)
+        {
+            if (IsDead)
+            {
+                return false;
+            }
+
+            return GrantInvulnerabilityInternal(duration);
+        }
+
         public void SetRuntimeMaxHealthBonus(float bonus)
         {
             float clampedBonus = Mathf.Max(0f, bonus);
@@ -186,6 +202,12 @@ namespace CuteIssac.Player
         public void SetDebugInvulnerable(bool value)
         {
             IsDebugInvulnerable = value;
+        }
+
+        public void SetRouteBreakthroughProtection(float damageMultiplier, float invulnerabilityBonus)
+        {
+            _routeBreakthroughDamageMultiplier = Mathf.Clamp(damageMultiplier, 0.1f, 1f);
+            _routeBreakthroughInvulnerabilityBonus = Mathf.Max(0f, invulnerabilityBonus);
         }
 
         private void Die()
@@ -219,6 +241,27 @@ namespace CuteIssac.Player
             }
         }
 
+        private void HandleDevelopmentHotkeys()
+        {
+            if (!enableDevelopmentHotkeys)
+            {
+                return;
+            }
+
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard == null)
+            {
+                return;
+            }
+
+            if ((keyboard.digit1Key != null && keyboard.digit1Key.wasPressedThisFrame)
+                || (keyboard.numpad1Key != null && keyboard.numpad1Key.wasPressedThisFrame))
+            {
+                RestoreToFull();
+            }
+        }
+
         private void ApplyDamageInternal(in DamageInfo damageInfo, bool ignoreInvulnerability, bool grantInvulnerability)
         {
             if (IsDead || IsDebugInvulnerable)
@@ -231,19 +274,20 @@ namespace CuteIssac.Player
                 return;
             }
 
-            float damageAmount = Mathf.Max(0f, damageInfo.Amount);
+            float damageAmount = Mathf.Max(0f, damageInfo.Amount * _routeBreakthroughDamageMultiplier);
 
             if (damageAmount <= 0f)
             {
                 return;
             }
 
+            DamageInfo resolvedDamageInfo = new(damageAmount, damageInfo.HitDirection, damageInfo.Source, damageInfo.KnockbackForce);
             CurrentHealth = Mathf.Max(0f, CurrentHealth - damageAmount);
-            DamagedWithInfo?.Invoke(damageInfo);
+            DamagedWithInfo?.Invoke(resolvedDamageInfo);
             Damaged?.Invoke();
-            GameplayRuntimeEvents.RaisePlayerDamaged(new PlayerDamagedSignal(this, damageInfo, CurrentHealth, MaxHealth));
+            GameplayRuntimeEvents.RaisePlayerDamaged(new PlayerDamagedSignal(this, resolvedDamageInfo, CurrentHealth, MaxHealth));
             GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
-                ResolveDamageFeedbackPosition(in damageInfo),
+                ResolveDamageFeedbackPosition(in resolvedDamageInfo),
                 $"-{Mathf.CeilToInt(damageAmount)}",
                 new Color(1f, 0.42f, 0.42f, 1f),
                 0.58f,
@@ -259,11 +303,27 @@ namespace CuteIssac.Player
                 return;
             }
 
-            if (grantInvulnerability && invulnerabilityDuration > 0f)
+            float resolvedInvulnerabilityDuration = invulnerabilityDuration + _routeBreakthroughInvulnerabilityBonus;
+            if (grantInvulnerability && resolvedInvulnerabilityDuration > 0f)
             {
-                IsInvulnerable = true;
-                _invulnerabilityRemaining = invulnerabilityDuration;
+                GrantInvulnerabilityInternal(resolvedInvulnerabilityDuration);
             }
+        }
+
+        private bool GrantInvulnerabilityInternal(float duration)
+        {
+            float resolvedDuration = Mathf.Max(0f, duration);
+
+            if (resolvedDuration <= 0f)
+            {
+                return false;
+            }
+
+            bool wasInvulnerable = IsInvulnerable;
+            float previousRemaining = _invulnerabilityRemaining;
+            IsInvulnerable = true;
+            _invulnerabilityRemaining = Mathf.Max(_invulnerabilityRemaining, resolvedDuration);
+            return !wasInvulnerable || _invulnerabilityRemaining > previousRemaining + 0.001f;
         }
 
         private Vector3 ResolveDamageFeedbackPosition(in DamageInfo damageInfo)

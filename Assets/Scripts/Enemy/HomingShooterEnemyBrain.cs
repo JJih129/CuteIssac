@@ -23,6 +23,9 @@ namespace CuteIssac.Enemy
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
         private PreparedAttackMode _preparedAttackMode;
+        private float _crossfireCueWindowRemaining;
+        private Vector2 _crossfireCueAnchor = Vector2.right;
+        private int _lastCrossfireCueSerial;
 
         protected override void HandleInitialized()
         {
@@ -39,6 +42,9 @@ namespace CuteIssac.Enemy
             _strafeSwapRemaining = enemyData != null ? enemyData.StrafeSwapInterval : 1f;
             _preparedAimDirection = Vector2.right;
             _preparedAttackMode = PreparedAttackMode.SingleShot;
+            _crossfireCueWindowRemaining = 0f;
+            _crossfireCueAnchor = Vector2.right;
+            _lastCrossfireCueSerial = 0;
             Controller?.EnemyVisual?.StopAttackTelegraph();
         }
 
@@ -50,6 +56,15 @@ namespace CuteIssac.Enemy
 
         public override void TickBrain(float fixedDeltaTime)
         {
+            EnemyFormationTactics.TryPrimeCrossfireCue(
+                FormationModifier,
+                ref _lastCrossfireCueSerial,
+                ref _crossfireCueWindowRemaining,
+                ref _crossfireCueAnchor,
+                ref _shotCooldown,
+                fixedDeltaTime,
+                0.12f);
+
             HomingShooterEnemyData enemyData = configurator != null ? configurator.EnemyData : null;
 
             if (enemyData == null || enemyCombat == null)
@@ -101,13 +116,20 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _preparedAimDirection = aimDirection;
+            _preparedAimDirection = EnemyFormationTactics.ResolveCueAimDirection(
+                Controller.Position,
+                aimDirection,
+                _crossfireCueWindowRemaining,
+                _crossfireCueAnchor);
             if (ShouldPreparePanicBurst(enemyData, distance))
             {
                 BeginPreparedAttack(
                     enemyData,
                     PreparedAttackMode.PanicBurst,
-                    enemyData.PanicBurstTelegraphDuration,
+                    EnemyFormationTactics.ResolveCueTelegraphDuration(
+                        enemyData.PanicBurstTelegraphDuration,
+                        _crossfireCueWindowRemaining,
+                        0.54f),
                     enemyData.PanicBurstTelegraphColor);
                 return;
             }
@@ -115,24 +137,50 @@ namespace CuteIssac.Enemy
             BeginPreparedAttack(
                 enemyData,
                 PreparedAttackMode.SingleShot,
-                enemyData.TelegraphDuration,
+                EnemyFormationTactics.ResolveCueTelegraphDuration(
+                    enemyData.TelegraphDuration,
+                    _crossfireCueWindowRemaining,
+                    0.58f),
                 enemyData.TelegraphColor);
         }
 
         private Vector2 ResolveMoveDirection(HomingShooterEnemyData enemyData, Vector2 aimDirection, float distance)
         {
+            Vector2 fallbackDirection;
+
             if (distance > enemyData.PreferredRange)
             {
-                return aimDirection;
+                fallbackDirection = aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    enemyData.PreferredRange,
+                    0.94f);
             }
 
             if (distance < enemyData.RetreatRange)
             {
-                return -aimDirection;
+                fallbackDirection = -aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    enemyData.PreferredRange,
+                    0.94f);
             }
 
             Vector2 strafeDirection = new(-aimDirection.y, aimDirection.x * _strafeSign);
-            return strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            fallbackDirection = strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                fallbackDirection,
+                enemyData.PreferredRange,
+                0.94f);
         }
 
         private void FirePreparedAttack(HomingShooterEnemyData enemyData, Vector2 aimDirection)

@@ -29,11 +29,19 @@ namespace CuteIssac.Combat
         [Header("Behavior")]
         [SerializeField] private bool flipSpriteByDirection;
 
+        [Header("Outline")]
+        [Tooltip("Adds a darker silhouette behind the projectile to improve readability on bright stage art.")]
+        [SerializeField] private bool useRuntimeOutline = true;
+        [SerializeField] private Color outlineColor = new(0.05f, 0.05f, 0.08f, 0.96f);
+        [SerializeField] [Min(1f)] private float outlineScaleMultiplier = 1.28f;
+        [SerializeField] private int outlineSortingOffset = -1;
+
         [Header("Pooling")]
         [Tooltip("One-time prewarm count for enemy projectile hit and destroy VFX.")]
         [SerializeField] [Min(0)] private int effectPrewarmCount = 2;
 
         private bool _warnedMissingVisuals;
+        private SpriteRenderer _outlineRenderer;
 
         public void HandleInitialized(Vector2 direction)
         {
@@ -48,6 +56,8 @@ namespace CuteIssac.Combat
             {
                 spriteRenderer.flipX = direction.x < 0f;
             }
+
+            SyncOutlineRenderer();
 
             WarnIfFullyUnassigned();
         }
@@ -138,6 +148,70 @@ namespace CuteIssac.Combat
             {
                 trailRenderer = GetComponent<TrailRenderer>();
             }
+
+            if (Application.isPlaying)
+            {
+                SyncOutlineRenderer();
+            }
+        }
+
+        private void SyncOutlineRenderer()
+        {
+            if (!useRuntimeOutline || spriteRenderer == null || spriteRenderer.sprite == null)
+            {
+                if (_outlineRenderer != null)
+                {
+                    _outlineRenderer.enabled = false;
+                }
+
+                return;
+            }
+
+            EnsureOutlineRenderer();
+
+            Transform outlineTransform = _outlineRenderer.transform;
+            outlineTransform.localPosition = Vector3.zero;
+            outlineTransform.localRotation = Quaternion.identity;
+            outlineTransform.localScale = new Vector3(outlineScaleMultiplier, outlineScaleMultiplier, 1f);
+
+            _outlineRenderer.enabled = spriteRenderer.enabled;
+            _outlineRenderer.sprite = spriteRenderer.sprite;
+            _outlineRenderer.color = outlineColor;
+            _outlineRenderer.flipX = spriteRenderer.flipX;
+            _outlineRenderer.flipY = spriteRenderer.flipY;
+            _outlineRenderer.drawMode = spriteRenderer.drawMode;
+            _outlineRenderer.size = spriteRenderer.size;
+            _outlineRenderer.maskInteraction = spriteRenderer.maskInteraction;
+            _outlineRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
+            _outlineRenderer.sortingOrder = spriteRenderer.sortingOrder + outlineSortingOffset;
+        }
+
+        private void EnsureOutlineRenderer()
+        {
+            if (_outlineRenderer != null)
+            {
+                return;
+            }
+
+            Transform outlineTransform = transform.Find("RuntimeOutline");
+
+            if (outlineTransform == null)
+            {
+                GameObject outlineObject = new("RuntimeOutline");
+                outlineTransform = outlineObject.transform;
+                outlineTransform.SetParent(transform, false);
+            }
+
+            _outlineRenderer = outlineTransform.GetComponent<SpriteRenderer>();
+
+            if (_outlineRenderer == null)
+            {
+                _outlineRenderer = outlineTransform.gameObject.AddComponent<SpriteRenderer>();
+            }
+
+            _outlineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _outlineRenderer.receiveShadows = false;
+            _outlineRenderer.allowOcclusionWhenDynamic = false;
         }
     }
 }

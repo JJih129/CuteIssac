@@ -28,6 +28,16 @@ namespace CuteIssac.Player
 
         private void Update()
         {
+            if (_inputReader == null && !TryResolveInputReader())
+            {
+                return;
+            }
+
+            if (playerMovement == null && !TryResolvePlayerMovement())
+            {
+                return;
+            }
+
             PlayerGameplayInputState inputState = _inputReader.ReadState();
             playerMovement.SetMoveInput(inputState.Move);
             playerVisual?.SetMoveInput(inputState.Move);

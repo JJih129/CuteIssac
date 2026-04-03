@@ -23,10 +23,16 @@ namespace CuteIssac.Enemy
         [SerializeField] private EnemyProjectileDefinition projectileDefinition;
         [SerializeField] private Vector2 muzzleOffset = new(0.42f, 0f);
         [SerializeField] [Min(0)] private int prewarmCount = 12;
+        [SerializeField] [Range(0.1f, 2f)] private float runtimeProjectileSpeedMultiplier = 1f;
 
         private readonly HashSet<GameObject> _prewarmedPrefabs = new();
 
         public bool CanFire => projectileDefinition != null && projectileDefinition.IsValid;
+
+        public void SetProjectileSpeedMultiplier(float multiplier)
+        {
+            runtimeProjectileSpeedMultiplier = Mathf.Clamp(multiplier, 0.1f, 2f);
+        }
 
         private void Awake()
         {
@@ -50,7 +56,7 @@ namespace CuteIssac.Enemy
                 Position = GetSpawnPosition(normalizedDirection),
                 Direction = normalizedDirection,
                 Damage = projectileDefinition.Damage,
-                Speed = projectileDefinition.Speed,
+                Speed = projectileDefinition.Speed * runtimeProjectileSpeedMultiplier,
                 Lifetime = projectileDefinition.Lifetime,
                 HomingStrength = projectileDefinition.HomingStrength,
                 HomingSearchRadius = projectileDefinition.HomingSearchRadius,

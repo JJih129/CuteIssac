@@ -25,6 +25,9 @@ namespace CuteIssac.Enemy
         private float _runtimeTelegraphDurationMultiplier = 1f;
         private AttackPhase _preparedAttackPhase;
         private bool _followUpQueued;
+        private float _crossfireCueWindowRemaining;
+        private Vector2 _crossfireCueAnchor = Vector2.right;
+        private int _lastCrossfireCueSerial;
 
         protected override void HandleInitialized()
         {
@@ -43,6 +46,9 @@ namespace CuteIssac.Enemy
             _preparedAimDirection = Vector2.right;
             _preparedAttackPhase = AttackPhase.PrimaryShot;
             _followUpQueued = false;
+            _crossfireCueWindowRemaining = 0f;
+            _crossfireCueAnchor = Vector2.right;
+            _lastCrossfireCueSerial = 0;
             Controller?.EnemyVisual?.StopAttackTelegraph();
         }
 
@@ -54,6 +60,15 @@ namespace CuteIssac.Enemy
 
         public override void TickBrain(float fixedDeltaTime)
         {
+            EnemyFormationTactics.TryPrimeCrossfireCue(
+                FormationModifier,
+                ref _lastCrossfireCueSerial,
+                ref _crossfireCueWindowRemaining,
+                ref _crossfireCueAnchor,
+                ref _shotCooldown,
+                fixedDeltaTime,
+                0.18f);
+
             SniperEnemyData enemyData = configurator != null ? configurator.EnemyData : null;
 
             if (enemyData == null || enemyCombat == null)
@@ -84,9 +99,16 @@ namespace CuteIssac.Enemy
                     BeginPreparedAttack(
                         enemyData,
                         AttackPhase.FollowUpShot,
-                        enemyData.FollowUpTelegraphDuration,
+                        EnemyFormationTactics.ResolveCueTelegraphDuration(
+                            enemyData.FollowUpTelegraphDuration,
+                            _crossfireCueWindowRemaining,
+                            0.52f),
                         enemyData.FollowUpTelegraphColor,
-                        aimDirection);
+                        EnemyFormationTactics.ResolveCueAimDirection(
+                            Controller.Position,
+                            aimDirection,
+                            _crossfireCueWindowRemaining,
+                            _crossfireCueAnchor));
                 }
 
                 return;
@@ -97,9 +119,16 @@ namespace CuteIssac.Enemy
                 BeginPreparedAttack(
                     enemyData,
                     AttackPhase.FollowUpShot,
-                    enemyData.FollowUpTelegraphDuration,
+                    EnemyFormationTactics.ResolveCueTelegraphDuration(
+                        enemyData.FollowUpTelegraphDuration,
+                        _crossfireCueWindowRemaining,
+                        0.52f),
                     enemyData.FollowUpTelegraphColor,
-                    aimDirection);
+                    EnemyFormationTactics.ResolveCueAimDirection(
+                        Controller.Position,
+                        aimDirection,
+                        _crossfireCueWindowRemaining,
+                        _crossfireCueAnchor));
                 return;
             }
 
@@ -138,25 +167,51 @@ namespace CuteIssac.Enemy
             BeginPreparedAttack(
                 enemyData,
                 AttackPhase.PrimaryShot,
-                enemyData.TelegraphDuration,
+                EnemyFormationTactics.ResolveCueTelegraphDuration(
+                    enemyData.TelegraphDuration,
+                    _crossfireCueWindowRemaining,
+                    0.58f),
                 enemyData.TelegraphColor,
-                aimDirection);
+                EnemyFormationTactics.ResolveCueAimDirection(
+                    Controller.Position,
+                    aimDirection,
+                    _crossfireCueWindowRemaining,
+                    _crossfireCueAnchor));
         }
 
         private Vector2 ResolveMoveDirection(SniperEnemyData enemyData, Vector2 aimDirection, float distance)
         {
             if (distance < enemyData.RetreatRange)
             {
-                return -aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    -aimDirection,
+                    enemyData.PreferredRange,
+                    1.02f);
             }
 
             if (distance > enemyData.PreferredRange)
             {
-                return aimDirection * 0.45f;
+                return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    aimDirection * 0.45f,
+                    enemyData.PreferredRange,
+                    1.02f);
             }
 
             Vector2 strafeDirection = new(-aimDirection.y, aimDirection.x * _strafeSign);
-            return strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            Vector2 fallbackDirection = strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                fallbackDirection,
+                enemyData.PreferredRange,
+                1.02f);
         }
 
         private void FirePreparedShot(SniperEnemyData enemyData)
@@ -235,6 +290,18 @@ namespace CuteIssac.Enemy
         private Vector2 ResolveCurrentAimDirection()
         {
             Vector2 toTarget = Controller.TargetPosition - Controller.Position;
+
+            if (toTarget.sqrMagnitude > 0.0001f && _preparedAimDirection.sqrMagnitude > 0.0001f)
+            {
+                Vector2 blendedDirection = Vector2.Lerp(
+                    toTarget.normalized,
+                    _preparedAimDirection.normalized,
+                    _crossfireCueWindowRemaining > 0.001f ? 0.72f : 0.35f);
+                return blendedDirection.sqrMagnitude > 0.0001f
+                    ? blendedDirection.normalized
+                    : toTarget.normalized;
+            }
+
             if (toTarget.sqrMagnitude > 0.0001f)
             {
                 return toTarget.normalized;

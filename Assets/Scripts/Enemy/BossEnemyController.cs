@@ -32,6 +32,19 @@ namespace CuteIssac.Enemy
         private bool _encounterAnnounced;
         private BossPhaseProfile _resolvedPhaseProfile;
 
+        public event System.Action<BossPhaseType> PhaseChanged;
+        public event System.Action<bool> EnrageChanged;
+        public event System.Action<BossPatternType?, bool> TelegraphPatternChanged;
+
+        public BossPhaseType CurrentPhase => _currentPhase;
+        public bool IsEnraged => _isEnraged;
+        public string BossDisplayName => bossDisplayName;
+        public float NormalizedHealth => enemyHealth != null && enemyHealth.MaxHealth > 0f
+            ? enemyHealth.CurrentHealth / enemyHealth.MaxHealth
+            : 0f;
+        public BossPatternType? CurrentTelegraphedPattern => bossEnemyBrain != null ? bossEnemyBrain.CurrentTelegraphedPattern : null;
+        public bool IsPhaseTransitioning => bossEnemyBrain != null && bossEnemyBrain.IsPhaseTransitioning;
+
         private void Awake()
         {
             ResolveReferences();
@@ -98,13 +111,15 @@ namespace CuteIssac.Enemy
             BossHudEvents.RaiseBossHidden(GetInstanceID());
         }
 
-        private void HandleBossTelegraphStarted(BossPatternType _)
+        private void HandleBossTelegraphStarted(BossPatternType patternType)
         {
+            TelegraphPatternChanged?.Invoke(patternType, IsPhaseTransitioning);
             UpdateBossHud();
         }
 
         private void HandleBossTelegraphEnded()
         {
+            TelegraphPatternChanged?.Invoke(CurrentTelegraphedPattern, IsPhaseTransitioning);
             UpdateBossHud();
         }
 
@@ -115,6 +130,7 @@ namespace CuteIssac.Enemy
                 bossVisual?.BeginPhaseTransition(ResolvePhaseTransitionDuration(_currentPhase));
             }
 
+            TelegraphPatternChanged?.Invoke(CurrentTelegraphedPattern, isTransitioning);
             UpdateBossHud();
         }
 
@@ -151,8 +167,13 @@ namespace CuteIssac.Enemy
                 return;
             }
 
+            BossPhaseType previousPhase = _currentPhase;
             _currentPhase = nextPhase;
             bossVisual.SetPhase(_currentPhase);
+            if (force || previousPhase != _currentPhase)
+            {
+                PhaseChanged?.Invoke(_currentPhase);
+            }
 
             if (!force)
             {
@@ -188,6 +209,7 @@ namespace CuteIssac.Enemy
             _isEnraged = shouldEnrage;
             bossEnemyBrain.SetEnraged(_isEnraged);
             bossVisual.SetEnraged(_isEnraged);
+            EnrageChanged?.Invoke(_isEnraged);
         }
 
         private void UpdateBossHud()

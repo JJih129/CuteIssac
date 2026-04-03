@@ -90,6 +90,8 @@ namespace CuteIssac.Item
                     return "trinket_ring";
                 case ItemType.Consumable:
                     return "consumable_capsule";
+                case ItemType.Weapon:
+                    return "weapon_relic";
             }
 
             return itemCategory switch
@@ -149,6 +151,10 @@ namespace CuteIssac.Item
             else if (itemType == ItemType.Consumable)
             {
                 categoryColor = new Color(1f, 0.8f, 0.58f, 1f);
+            }
+            else if (itemType == ItemType.Weapon)
+            {
+                categoryColor = new Color(0.76f, 0.88f, 1f, 1f);
             }
 
             return Color.Lerp(categoryColor, rarityColor, 0.4f);
@@ -252,6 +258,25 @@ namespace CuteIssac.Item
                     "0000111111111100",
                     "0000001111110000",
                     "0000000000000000",
+                    "0000000000000000",
+                    "0000000000000000",
+                },
+                "weapon_relic" => new[]
+                {
+                    "0000000000000000",
+                    "0000001111100000",
+                    "0000011111110000",
+                    "0000111111111000",
+                    "0011111111111100",
+                    "0011111111111000",
+                    "0000011111000000",
+                    "0000011111000000",
+                    "0000011111110000",
+                    "0000011111111100",
+                    "0000000011111110",
+                    "0000000000111110",
+                    "0000000000011100",
+                    "0000000000001000",
                     "0000000000000000",
                     "0000000000000000",
                 },

@@ -12,6 +12,8 @@ namespace CuteIssac.Item
         [Header("Consumable Reward")]
         [SerializeField] private ConsumableItemData consumableItemData;
 
+        public ConsumableItemData ConsumableItemData => consumableItemData;
+
         protected override void OnEnable()
         {
             base.OnEnable();

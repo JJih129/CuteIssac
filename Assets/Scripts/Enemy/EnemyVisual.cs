@@ -107,6 +107,24 @@ namespace CuteIssac.Enemy
         [SerializeField] private string damagedTriggerParameter = "Damaged";
         [SerializeField] private string deadBoolParameter = "Dead";
 
+        [Header("Health Phase Animator")]
+        [SerializeField] private string healthNormalizedParameter = "HealthNormalized";
+        [SerializeField] private string lowHealthBoolParameter = "LowHealth";
+        [SerializeField] private string healthPhaseIndexParameter = "HealthPhaseIndex";
+        [SerializeField] private string healthPhaseChangedTriggerParameter = "HealthPhaseChanged";
+
+        [Header("Temporary Low Health Preview")]
+        [SerializeField] private bool useTemporaryLowHealthPreview = true;
+        [SerializeField] [Range(0f, 1f)] private float temporaryLowHealthThreshold = 0.5f;
+        [SerializeField] [Range(0f, 1f)] private float temporaryLowHealthTintBlend = 0.72f;
+        [SerializeField] private Color temporaryLowHealthTint = new(0.88f, 0.54f, 0.54f, 1f);
+        [SerializeField] private Color temporaryLowHealthHitFlashColor = new(1f, 0.9f, 0.9f, 1f);
+        [SerializeField] private Color temporaryLowHealthDamagedColor = new(0.84f, 0.16f, 0.16f, 1f);
+        [SerializeField] private Color temporaryLowHealthDeadColor = new(0.46f, 0.08f, 0.08f, 0.55f);
+        [SerializeField] [Min(0.5f)] private float temporaryLowHealthScaleMultiplier = 0.92f;
+        [SerializeField] private Color temporaryLowHealthBandageColor = new(1f, 0.96f, 0.88f, 0.98f);
+        [SerializeField] private Color temporaryLowHealthSlashColor = new(0.58f, 0.06f, 0.06f, 0.9f);
+
         public Transform AttackEffectAnchor => attackEffectAnchor != null ? attackEffectAnchor : transform;
         public Transform HitEffectAnchor => hitEffectAnchor != null ? hitEffectAnchor : AttackEffectAnchor;
         public Transform DeathEffectAnchor => deathEffectAnchor != null ? deathEffectAnchor : transform;
@@ -122,21 +140,36 @@ namespace CuteIssac.Enemy
         private bool _hasInitialHitFeedbackScale;
         private bool _attackTelegraphActive;
         private Color _attackTelegraphColor = Color.white;
+        private EnemyVisualSet _activeVisualSet;
+        private int _activeHealthPhaseIndex = int.MinValue;
+        private float _lastNormalizedHealth = -1f;
+        private bool _temporaryLowHealthPreviewActive;
         private Color _authoredBaseColor = Color.white;
         private Color _authoredHitFlashColor = Color.white;
         private Color _authoredDamagedColor = Color.white;
         private Color _authoredDeadColor = Color.white;
         private bool _hasAuthoredPalette;
+        private Sprite _authoredBodySprite;
+        private bool _hasAuthoredBodySprite;
+        private Vector3 _baselineVisualRootScale = Vector3.one;
+        private bool _hasBaselineVisualRootScale;
         private Vector3 _authoredVisualRootScale = Vector3.one;
         private bool _hasAuthoredVisualRootScale;
         private static Sprite s_championFallbackSprite;
         private bool _championVisualActive;
         private ChampionMarkerStyle _championMarkerStyle;
         private Color _championAccentColor = Color.white;
+        private string _championVariantId = string.Empty;
+        private float _championColorBlend;
+        private float _championScaleMultiplier = 1f;
         private Transform _championMarkerRoot;
         private SpriteRenderer _championAuraRenderer;
         private SpriteRenderer _championCoreRenderer;
         private SpriteRenderer _championGlyphRenderer;
+        private Transform _temporaryLowHealthPreviewRoot;
+        private SpriteRenderer _temporaryLowHealthBandageRenderer;
+        private SpriteRenderer _temporaryLowHealthSlashRendererA;
+        private SpriteRenderer _temporaryLowHealthSlashRendererB;
         private Transform _bulwarkGuardRoot;
         private SpriteRenderer _bulwarkGuardAuraRenderer;
         private SpriteRenderer _bulwarkGuardCoreRenderer;
@@ -149,6 +182,8 @@ namespace CuteIssac.Enemy
         {
             ResolveReferences();
             CacheAuthoredPalette();
+            CacheAuthoredBodySprite();
+            CacheBaselineVisualRootScale();
             CacheAuthoredVisualRootScale();
             CacheHitFeedbackScale();
             ApplyBodyColor(baseColor);
@@ -178,6 +213,7 @@ namespace CuteIssac.Enemy
 
         private void Update()
         {
+            RefreshHealthPhasePresentation();
             RecoverHitScale();
 
             if (_damagedFlashRemaining > 0f)
@@ -264,62 +300,19 @@ namespace CuteIssac.Enemy
 
         public void ApplyVisualSet(EnemyVisualSet visualSet)
         {
-            if (visualSet == null)
-            {
-                return;
-            }
-
             ResolveReferences();
-
-            baseColor = visualSet.BaseColor;
-            hitFlashColor = visualSet.HitFlashColor;
-            damagedColor = visualSet.DamagedColor;
-            deadColor = visualSet.DeadColor;
-            CacheAuthoredPalette();
-
-            if (bodySpriteRenderer != null && visualSet.BodySprite != null)
-            {
-                bodySpriteRenderer.sprite = visualSet.BodySprite;
-            }
-
-            if (_damagedFlashRemaining <= 0f)
-            {
-                ApplyBodyColor(baseColor);
-            }
+            _activeVisualSet = visualSet;
+            _activeHealthPhaseIndex = int.MinValue;
+            _lastNormalizedHealth = -1f;
+            RefreshHealthPhasePresentation(forceApply: true);
         }
 
         public void ApplyChampionPresentation(string variantId, Color accentColor, float colorBlend, float scaleMultiplier)
         {
-            CacheAuthoredPalette();
-            CacheAuthoredVisualRootScale();
-
-            float blend = Mathf.Clamp01(colorBlend);
-            baseColor = Color.Lerp(_authoredBaseColor, accentColor, blend);
-            damagedColor = Color.Lerp(_authoredDamagedColor, accentColor, blend * 0.35f);
-            deadColor = Color.Lerp(_authoredDeadColor, accentColor, blend * 0.18f);
-            deadColor.a = _authoredDeadColor.a;
-
-            Transform scaleRoot = visualRoot != null ? visualRoot : transform;
-
-            if (scaleRoot != null && _hasAuthoredVisualRootScale)
-            {
-                scaleRoot.localScale = _authoredVisualRootScale * Mathf.Max(0.5f, scaleMultiplier);
-            }
-
-            _championVisualActive = true;
-            _championAccentColor = accentColor;
-            _championMarkerStyle = ResolveChampionMarkerStyle(variantId);
-            BuildChampionMarkerIfNeeded();
-            BuildBulwarkGuardIfNeeded();
-            ApplyChampionMarkerTheme();
-            SetChampionMarkerVisible(true);
-            _hasInitialHitFeedbackScale = false;
-            CacheHitFeedbackScale();
-
-            if (_damagedFlashRemaining <= 0f && (enemyHealth == null || !enemyHealth.IsDead))
-            {
-                ApplyBodyColor(_attackTelegraphActive ? ResolveTelegraphColor() : baseColor);
-            }
+            _championVariantId = variantId ?? string.Empty;
+            _championColorBlend = colorBlend;
+            _championScaleMultiplier = scaleMultiplier;
+            ApplyChampionPresentationInternal(true, accentColor);
         }
 
         public void ResetChampionPresentation()
@@ -328,6 +321,9 @@ namespace CuteIssac.Enemy
             _championVisualActive = false;
             _championMarkerStyle = ChampionMarkerStyle.None;
             _championAccentColor = Color.white;
+            _championVariantId = string.Empty;
+            _championColorBlend = 0f;
+            _championScaleMultiplier = 1f;
             _bulwarkGuardVisualActive = false;
             SetChampionMarkerVisible(false);
             SetBulwarkGuardVisible(false);
@@ -351,7 +347,9 @@ namespace CuteIssac.Enemy
             SetChampionMarkerVisible(false);
             SetBulwarkGuardVisible(false);
             _bulwarkGuardVisualActive = false;
-
+            _activeHealthPhaseIndex = int.MinValue;
+            _lastNormalizedHealth = -1f;
+            RefreshHealthPhasePresentation(forceApply: true);
             ApplyBodyColor(baseColor);
             SetAnimatorBool(deadBoolParameter, false);
         }
@@ -368,6 +366,238 @@ namespace CuteIssac.Enemy
             BuildBulwarkGuardIfNeeded();
             ApplyBulwarkGuardTheme();
             SetBulwarkGuardVisible(active);
+        }
+
+        private void RefreshHealthPhasePresentation(bool forceApply = false)
+        {
+            ResolveReferences();
+
+            float normalizedHealth = enemyHealth != null && enemyHealth.MaxHealth > 0f
+                ? Mathf.Clamp01(enemyHealth.CurrentHealth / enemyHealth.MaxHealth)
+                : 1f;
+
+            EnemyVisualSet.HealthVisualPhase resolvedPhase = null;
+            int resolvedPhaseIndex = -1;
+
+            if (_activeVisualSet != null)
+            {
+                _activeVisualSet.TryResolveHealthPhase(normalizedHealth, out resolvedPhase, out resolvedPhaseIndex);
+            }
+
+            bool useTemporaryPreview = ShouldUseTemporaryLowHealthPreview(normalizedHealth, resolvedPhase);
+            bool phaseChanged = resolvedPhaseIndex != _activeHealthPhaseIndex
+                || useTemporaryPreview != _temporaryLowHealthPreviewActive;
+
+            if (forceApply || phaseChanged)
+            {
+                if (useTemporaryPreview)
+                {
+                    ApplyTemporaryLowHealthPreviewPresentation();
+                }
+                else
+                {
+                    ApplyResolvedHealthPhasePresentation(resolvedPhase);
+                }
+
+                _activeHealthPhaseIndex = resolvedPhaseIndex;
+                _temporaryLowHealthPreviewActive = useTemporaryPreview;
+
+                if (!forceApply && phaseChanged)
+                {
+                    SetAnimatorTrigger(healthPhaseChangedTriggerParameter);
+                }
+            }
+
+            if (forceApply || phaseChanged || !Mathf.Approximately(_lastNormalizedHealth, normalizedHealth))
+            {
+                SetAnimatorFloat(healthNormalizedParameter, normalizedHealth);
+                SetAnimatorBool(lowHealthBoolParameter, resolvedPhaseIndex >= 0 || useTemporaryPreview);
+                SetAnimatorInteger(healthPhaseIndexParameter, resolvedPhaseIndex >= 0 ? resolvedPhaseIndex + 1 : useTemporaryPreview ? 1 : 0);
+                _lastNormalizedHealth = normalizedHealth;
+            }
+        }
+
+        private void ApplyResolvedHealthPhasePresentation(EnemyVisualSet.HealthVisualPhase phase)
+        {
+            SetTemporaryLowHealthPreviewVisible(false);
+
+            Sprite resolvedBodySprite = ResolveBodySpriteForPhase(phase);
+            Color resolvedBaseColor = phase != null && phase.OverrideBaseColor
+                ? phase.BaseColor
+                : _activeVisualSet != null
+                    ? _activeVisualSet.BaseColor
+                    : _hasAuthoredPalette
+                        ? _authoredBaseColor
+                        : baseColor;
+            Color resolvedHitFlashColor = phase != null && phase.OverrideHitFlashColor
+                ? phase.HitFlashColor
+                : _activeVisualSet != null
+                    ? _activeVisualSet.HitFlashColor
+                    : _hasAuthoredPalette
+                        ? _authoredHitFlashColor
+                        : hitFlashColor;
+            Color resolvedDamagedColor = phase != null && phase.OverrideDamagedColor
+                ? phase.DamagedColor
+                : _activeVisualSet != null
+                    ? _activeVisualSet.DamagedColor
+                    : _hasAuthoredPalette
+                        ? _authoredDamagedColor
+                        : damagedColor;
+            Color resolvedDeadColor = phase != null && phase.OverrideDeadColor
+                ? phase.DeadColor
+                : _activeVisualSet != null
+                    ? _activeVisualSet.DeadColor
+                    : _hasAuthoredPalette
+                        ? _authoredDeadColor
+                        : deadColor;
+            float scaleMultiplier = phase != null && phase.OverrideVisualScale
+                ? phase.VisualScaleMultiplier
+                : 1f;
+
+            if (bodySpriteRenderer != null && resolvedBodySprite != null)
+            {
+                bodySpriteRenderer.sprite = resolvedBodySprite;
+            }
+
+            baseColor = resolvedBaseColor;
+            hitFlashColor = resolvedHitFlashColor;
+            damagedColor = resolvedDamagedColor;
+            deadColor = resolvedDeadColor;
+
+            ApplyResolvedVisualScale(scaleMultiplier);
+            CacheAuthoredBodySprite();
+            CacheAuthoredPalette();
+            CacheAuthoredVisualRootScale();
+
+            if (_championVisualActive)
+            {
+                ApplyChampionPresentationInternal(false, _championAccentColor);
+            }
+            else if (_damagedFlashRemaining <= 0f && (enemyHealth == null || !enemyHealth.IsDead))
+            {
+                ApplyBodyColor(_attackTelegraphActive ? ResolveTelegraphColor() : baseColor);
+            }
+        }
+
+        private void ApplyTemporaryLowHealthPreviewPresentation()
+        {
+            Sprite resolvedBodySprite = ResolveBodySpriteForPhase(null);
+            if (bodySpriteRenderer != null && resolvedBodySprite != null)
+            {
+                bodySpriteRenderer.sprite = resolvedBodySprite;
+            }
+
+            Color authoredBaseColor = _activeVisualSet != null
+                ? _activeVisualSet.BaseColor
+                : _hasAuthoredPalette
+                    ? _authoredBaseColor
+                    : baseColor;
+            Color authoredHitFlashColor = _activeVisualSet != null
+                ? _activeVisualSet.HitFlashColor
+                : _hasAuthoredPalette
+                    ? _authoredHitFlashColor
+                    : hitFlashColor;
+            Color authoredDamagedColor = _activeVisualSet != null
+                ? _activeVisualSet.DamagedColor
+                : _hasAuthoredPalette
+                    ? _authoredDamagedColor
+                    : damagedColor;
+            Color authoredDeadColor = _activeVisualSet != null
+                ? _activeVisualSet.DeadColor
+                : _hasAuthoredPalette
+                    ? _authoredDeadColor
+                    : deadColor;
+            float tintBlend = Mathf.Clamp01(temporaryLowHealthTintBlend);
+
+            baseColor = Color.Lerp(authoredBaseColor, temporaryLowHealthTint, tintBlend);
+            hitFlashColor = Color.Lerp(authoredHitFlashColor, temporaryLowHealthHitFlashColor, tintBlend);
+            damagedColor = Color.Lerp(authoredDamagedColor, temporaryLowHealthDamagedColor, tintBlend);
+            deadColor = Color.Lerp(authoredDeadColor, temporaryLowHealthDeadColor, tintBlend);
+
+            ApplyResolvedVisualScale(temporaryLowHealthScaleMultiplier);
+            SetTemporaryLowHealthPreviewVisible(true);
+
+            if (_championVisualActive)
+            {
+                ApplyChampionPresentationInternal(false, _championAccentColor);
+            }
+            else if (_damagedFlashRemaining <= 0f && (enemyHealth == null || !enemyHealth.IsDead))
+            {
+                ApplyBodyColor(_attackTelegraphActive ? ResolveTelegraphColor() : baseColor);
+            }
+        }
+
+        private Sprite ResolveBodySpriteForPhase(EnemyVisualSet.HealthVisualPhase phase)
+        {
+            if (phase != null && phase.BodySprite != null)
+            {
+                return phase.BodySprite;
+            }
+
+            if (_activeVisualSet != null && _activeVisualSet.BodySprite != null)
+            {
+                return _activeVisualSet.BodySprite;
+            }
+
+            if (_hasAuthoredBodySprite)
+            {
+                return _authoredBodySprite;
+            }
+
+            return bodySpriteRenderer != null ? bodySpriteRenderer.sprite : null;
+        }
+
+        private void ApplyResolvedVisualScale(float scaleMultiplier)
+        {
+            Transform scaleRoot = visualRoot != null ? visualRoot : transform;
+
+            if (scaleRoot == null)
+            {
+                return;
+            }
+
+            Vector3 baselineScale = _hasBaselineVisualRootScale
+                ? _baselineVisualRootScale
+                : scaleRoot.localScale;
+            scaleRoot.localScale = baselineScale * Mathf.Max(0.5f, scaleMultiplier);
+        }
+
+        private void ApplyChampionPresentationInternal(bool captureAuthoredBase, Color accentColor)
+        {
+            if (captureAuthoredBase)
+            {
+                CacheAuthoredBodySprite();
+                CacheAuthoredPalette();
+                CacheAuthoredVisualRootScale();
+            }
+
+            float blend = Mathf.Clamp01(_championColorBlend);
+            baseColor = Color.Lerp(_authoredBaseColor, accentColor, blend);
+            damagedColor = Color.Lerp(_authoredDamagedColor, accentColor, blend * 0.35f);
+            deadColor = Color.Lerp(_authoredDeadColor, accentColor, blend * 0.18f);
+            deadColor.a = _authoredDeadColor.a;
+
+            Transform scaleRoot = visualRoot != null ? visualRoot : transform;
+
+            if (scaleRoot != null && _hasAuthoredVisualRootScale)
+            {
+                scaleRoot.localScale = _authoredVisualRootScale * Mathf.Max(0.5f, _championScaleMultiplier);
+            }
+
+            _championVisualActive = true;
+            _championAccentColor = accentColor;
+            _championMarkerStyle = ResolveChampionMarkerStyle(_championVariantId);
+            BuildChampionMarkerIfNeeded();
+            BuildBulwarkGuardIfNeeded();
+            ApplyChampionMarkerTheme();
+            SetChampionMarkerVisible(true);
+            _hasInitialHitFeedbackScale = false;
+            CacheHitFeedbackScale();
+
+            if (_damagedFlashRemaining <= 0f && (enemyHealth == null || !enemyHealth.IsDead))
+            {
+                ApplyBodyColor(_attackTelegraphActive ? ResolveTelegraphColor() : baseColor);
+            }
         }
 
         private Color ResolveTelegraphColor()
@@ -427,6 +657,138 @@ namespace CuteIssac.Enemy
             {
                 hitFlashTarget = bodySpriteRenderer;
             }
+        }
+
+        private bool ShouldUseTemporaryLowHealthPreview(float normalizedHealth, EnemyVisualSet.HealthVisualPhase resolvedPhase)
+        {
+            if (!Application.isPlaying)
+            {
+                return false;
+            }
+
+            return useTemporaryLowHealthPreview
+                && resolvedPhase == null
+                && normalizedHealth <= Mathf.Clamp01(temporaryLowHealthThreshold);
+        }
+
+        private void EnsureTemporaryLowHealthPreviewBuilt()
+        {
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
+            if (_temporaryLowHealthPreviewRoot != null)
+            {
+                return;
+            }
+
+            Sprite fallbackSprite = GetChampionFallbackSprite();
+            if (fallbackSprite == null)
+            {
+                return;
+            }
+
+            Transform previewParent = optionalHighlightRoot != null
+                ? optionalHighlightRoot
+                : visualRoot != null
+                    ? visualRoot
+                    : transform;
+
+            GameObject rootObject = new("LowHealthPreview");
+            rootObject.transform.SetParent(previewParent, false);
+            rootObject.transform.localPosition = Vector3.zero;
+            rootObject.transform.localRotation = Quaternion.identity;
+            rootObject.transform.localScale = Vector3.one;
+            rootObject.layer = gameObject.layer;
+
+            _temporaryLowHealthPreviewRoot = rootObject.transform;
+            _temporaryLowHealthBandageRenderer = CreateTemporaryLowHealthPreviewLayer(
+                "Bandage",
+                fallbackSprite,
+                new Vector3(-0.12f, 0.1f, 0f),
+                new Vector2(0.62f, 0.22f),
+                -24f,
+                temporaryLowHealthBandageColor,
+                31);
+            _temporaryLowHealthSlashRendererA = CreateTemporaryLowHealthPreviewLayer(
+                "SlashA",
+                fallbackSprite,
+                new Vector3(0.1f, -0.02f, 0f),
+                new Vector2(0.12f, 0.68f),
+                34f,
+                temporaryLowHealthSlashColor,
+                32);
+            _temporaryLowHealthSlashRendererB = CreateTemporaryLowHealthPreviewLayer(
+                "SlashB",
+                fallbackSprite,
+                new Vector3(0.22f, 0.04f, 0f),
+                new Vector2(0.1f, 0.5f),
+                26f,
+                new Color(
+                    temporaryLowHealthSlashColor.r,
+                    temporaryLowHealthSlashColor.g,
+                    temporaryLowHealthSlashColor.b,
+                    temporaryLowHealthSlashColor.a * 0.72f),
+                33);
+            _temporaryLowHealthPreviewRoot.gameObject.SetActive(false);
+        }
+
+        private SpriteRenderer CreateTemporaryLowHealthPreviewLayer(
+            string name,
+            Sprite sprite,
+            Vector3 localPosition,
+            Vector2 size,
+            float rotationZ,
+            Color color,
+            int sortingOrder)
+        {
+            GameObject child = new(name);
+            child.transform.SetParent(_temporaryLowHealthPreviewRoot, false);
+            child.transform.localPosition = localPosition;
+            child.transform.localRotation = Quaternion.Euler(0f, 0f, rotationZ);
+            child.transform.localScale = new Vector3(size.x, size.y, 1f);
+            child.layer = gameObject.layer;
+
+            SpriteRenderer spriteRenderer = child.AddComponent<SpriteRenderer>();
+            spriteRenderer.sprite = sprite;
+            spriteRenderer.color = color;
+            spriteRenderer.sortingOrder = sortingOrder;
+            return spriteRenderer;
+        }
+
+        private void SetTemporaryLowHealthPreviewVisible(bool visible)
+        {
+            EnsureTemporaryLowHealthPreviewBuilt();
+
+            if (_temporaryLowHealthPreviewRoot == null)
+            {
+                return;
+            }
+
+            if (visible)
+            {
+                if (_temporaryLowHealthBandageRenderer != null)
+                {
+                    _temporaryLowHealthBandageRenderer.color = temporaryLowHealthBandageColor;
+                }
+
+                if (_temporaryLowHealthSlashRendererA != null)
+                {
+                    _temporaryLowHealthSlashRendererA.color = temporaryLowHealthSlashColor;
+                }
+
+                if (_temporaryLowHealthSlashRendererB != null)
+                {
+                    _temporaryLowHealthSlashRendererB.color = new Color(
+                        temporaryLowHealthSlashColor.r,
+                        temporaryLowHealthSlashColor.g,
+                        temporaryLowHealthSlashColor.b,
+                        temporaryLowHealthSlashColor.a * 0.72f);
+                }
+            }
+
+            _temporaryLowHealthPreviewRoot.gameObject.SetActive(visible);
         }
 
         private void BuildChampionMarkerIfNeeded()
@@ -912,6 +1274,30 @@ namespace CuteIssac.Enemy
             _hasAuthoredPalette = true;
         }
 
+        private void CacheAuthoredBodySprite()
+        {
+            if (bodySpriteRenderer == null)
+            {
+                return;
+            }
+
+            _authoredBodySprite = bodySpriteRenderer.sprite;
+            _hasAuthoredBodySprite = true;
+        }
+
+        private void CacheBaselineVisualRootScale()
+        {
+            Transform scaleRoot = visualRoot != null ? visualRoot : transform;
+
+            if (scaleRoot == null)
+            {
+                return;
+            }
+
+            _baselineVisualRootScale = scaleRoot.localScale;
+            _hasBaselineVisualRootScale = true;
+        }
+
         private void CacheAuthoredVisualRootScale()
         {
             Transform scaleRoot = visualRoot != null ? visualRoot : transform;
@@ -927,6 +1313,13 @@ namespace CuteIssac.Enemy
 
         private void RestoreAuthoredPresentation()
         {
+            SetTemporaryLowHealthPreviewVisible(false);
+
+            if (_hasAuthoredBodySprite && bodySpriteRenderer != null)
+            {
+                bodySpriteRenderer.sprite = _authoredBodySprite;
+            }
+
             if (_hasAuthoredPalette)
             {
                 baseColor = _authoredBaseColor;
@@ -1045,6 +1438,16 @@ namespace CuteIssac.Enemy
             bodyAnimator.SetFloat(parameterName, value);
         }
 
+        private void SetAnimatorInteger(string parameterName, int value)
+        {
+            if (bodyAnimator == null || string.IsNullOrWhiteSpace(parameterName))
+            {
+                return;
+            }
+
+            bodyAnimator.SetInteger(parameterName, value);
+        }
+
         private void SetAnimatorBool(string parameterName, bool value)
         {
             if (bodyAnimator == null || string.IsNullOrWhiteSpace(parameterName))
@@ -1068,12 +1471,20 @@ namespace CuteIssac.Enemy
         private void Reset()
         {
             ResolveReferences();
+            CacheAuthoredBodySprite();
+            CacheBaselineVisualRootScale();
+            CacheAuthoredPalette();
+            CacheAuthoredVisualRootScale();
             CacheHitFeedbackScale();
         }
 
         private void OnValidate()
         {
             ResolveReferences();
+            CacheAuthoredBodySprite();
+            CacheBaselineVisualRootScale();
+            CacheAuthoredPalette();
+            CacheAuthoredVisualRootScale();
             CacheHitFeedbackScale();
         }
     }

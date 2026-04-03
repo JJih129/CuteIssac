@@ -43,7 +43,7 @@ namespace CuteIssac.Item
                 return false;
             }
 
-            if (!CanAfford(playerInventory))
+            if (!CanAfford(playerInventory, playerItemManager))
             {
                 return false;
             }
@@ -54,7 +54,7 @@ namespace CuteIssac.Item
             {
                 ShopOfferRewardType.PassiveItem => playerItemManager != null
                     && offer.PassiveItem != null
-                    && !playerInventory.Contains(offer.PassiveItem),
+                    && !playerItemManager.OwnsItem(offer.PassiveItem),
                 ShopOfferRewardType.Health => playerHealth != null && playerHealth.CurrentHealth < playerHealth.MaxHealth,
                 ShopOfferRewardType.Coins => true,
                 ShopOfferRewardType.Keys => true,
@@ -63,14 +63,19 @@ namespace CuteIssac.Item
             };
         }
 
-        public bool CanAfford(PlayerInventory playerInventory)
+        public bool CanAfford(PlayerInventory playerInventory, PlayerItemManager playerItemManager = null)
         {
             if (playerInventory == null || shopItemData == null)
             {
                 return false;
             }
 
-            int price = shopItemData.Price;
+            int price = ResolveEffectivePrice(playerItemManager);
+
+            if (price <= 0)
+            {
+                return true;
+            }
 
             return shopItemData.CurrencyType switch
             {
@@ -87,14 +92,13 @@ namespace CuteIssac.Item
                 return false;
             }
 
-            int price = shopItemData.Price;
-
-            bool spent = shopItemData.CurrencyType switch
+            int price = ResolveEffectivePrice(playerItemManager);
+            bool spent = price <= 0 || (shopItemData.CurrencyType switch
             {
                 ShopCurrencyType.Keys => playerInventory.TrySpendKeys(price),
                 ShopCurrencyType.Bombs => playerInventory.TrySpendBombs(price),
                 _ => playerInventory.TrySpendCoins(price)
-            };
+            });
 
             if (!spent)
             {
@@ -103,13 +107,13 @@ namespace CuteIssac.Item
 
             if (!TryDeliverReward(playerInventory, playerItemManager, playerHealth))
             {
-                Refund(playerInventory);
+                Refund(playerInventory, price);
                 return false;
             }
 
             _isSold = true;
             GameAudioEvents.Raise(GameAudioEventType.ShopPurchased, transform.position);
-            RefreshView(false, playerInventory);
+            RefreshView(false, playerInventory, playerItemManager, playerHealth);
             return true;
         }
 
@@ -117,7 +121,12 @@ namespace CuteIssac.Item
         {
             if (shopItemView != null)
             {
-                shopItemView.Present(shopItemData, CanPurchase(playerInventory, playerItemManager, playerHealth), isHighlighted, _isSold);
+                shopItemView.Present(
+                    shopItemData,
+                    ResolveEffectivePrice(playerItemManager),
+                    CanPurchase(playerInventory, playerItemManager, playerHealth),
+                    isHighlighted,
+                    _isSold);
             }
         }
 
@@ -131,7 +140,7 @@ namespace CuteIssac.Item
             bool isVisible = shopItemData != null;
             bool canPurchase = CanPurchase(playerInventory, playerItemManager, playerHealth);
             string displayName = isVisible ? shopItemData.DisplayName : string.Empty;
-            string priceLabel = isVisible ? $"{GetCurrencyLabel(shopItemData.CurrencyType)} {shopItemData.Price}" : string.Empty;
+            string priceLabel = isVisible ? $"{GetCurrencyLabel(shopItemData.CurrencyType)} {ResolveEffectivePrice(playerItemManager)}" : string.Empty;
             string statusLabel = _isSold
                 ? "판매 완료"
                 : (canPurchase ? "구매 가능" : ResolveUnavailableReason(playerInventory, playerItemManager, playerHealth));
@@ -216,14 +225,17 @@ namespace CuteIssac.Item
             return rewardObject != null;
         }
 
-        private void Refund(PlayerInventory playerInventory)
+        private void Refund(PlayerInventory playerInventory, int price)
         {
             if (playerInventory == null)
             {
                 return;
             }
 
-            int price = shopItemData != null ? shopItemData.Price : 0;
+            if (price <= 0)
+            {
+                return;
+            }
 
             switch (shopItemData != null ? shopItemData.CurrencyType : ShopCurrencyType.Coins)
             {
@@ -246,7 +258,7 @@ namespace CuteIssac.Item
                 return string.Empty;
             }
 
-            if (!CanAfford(playerInventory))
+            if (!CanAfford(playerInventory, playerItemManager))
             {
                 return shopItemData.CurrencyType switch
                 {
@@ -274,6 +286,21 @@ namespace CuteIssac.Item
                 ShopCurrencyType.Bombs => "폭탄",
                 _ => "코인"
             };
+        }
+
+        private int ResolveEffectivePrice(PlayerItemManager playerItemManager)
+        {
+            if (shopItemData == null)
+            {
+                return 0;
+            }
+
+            if (playerItemManager == null)
+            {
+                return shopItemData.Price;
+            }
+
+            return playerItemManager.ResolveEffectiveShopPrice(shopItemData.Price, shopItemData.CurrencyType);
         }
 
         private void Reset()

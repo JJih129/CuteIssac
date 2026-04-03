@@ -20,10 +20,16 @@ namespace CuteIssac.Item
         private readonly HashSet<string> _selectedItemIds = new();
         private readonly List<ShopSlotState> _slotStateBuffer = new List<ShopSlotState>();
 
+        public event System.Action<ShopItem, bool> PurchaseAttemptResolved;
+
+        public ShopItem CurrentHighlightedItem => _highlightedItem;
+        public bool CurrentHighlightedCanPurchase { get; private set; }
+
         public void ConfigureFromItemPool(ItemPoolData itemPool)
         {
             ResolveItemPoolService();
             _highlightedItem = null;
+            CurrentHighlightedCanPurchase = false;
             if (itemPool == null)
             {
                 ClearConfiguredItems();
@@ -104,6 +110,8 @@ namespace CuteIssac.Item
         public void SetHighlightedItem(ShopItem highlightedItem, PlayerInventory playerInventory, PlayerItemManager playerItemManager, PlayerHealth playerHealth)
         {
             _highlightedItem = highlightedItem;
+            CurrentHighlightedCanPurchase = _highlightedItem != null
+                && _highlightedItem.CanPurchase(playerInventory, playerItemManager, playerHealth);
 
             for (int i = 0; i < shopItems.Length; i++)
             {
@@ -120,11 +128,15 @@ namespace CuteIssac.Item
         {
             if (_highlightedItem == null)
             {
+                CurrentHighlightedCanPurchase = false;
                 return false;
             }
 
+            ShopItem attemptedItem = _highlightedItem;
             bool purchased = _highlightedItem.TryPurchase(playerInventory, playerItemManager, playerHealth);
             _highlightedItem.RefreshView(true, playerInventory, playerItemManager, playerHealth);
+            CurrentHighlightedCanPurchase = _highlightedItem.CanPurchase(playerInventory, playerItemManager, playerHealth);
+            PurchaseAttemptResolved?.Invoke(attemptedItem, purchased);
             return purchased;
         }
 
@@ -147,6 +159,53 @@ namespace CuteIssac.Item
             return _slotStateBuffer;
         }
 
+        public void CollectAvailableShopTargets(List<Transform> targetBuffer)
+        {
+            if (targetBuffer == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < shopItems.Length; i++)
+            {
+                ShopItem shopItem = shopItems[i];
+
+                if (shopItem == null || shopItem.IsSold || !shopItem.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                targetBuffer.Add(shopItem.transform);
+            }
+        }
+
+        public bool TryResolvePreferredItem(string reasonTag, out ShopItem preferredItem)
+        {
+            preferredItem = null;
+            float bestScore = float.NegativeInfinity;
+
+            for (int i = 0; i < shopItems.Length; i++)
+            {
+                ShopItem shopItem = shopItems[i];
+
+                if (shopItem == null || shopItem.IsSold || !shopItem.gameObject.activeInHierarchy || shopItem.ShopItemData == null)
+                {
+                    continue;
+                }
+
+                float score = ResolvePreferredItemScore(shopItem, reasonTag);
+                if (score <= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                preferredItem = shopItem;
+            }
+
+            return preferredItem != null;
+        }
+
         private void Reset()
         {
             shopItems = GetComponentsInChildren<ShopItem>(true);
@@ -167,6 +226,11 @@ namespace CuteIssac.Item
             if (itemData == null)
             {
                 return 5;
+            }
+
+            if (itemData.IsWeaponRelic)
+            {
+                return 30;
             }
 
             return itemData.Rarity switch
@@ -202,6 +266,68 @@ namespace CuteIssac.Item
             {
                 runItemPoolService = FindFirstObjectByType<RunItemPoolService>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private float ResolvePreferredItemScore(ShopItem shopItem, string reasonTag)
+        {
+            if (shopItem == null || shopItem.ShopItemData == null)
+            {
+                return float.NegativeInfinity;
+            }
+
+            ShopOffer offer = shopItem.ShopItemData.Offer;
+            float score = shopItem == _highlightedItem ? 3.5f : 0f;
+            score += Mathf.Clamp(shopItem.Price, 0, 24) * 0.08f;
+
+            switch (reasonTag)
+            {
+                case "PATCH HP":
+                    score += offer.RewardType == ShopOfferRewardType.Health ? 18f : 0f;
+                    break;
+                case "LOOK FOR KEYS":
+                    score += offer.RewardType == ShopOfferRewardType.Keys ? 18f : 0f;
+                    break;
+                case "RESTOCK BOMBS":
+                    score += offer.RewardType == ShopOfferRewardType.Bombs ? 18f : 0f;
+                    break;
+                case "CASH OUT":
+                    score += offer.RewardType == ShopOfferRewardType.PassiveItem ? 12f : 4f;
+                    score += shopItem.Price * 0.32f;
+                    break;
+                case "CASH WINDOW":
+                    score += offer.RewardType == ShopOfferRewardType.PassiveItem ? 14f : 5f;
+                    score += shopItem.Price * 0.36f;
+                    break;
+                case "PRESS ADVANTAGE":
+                    score += offer.RewardType == ShopOfferRewardType.PassiveItem ? 15f : 2.5f;
+                    break;
+                case "RECOVERY ONLINE":
+                    score += offer.RewardType switch
+                    {
+                        ShopOfferRewardType.Health => 12f,
+                        ShopOfferRewardType.PassiveItem => 8f,
+                        _ => 2f
+                    };
+                    break;
+                case "FILL SLOT":
+                    score += offer.RewardType == ShopOfferRewardType.PassiveItem ? 16f : 0f;
+                    break;
+                case "SUPPLY RUN":
+                    score += offer.RewardType switch
+                    {
+                        ShopOfferRewardType.Health => 10f,
+                        ShopOfferRewardType.Keys => 9f,
+                        ShopOfferRewardType.Bombs => 9f,
+                        ShopOfferRewardType.Coins => 7f,
+                        _ => 5f
+                    };
+                    break;
+                default:
+                    score += offer.RewardType == ShopOfferRewardType.PassiveItem ? 4f : 1.5f;
+                    break;
+            }
+
+            return score;
         }
     }
 }

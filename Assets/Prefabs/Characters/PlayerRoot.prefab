@@ -25,6 +25,7 @@ GameObject:
   - component: {fileID: 910000115}
   - component: {fileID: 910000116}
   - component: {fileID: 910000117}
+  - component: {fileID: 910000118}
   m_Layer: 0
   m_Name: PlayerRoot
   m_TagString: Player
@@ -248,10 +249,22 @@ MonoBehaviour:
   optionalShadowRoot: {fileID: 910000171}
   bodySpriteRenderer: {fileID: 910000132}
   bodyAnimator: {fileID: 0}
+  visualSet: {fileID: 0}
+  useSpriteSequenceAnimation: 1
+  idleBodySprite: {fileID: -5115618752126089108, guid: 95acb54aac5fe2c449cf265355267053, type: 3}
+  walkLeftBodySprites:
+  - {fileID: -1387404944917472376, guid: 2f5265ccf857fce4aafa5c1d2c901328, type: 3}
+  - {fileID: 3691505829983384436, guid: 5d79e8965c846114eb6aca4b099742d1, type: 3}
+  - {fileID: -2314172788027130779, guid: 95cb6762e501cfd428aecb0b70f3eb04, type: 3}
+  - {fileID: 7952475427389446626, guid: 390227437256301419d6a4cc1d99efce, type: 3}
+  walkAnimationFramesPerSecond: 10
+  walkAnimationMoveThreshold: 0.08
+  animateVerticalMovementWithWalkCycle: 1
   muzzleAnchor: {fileID: 910000141}
   hitEffectAnchor: {fileID: 910000151}
   deathEffectAnchor: {fileID: 910000161}
   facingMode: 1
+  bodySpriteFacesRightByDefault: 0
   useMoveDirectionWhenAimMissing: 1
   moveMuzzleAnchorWithAim: 1
   screenFeedback: {fileID: 910000113}
@@ -355,6 +368,30 @@ MonoBehaviour:
   bombSpawnAnchor: {fileID: 910000101}
   placementOffset: 0
   placementCooldown: 0.15
+--- !u!114 &910000118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: deff7ef81b824814a86305023a49d2b7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerVisual: {fileID: 910000112}
+  playerCombat: {fileID: 910000109}
+  weaponLoadout: {fileID: 0}
+  weaponVisualParent: {fileID: 910000121}
+  weaponVisualRoot: {fileID: 0}
+  weaponSpriteRenderer: {fileID: 0}
+  handBackOffset: 0.28
+  lateralOffset: 0.035
+  worldScale: 0.55
+  frontSortingOffset: 1
+  backSortingOffset: -1
+  spriteTint: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &910000120
 GameObject:
   m_ObjectHideFlags: 0
@@ -417,7 +454,7 @@ Transform:
   m_GameObject: {fileID: 910000130}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.05, z: 0}
-  m_LocalScale: {x: 0.72, y: 0.92, z: 1}
+  m_LocalScale: {x: -0.00254, y: 0.00221, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 910000121}
@@ -469,7 +506,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 10
-  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10001, type: 3}
+  m_Sprite: {fileID: -5115618752126089108, guid: 95acb54aac5fe2c449cf265355267053, type: 3}
   m_Color: {r: 1, g: 0.88, b: 0.92, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -586,7 +623,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &910000171
 Transform:
   m_ObjectHideFlags: 0

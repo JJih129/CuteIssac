@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 971b35e7528a79a49ba40271396635ed, type: 3}
+  m_Name: Gatebreach590Relic
+  m_EditorClassIdentifier: 
+  itemType: 4
+  itemCategory: 0
+  flavorText: The room goes quiet right before the breach.
+  sourcePools: []
+  eventFlags: []
+  damageModifier: 0
+  tearsModifier: 0
+  speedModifier: 0
+  rangeModifier: 0
+  shotSpeedModifier: 0
+  luckModifier: 0
+  maxHealthModifier: 0
+  projectileFlags: []
+  itemId: weapon_gatebreach590
+  displayName: Gatebreach 590
+  description: Fires a five-pellet breaching blast with a short tube magazine.
+  icon: {fileID: 21300000, guid: 55b502d8f9034c60a8b7d2dfb9f8cf21, type: 3}
+  rarity: 1
+  unlockedByDefault: 1
+  unlockKey: 
+  itemTags: []
+  statModifiers: []
+  projectileModifiers: []
+  gameplayEventEffects: []
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: Mossberg 590 inspired breaching shotgun
+    hudLabel: 590
+    attackDefinition: {fileID: 11400000, guid: 2e935db19eb64e658e3e2d06702b848f, type: 2}
+    magazineCapacity: 6
+    reserveAmmoCapacity: 30
+    startingReserveAmmo: 30
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.35
+    dryFireCooldown: 0.22
+    shotsPerTrigger: 5
+    spreadDegrees: 12
+    knockbackMultiplier: 1.25

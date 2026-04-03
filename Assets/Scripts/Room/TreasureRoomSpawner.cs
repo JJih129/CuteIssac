@@ -98,6 +98,137 @@ namespace CuteIssac.Room
             return roomType == RoomType.Treasure;
         }
 
+        public bool TryResolveTreasureFocusTarget(out Vector3 focusPosition, out float focusRadius)
+        {
+            if (!CanHandleRoomType(_runtimeRoomType))
+            {
+                focusPosition = transform.position;
+                focusRadius = 1f;
+                return false;
+            }
+
+            Vector3 accumulatedPosition = Vector3.zero;
+            int activeChoiceCount = 0;
+
+            for (int i = 0; i < _spawnedChoices.Count; i++)
+            {
+                BasePickupLogic spawnedChoice = _spawnedChoices[i];
+
+                if (spawnedChoice == null)
+                {
+                    continue;
+                }
+
+                accumulatedPosition += spawnedChoice.transform.position;
+                activeChoiceCount++;
+            }
+
+            if (activeChoiceCount > 0)
+            {
+                focusPosition = accumulatedPosition / activeChoiceCount;
+                focusRadius = Mathf.Max(1.08f, 0.82f + (activeChoiceCount * 0.18f));
+                return true;
+            }
+
+            Transform anchor = contentSpawnAnchor != null ? contentSpawnAnchor : transform;
+            focusPosition = anchor.position;
+            focusRadius = Mathf.Max(1.06f, 0.88f + (Mathf.Clamp(choiceCount, 1, 3) * 0.16f));
+            return true;
+        }
+
+        public void CollectTreasureChoiceTargets(List<Transform> targetBuffer)
+        {
+            if (targetBuffer == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _spawnedChoices.Count; i++)
+            {
+                BasePickupLogic spawnedChoice = _spawnedChoices[i];
+
+                if (spawnedChoice == null)
+                {
+                    continue;
+                }
+
+                targetBuffer.Add(spawnedChoice.transform);
+            }
+        }
+
+        public bool TryResolveClosestTreasureChoice(Vector3 referencePosition, float maxDistance, out Transform closestChoice)
+        {
+            closestChoice = null;
+            float closestDistanceSqr = maxDistance > 0f ? maxDistance * maxDistance : float.PositiveInfinity;
+
+            for (int i = 0; i < _spawnedChoices.Count; i++)
+            {
+                BasePickupLogic spawnedChoice = _spawnedChoices[i];
+
+                if (spawnedChoice == null || !spawnedChoice.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                float distanceSqr = (spawnedChoice.transform.position - referencePosition).sqrMagnitude;
+
+                if (distanceSqr > closestDistanceSqr)
+                {
+                    continue;
+                }
+
+                closestDistanceSqr = distanceSqr;
+                closestChoice = spawnedChoice.transform;
+            }
+
+            return closestChoice != null;
+        }
+
+        public bool TryResolvePreferredTreasureChoice(string reasonTag, out Transform preferredChoice)
+        {
+            preferredChoice = null;
+            float bestScore = float.NegativeInfinity;
+            float centerIndex = Mathf.Max(0f, (_spawnedChoices.Count - 1) * 0.5f);
+
+            for (int i = 0; i < _spawnedChoices.Count; i++)
+            {
+                BasePickupLogic spawnedChoice = _spawnedChoices[i];
+
+                if (spawnedChoice == null || !spawnedChoice.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                float centerBias = 1.1f - Mathf.Abs(i - centerIndex);
+                float rarityScore = 0f;
+                if (spawnedChoice is ItemPickupLogic itemPickupLogic && itemPickupLogic.ItemData != null)
+                {
+                    rarityScore = ResolveRarityPriority(itemPickupLogic.ItemData.Rarity);
+                }
+
+                float score = reasonTag switch
+                {
+                    "POWER SPIKE" => (rarityScore * 2.4f) + (centerBias * 0.45f),
+                    "PRESS ADVANTAGE" => (rarityScore * 2.55f) + (centerBias * 0.42f),
+                    "LOADOUT FIND" => (rarityScore * 1.6f) + (centerBias * 0.72f),
+                    "KEY WINDOW" => (rarityScore * 2.15f) + (centerBias * 0.58f),
+                    "SAFE UPGRADE" => (centerBias * 2.1f) + (rarityScore * 0.82f),
+                    "RECOVERY ONLINE" => (centerBias * 1.85f) + (rarityScore * 1.02f),
+                    _ => (centerBias * 1.24f) + (rarityScore * 1.12f)
+                };
+
+                if (score <= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                preferredChoice = spawnedChoice.transform;
+            }
+
+            return preferredChoice != null;
+        }
+
         private void HandleRoomEntered(RoomController enteredRoom)
         {
             if (enteredRoom == null || enteredRoom != roomController || _hasSpawnedTreasure)
@@ -250,6 +381,19 @@ namespace CuteIssac.Room
         private void OnValidate()
         {
             ResolveReferences();
+        }
+
+        private static float ResolveRarityPriority(ItemRarity rarity)
+        {
+            return rarity switch
+            {
+                ItemRarity.Uncommon => 1f,
+                ItemRarity.Rare => 2.2f,
+                ItemRarity.Legendary => 3.4f,
+                ItemRarity.Relic => 4.1f,
+                ItemRarity.Boss => 4.8f,
+                _ => 0.3f
+            };
         }
     }
 }

@@ -7,6 +7,7 @@ namespace CuteIssac.Core.Gameplay
     {
         public static event Action<PlayerDamagedSignal> PlayerDamaged;
         public static event Action<EnemyKilledSignal> EnemyKilled;
+        public static event Action<PlayerProjectileHitSignal> PlayerProjectileHit;
         public static event Action<ProjectileFiredSignal> ProjectileFired;
         public static event Action<RoomResolvedSignal> RoomResolved;
         public static event Action<RoomClearSignal> RoomCleared;
@@ -15,6 +16,11 @@ namespace CuteIssac.Core.Gameplay
         public static event Action<CurseRewardManifestedSignal> CurseRewardManifested;
         public static event Action<ChampionEnemyPromotedSignal> ChampionEnemyPromoted;
         public static event Action<SecretRoomRevealedSignal> SecretRoomRevealed;
+        public static event Action<FormationBreakSignal> FormationBroken;
+        public static event Action<MomentumExecutionSignal> MomentumExecuted;
+        public static event Action<PlayerLoadoutDeltaSignal> PlayerLoadoutDelta;
+        public static event Action<PlayerInteractionOutcomeSignal> PlayerInteractionOutcome;
+        public static event Action<ChoiceRouteResolvedSignal> ChoiceRouteResolved;
         public static event Action<EnemyHealth> EnemyDied;
 
         public static void RaisePlayerDamaged(PlayerDamagedSignal signal)
@@ -25,6 +31,11 @@ namespace CuteIssac.Core.Gameplay
         public static void RaiseEnemyKilled(EnemyKilledSignal signal)
         {
             EnemyKilled?.Invoke(signal);
+        }
+
+        public static void RaisePlayerProjectileHit(PlayerProjectileHitSignal signal)
+        {
+            PlayerProjectileHit?.Invoke(signal);
         }
 
         public static void RaiseProjectileFired(ProjectileFiredSignal signal)
@@ -65,6 +76,31 @@ namespace CuteIssac.Core.Gameplay
         public static void RaiseSecretRoomRevealed(SecretRoomRevealedSignal signal)
         {
             SecretRoomRevealed?.Invoke(signal);
+        }
+
+        public static void RaiseFormationBroken(FormationBreakSignal signal)
+        {
+            FormationBroken?.Invoke(signal);
+        }
+
+        public static void RaiseMomentumExecuted(MomentumExecutionSignal signal)
+        {
+            MomentumExecuted?.Invoke(signal);
+        }
+
+        public static void RaisePlayerLoadoutDelta(PlayerLoadoutDeltaSignal signal)
+        {
+            PlayerLoadoutDelta?.Invoke(signal);
+        }
+
+        public static void RaisePlayerInteractionOutcome(PlayerInteractionOutcomeSignal signal)
+        {
+            PlayerInteractionOutcome?.Invoke(signal);
+        }
+
+        public static void RaiseChoiceRouteResolved(ChoiceRouteResolvedSignal signal)
+        {
+            ChoiceRouteResolved?.Invoke(signal);
         }
 
         public static void RaiseEnemyDied(EnemyHealth enemyHealth)

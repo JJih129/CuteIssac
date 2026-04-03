@@ -22,6 +22,7 @@ namespace CuteIssac.Player
         [SerializeField] private ConsumableItemData startingConsumable;
 
         public event Action<PlayerConsumableSlotState> ConsumableStateChanged;
+        public event Action<ConsumableItemData> ConsumableApplied;
 
         public ConsumableItemData HeldConsumable { get; private set; }
         public ConsumableItemData TimedEffectSourceConsumable => _timedEffectSourceConsumable;
@@ -183,6 +184,11 @@ namespace CuteIssac.Player
                 _timedEffectSourceConsumable = consumableItemData;
                 ApplyTimedEffect(consumableItemData, consumableItemData.TemporaryEffectDuration);
                 appliedAnyEffect = true;
+            }
+
+            if (appliedAnyEffect)
+            {
+                ConsumableApplied?.Invoke(consumableItemData);
             }
 
             return appliedAnyEffect;

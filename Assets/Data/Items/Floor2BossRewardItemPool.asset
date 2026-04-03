@@ -1,4 +1,4 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -19,6 +19,7 @@ MonoBehaviour:
   ownedDuplicateWeightMultiplier: 0.2
   offeredDuplicateWeightMultiplier: 0.45
   recentDuplicateWeightMultiplier: 0.15
+  recentCategoryWeightMultiplier: 0.58
   rarityWeights:
   - rarity: 0
     weightMultiplier: 1.8
@@ -29,33 +30,18 @@ MonoBehaviour:
   - rarity: 3
     weightMultiplier: 0.45
   entries:
-  - itemData: {fileID: 11400000, guid: 557ea6ff76de454ba84edae2e74ff104, type: 2}
-    weight: 1.4
-    minimumFloor: 1
+  - itemData: {fileID: 11400000, guid: ac617a7d20d54417905ca2ee11eaa189, type: 2}
+    weight: 0.72
+    minimumFloor: 2
     maximumFloor: 0
     allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: d7670893b770484283f5e2121eb4332c, type: 2}
-    weight: 1.4
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: 3b7469ca83d84b9888177e04bc7f96dc, type: 2}
+  - itemData: {fileID: 11400000, guid: 1ba178f8713d4a50988a285d851940cf, type: 2}
     weight: 0.85
-    minimumFloor: 1
+    minimumFloor: 2
     maximumFloor: 0
     allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: c1682a53d9a94b54aaeee872a380167e, type: 2}
-    weight: 0.85
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: 0a4ee4e5633245d6980a4c5900376e57, type: 2}
-    weight: 0.85
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: f12d4673557647599d89e2f5fb1cfc3d, type: 2}
-    weight: 0.85
-    minimumFloor: 1
+  - itemData: {fileID: 11400000, guid: 1d781df08c654d1fa08aced65f87ef7b, type: 2}
+    weight: 0.36
+    minimumFloor: 2
     maximumFloor: 0
     allowedRoomTypes: []

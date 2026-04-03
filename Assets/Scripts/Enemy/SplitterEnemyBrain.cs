@@ -47,8 +47,15 @@ namespace CuteIssac.Enemy
                 return;
             }
 
+            Vector2 moveDirection = EnemyFormationTactics.ResolveEscortFrontlineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                toTarget.normalized,
+                1.1f,
+                0.36f);
             Controller.SetMoveSpeedMultiplier(enemyData.ChaseSpeedMultiplier);
-            Controller.SetDesiredMoveDirection(toTarget.normalized);
+            Controller.SetDesiredMoveDirection(moveDirection);
         }
 
         private void HandleDiedWithSource(EnemyHealth enemyHealth)

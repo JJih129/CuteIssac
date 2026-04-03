@@ -16,7 +16,9 @@ namespace CuteIssac.Enemy
         private Rigidbody2D _rigidbody2D;
         private Vector2 _moveDirection;
         private float _speedMultiplier = 1f;
+        private float _formationSpeedMultiplier = 1f;
         private float _externalSpeedMultiplier = 1f;
+        private float _runtimePressureSpeedMultiplier = 1f;
         private Vector2 _externalVelocity;
 
         private const float KnockbackDamping = 12f;
@@ -33,7 +35,7 @@ namespace CuteIssac.Enemy
 
         private void FixedUpdate()
         {
-            _rigidbody2D.linearVelocity = (_moveDirection * (moveSpeed * _speedMultiplier * _externalSpeedMultiplier)) + _externalVelocity;
+            _rigidbody2D.linearVelocity = (_moveDirection * (moveSpeed * _speedMultiplier * _formationSpeedMultiplier * _externalSpeedMultiplier * _runtimePressureSpeedMultiplier)) + _externalVelocity;
             _externalVelocity = Vector2.Lerp(_externalVelocity, Vector2.zero, KnockbackDamping * Time.fixedDeltaTime);
         }
 
@@ -45,7 +47,9 @@ namespace CuteIssac.Enemy
             }
 
             _externalVelocity = Vector2.zero;
+            _formationSpeedMultiplier = 1f;
             _externalSpeedMultiplier = 1f;
+            _runtimePressureSpeedMultiplier = 1f;
         }
 
         /// <summary>
@@ -82,6 +86,16 @@ namespace CuteIssac.Enemy
         public void SetExternalSpeedMultiplier(float multiplier)
         {
             _externalSpeedMultiplier = Mathf.Max(0f, multiplier);
+        }
+
+        public void SetRuntimePressureSpeedMultiplier(float multiplier)
+        {
+            _runtimePressureSpeedMultiplier = Mathf.Max(0f, multiplier);
+        }
+
+        public void SetFormationSpeedMultiplier(float multiplier)
+        {
+            _formationSpeedMultiplier = Mathf.Max(0f, multiplier);
         }
 
         public void SetBaseMoveSpeed(float speed)

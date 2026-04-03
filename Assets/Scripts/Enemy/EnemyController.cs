@@ -32,6 +32,8 @@ namespace CuteIssac.Enemy
         private float _retargetTimer;
         private float _spawnAggroDelayRemaining;
         private float _freezeRemaining;
+        private float _formationContactDamageMultiplier = 1f;
+        private float _runtimePressureContactDamageMultiplier = 1f;
 
         public EnemyMovement EnemyMovement => enemyMovement;
         public EnemyHealth EnemyHealth => enemyHealth;
@@ -134,7 +136,9 @@ namespace CuteIssac.Enemy
 
         private void TryApplyContactDamage(Collider2D hitCollider)
         {
-            if (enemyHealth.IsDead || contactDamage <= 0f || _target == null || _spawnAggroDelayRemaining > 0f)
+            float effectiveContactDamage = contactDamage * _formationContactDamageMultiplier * _runtimePressureContactDamageMultiplier;
+
+            if (enemyHealth.IsDead || effectiveContactDamage <= 0f || _target == null || _spawnAggroDelayRemaining > 0f)
             {
                 return;
             }
@@ -156,7 +160,7 @@ namespace CuteIssac.Enemy
             }
 
             Vector2 hitDirection = ((Vector2)hitCollider.transform.position - (Vector2)transform.position).normalized;
-            damageable.ApplyDamage(new DamageInfo(contactDamage, hitDirection, transform));
+            damageable.ApplyDamage(new DamageInfo(effectiveContactDamage, hitDirection, transform));
         }
 
         private bool TryResolveDependencies()
@@ -243,6 +247,9 @@ namespace CuteIssac.Enemy
             enemyVisual?.ResetPresentation();
             _spawnAggroDelayRemaining = 0f;
             _freezeRemaining = 0f;
+            _formationContactDamageMultiplier = 1f;
+            _runtimePressureContactDamageMultiplier = 1f;
+            enemyMovement?.SetFormationSpeedMultiplier(1f);
             _retargetTimer = 0f;
             ResolveTarget();
         }
@@ -267,6 +274,16 @@ namespace CuteIssac.Enemy
             contactDamage = Mathf.Max(0f, runtimeContactDamage);
         }
 
+        public void SetFormationContactDamageMultiplier(float multiplier)
+        {
+            _formationContactDamageMultiplier = Mathf.Max(0f, multiplier);
+        }
+
+        public void SetRuntimePressureContactDamageMultiplier(float multiplier)
+        {
+            _runtimePressureContactDamageMultiplier = Mathf.Max(0f, multiplier);
+        }
+
         public void SetDesiredMoveDirection(Vector2 moveDirection)
         {
             enemyMovement.SetMoveDirection(moveDirection);
@@ -282,6 +299,21 @@ namespace CuteIssac.Enemy
         public void SetMoveSpeedMultiplier(float multiplier)
         {
             enemyMovement.SetSpeedMultiplier(multiplier);
+        }
+
+        public void SetFormationSpeedMultiplier(float multiplier)
+        {
+            enemyMovement.SetFormationSpeedMultiplier(multiplier);
+        }
+
+        public void SetRuntimePressureSpeedMultiplier(float multiplier)
+        {
+            enemyMovement.SetRuntimePressureSpeedMultiplier(multiplier);
+        }
+
+        public void ScaleSpawnAggroDelay(float multiplier)
+        {
+            _spawnAggroDelayRemaining = Mathf.Max(0f, _spawnAggroDelayRemaining * Mathf.Max(0f, multiplier));
         }
 
         public void ApplyFreeze(float durationSeconds)

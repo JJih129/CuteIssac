@@ -9,6 +9,20 @@ namespace CuteIssac.Enemy
     public abstract class EnemyBrain : MonoBehaviour
     {
         protected EnemyController Controller { get; private set; }
+        protected EnemyFormationModifier FormationModifier
+        {
+            get
+            {
+                if (_formationModifier == null)
+                {
+                    _formationModifier = GetComponent<EnemyFormationModifier>();
+                }
+
+                return _formationModifier;
+            }
+        }
+
+        private EnemyFormationModifier _formationModifier;
 
         public void Initialize(EnemyController controller)
         {

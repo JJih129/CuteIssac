@@ -60,5 +60,56 @@ namespace CuteIssac.Room
 
             _hasSpawned = _spawnedHazards.Count > 0;
         }
+
+        public bool TryResolveHazardFocusTarget(out Vector3 focusPosition, out float focusRadius)
+        {
+            Vector3 accumulatedPosition = Vector3.zero;
+            int activeHazardCount = 0;
+
+            for (int i = 0; i < _spawnedHazards.Count; i++)
+            {
+                GameObject spawnedHazard = _spawnedHazards[i];
+
+                if (spawnedHazard == null)
+                {
+                    continue;
+                }
+
+                accumulatedPosition += spawnedHazard.transform.position;
+                activeHazardCount++;
+            }
+
+            if (activeHazardCount > 0)
+            {
+                focusPosition = accumulatedPosition / activeHazardCount;
+                focusRadius = Mathf.Max(1.16f, 0.9f + (activeHazardCount * 0.18f));
+                return true;
+            }
+
+            Transform parent = spawnRoot != null ? spawnRoot : transform;
+            focusPosition = parent.position;
+            focusRadius = 1.18f;
+            return parent != null;
+        }
+
+        public void CollectHazardTargets(List<Transform> targetBuffer)
+        {
+            if (targetBuffer == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _spawnedHazards.Count; i++)
+            {
+                GameObject spawnedHazard = _spawnedHazards[i];
+
+                if (spawnedHazard == null)
+                {
+                    continue;
+                }
+
+                targetBuffer.Add(spawnedHazard.transform);
+            }
+        }
     }
 }

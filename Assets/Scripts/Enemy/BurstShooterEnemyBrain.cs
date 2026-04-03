@@ -16,6 +16,9 @@ namespace CuteIssac.Enemy
         private Vector2 _preparedAimDirection = Vector2.right;
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
+        private float _crossfireCueWindowRemaining;
+        private Vector2 _crossfireCueAnchor = Vector2.right;
+        private int _lastCrossfireCueSerial;
 
         protected override void HandleInitialized()
         {
@@ -31,6 +34,9 @@ namespace CuteIssac.Enemy
             _strafeSign = (GetInstanceID() & 1) == 0 ? 1f : -1f;
             _strafeSwapRemaining = enemyData != null ? enemyData.StrafeSwapInterval : 1f;
             _preparedAimDirection = Vector2.right;
+            _crossfireCueWindowRemaining = 0f;
+            _crossfireCueAnchor = Vector2.right;
+            _lastCrossfireCueSerial = 0;
             Controller?.EnemyVisual?.StopAttackTelegraph();
         }
 
@@ -42,6 +48,15 @@ namespace CuteIssac.Enemy
 
         public override void TickBrain(float fixedDeltaTime)
         {
+            EnemyFormationTactics.TryPrimeCrossfireCue(
+                FormationModifier,
+                ref _lastCrossfireCueSerial,
+                ref _crossfireCueWindowRemaining,
+                ref _crossfireCueAnchor,
+                ref _shotCooldown,
+                fixedDeltaTime,
+                0.14f);
+
             BurstShooterEnemyData enemyData = configurator != null ? configurator.EnemyData : null;
 
             if (enemyData == null || enemyCombat == null)
@@ -93,25 +108,55 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            _preparedAimDirection = aimDirection;
-            _telegraphRemaining = enemyData.TelegraphDuration * _runtimeTelegraphDurationMultiplier;
+            _preparedAimDirection = EnemyFormationTactics.ResolveCueAimDirection(
+                Controller.Position,
+                aimDirection,
+                _crossfireCueWindowRemaining,
+                _crossfireCueAnchor);
+            _telegraphRemaining = EnemyFormationTactics.ResolveCueTelegraphDuration(
+                enemyData.TelegraphDuration,
+                _crossfireCueWindowRemaining,
+                0.58f) * _runtimeTelegraphDurationMultiplier;
             Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TelegraphColor);
         }
 
         private Vector2 ResolveMoveDirection(BurstShooterEnemyData enemyData, Vector2 aimDirection, float distance)
         {
+            Vector2 fallbackDirection;
+
             if (distance > enemyData.PreferredRange)
             {
-                return aimDirection;
+                fallbackDirection = aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    enemyData.PreferredRange,
+                    0.92f);
             }
 
             if (distance < enemyData.RetreatRange)
             {
-                return -aimDirection;
+                fallbackDirection = -aimDirection;
+                return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                    FormationModifier,
+                    Controller.Position,
+                    Controller.TargetPosition,
+                    fallbackDirection,
+                    enemyData.PreferredRange,
+                    0.92f);
             }
 
             Vector2 strafeDirection = new(-aimDirection.y, aimDirection.x * _strafeSign);
-            return strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            fallbackDirection = strafeDirection * Mathf.Clamp01(enemyData.StrafeBlend);
+            return EnemyFormationTactics.ResolveCrossfireRangedMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                fallbackDirection,
+                enemyData.PreferredRange,
+                0.92f);
         }
 
         private void FireBurst(BurstShooterEnemyData enemyData, Vector2 aimDirection)

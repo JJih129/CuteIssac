@@ -16,6 +16,8 @@ namespace CuteIssac.Combat
     [RequireComponent(typeof(Collider2D))]
     public sealed class EnemyProjectileLogic : MonoBehaviour
     {
+        private static readonly List<EnemyProjectileLogic> ActiveProjectiles = new();
+
         [Header("Optional Presentation")]
         [SerializeField] private EnemyProjectileVisual projectileVisual;
         [Header("Homing")]
@@ -36,6 +38,8 @@ namespace CuteIssac.Combat
         private bool _isDespawning;
         private readonly List<Collider2D> _ignoredColliders = new();
 
+        public Vector2 WorldPosition => transform.position;
+
         private void Awake()
         {
             _rigidbody2D = GetComponent<Rigidbody2D>();
@@ -48,6 +52,14 @@ namespace CuteIssac.Combat
 
             _rigidbody2D.gravityScale = 0f;
             _rigidbody2D.freezeRotation = true;
+        }
+
+        private void OnEnable()
+        {
+            if (!ActiveProjectiles.Contains(this))
+            {
+                ActiveProjectiles.Add(this);
+            }
         }
 
         private void Update()
@@ -102,6 +114,7 @@ namespace CuteIssac.Combat
 
         private void OnDisable()
         {
+            ActiveProjectiles.Remove(this);
             RestoreIgnoredCollisions();
 
             if (_rigidbody2D != null)
@@ -113,6 +126,25 @@ namespace CuteIssac.Combat
             _instigator = null;
             _isInitialized = false;
             _isDespawning = false;
+        }
+
+        public static void CollectActiveProjectiles(List<EnemyProjectileLogic> buffer)
+        {
+            if (buffer == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < ActiveProjectiles.Count; index++)
+            {
+                EnemyProjectileLogic projectile = ActiveProjectiles[index];
+                if (projectile == null)
+                {
+                    continue;
+                }
+
+                buffer.Add(projectile);
+            }
         }
 
         private void OnTriggerEnter2D(Collider2D other)
@@ -161,6 +193,48 @@ namespace CuteIssac.Combat
             projectileVisual?.HandleInitialized(_travelDirection);
             _isInitialized = true;
             _isDespawning = false;
+        }
+
+        public void ApplyRouteLaneInfluence(float speedMultiplier, Vector2 lateralDirection, float lateralBias)
+        {
+            if (!_isInitialized || _isDespawning || _rigidbody2D == null)
+            {
+                return;
+            }
+
+            Vector2 currentVelocity = _rigidbody2D.linearVelocity;
+            float currentSpeed = currentVelocity.magnitude;
+            if (currentSpeed <= 0.01f)
+            {
+                return;
+            }
+
+            Vector2 currentDirection = currentVelocity / currentSpeed;
+            Vector2 adjustedDirection = currentDirection;
+            if (lateralDirection.sqrMagnitude > 0.0001f && lateralBias > 0.001f)
+            {
+                Vector2 desiredDirection = (currentDirection + (lateralDirection.normalized * lateralBias)).normalized;
+                adjustedDirection = Vector2.Lerp(currentDirection, desiredDirection, Mathf.Clamp01(lateralBias)).normalized;
+            }
+
+            if (adjustedDirection.sqrMagnitude <= 0.0001f)
+            {
+                adjustedDirection = currentDirection;
+            }
+
+            _travelDirection = adjustedDirection;
+            _rigidbody2D.linearVelocity = adjustedDirection * (currentSpeed * Mathf.Clamp(speedMultiplier, 0.05f, 1f));
+            transform.rotation = Quaternion.FromToRotation(Vector3.right, adjustedDirection);
+        }
+
+        public void ForceDissipate(ProjectileImpactType impactType = ProjectileImpactType.None)
+        {
+            if (!_isInitialized || _isDespawning)
+            {
+                return;
+            }
+
+            Despawn(impactType, transform.position);
         }
 
         private void HandleHit(Collider2D other)

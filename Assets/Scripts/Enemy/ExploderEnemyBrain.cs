@@ -88,8 +88,21 @@ namespace CuteIssac.Enemy
                 return;
             }
 
+            Vector2 moveDirection = EnemyFormationTactics.ResolveSiegeBacklineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                chaseDirection,
+                0.65f);
+            moveDirection = EnemyFormationTactics.ResolveEscortFrontlineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                moveDirection,
+                1.1f,
+                0.34f);
             Controller.SetMoveSpeedMultiplier(enemyData.ChaseSpeedMultiplier);
-            Controller.SetDesiredMoveDirection(chaseDirection);
+            Controller.SetDesiredMoveDirection(moveDirection);
         }
 
         private void Explode(ExploderEnemyData enemyData)

@@ -24,6 +24,10 @@ namespace CuteIssac.Player
 
         public float BaseMoveSpeed => baseMoveSpeed;
         public float CurrentMoveSpeed => ResolveMoveSpeed();
+        public Vector2 MoveInput => _moveInput;
+        public Vector2 CurrentVelocity => _rigidbody2D != null
+            ? _rigidbody2D.linearVelocity
+            : (_moveInput * ResolveMoveSpeed()) + _externalVelocity;
 
         private void Awake()
         {
@@ -66,7 +70,7 @@ namespace CuteIssac.Player
         }
 
         /// <summary>
-        /// Stores the latest desired input. Diagonal input is clamped once here to avoid higher movement speed.
+        /// Stores the latest desired input. Diagonal movement is allowed, but input is normalized so diagonal speed does not exceed cardinal speed.
         /// </summary>
         public void SetMoveInput(Vector2 moveInput)
         {

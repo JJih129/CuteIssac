@@ -13,6 +13,12 @@ namespace CuteIssac.Item
         [Header("Item Reward")]
         [SerializeField] private ItemData itemData;
         [SerializeField] private RoomRewardPickupTracker roomRewardPickupTracker;
+        [SerializeField] [Min(1f)] private float weaponPickupScaleMultiplier = 3f;
+
+        private bool _hasCapturedBaseScale;
+        private Vector3 _baseLocalScale = Vector3.one;
+
+        public ItemData ItemData => itemData;
 
         protected override void Awake()
         {
@@ -111,7 +117,22 @@ namespace CuteIssac.Item
 
         private void ApplyPickupVisual()
         {
+            CacheBaseScale();
+            transform.localScale = _baseLocalScale * (itemData != null && itemData.IsWeaponRelic
+                ? Mathf.Max(1f, weaponPickupScaleMultiplier)
+                : 1f);
             PickupPlaceholderVisualResolver.Apply(PickupVisual, itemData);
+        }
+
+        private void CacheBaseScale()
+        {
+            if (_hasCapturedBaseScale)
+            {
+                return;
+            }
+
+            _baseLocalScale = transform.localScale;
+            _hasCapturedBaseScale = true;
         }
 
         protected override void Reset()

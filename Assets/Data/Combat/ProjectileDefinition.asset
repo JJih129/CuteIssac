@@ -14,5 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   projectilePrefab: {fileID: 920000105, guid: a7db37b948ec4e5f95d8f59a1902619c, type: 3}
   damage: 3
-  speed: 10
-  lifetime: 2.25
+  speed: 8.5
+  lifetime: 2.65
+  scale: 2.36

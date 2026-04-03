@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CuteIssac.Combat;
 using CuteIssac.Common.Stats;
 using CuteIssac.Data.Combat;
 using CuteIssac.Data.Item;
@@ -23,9 +24,9 @@ namespace CuteIssac.Player
         [SerializeField] [Min(0f)] private float fallbackMoveSpeed = 5f;
         [SerializeField] [Min(0f)] private float fallbackDamage = 3f;
         [SerializeField] [Min(0.01f)] private float fallbackFireInterval = 0.3f;
-        [SerializeField] [Min(0f)] private float fallbackProjectileSpeed = 12f;
+        [SerializeField] [Min(0f)] private float fallbackProjectileSpeed = 8.5f;
         [SerializeField] [Min(0.5f)] private float fallbackRange = 18f;
-        [SerializeField] [Min(0.05f)] private float fallbackProjectileScale = 1f;
+        [SerializeField] [Min(0.05f)] private float fallbackProjectileScale = 2.36f;
         [SerializeField] private float fallbackLuck;
         [SerializeField] [Min(1f)] private float fallbackProjectileCount = 1f;
         [SerializeField] [Min(0f)] private float fallbackKnockback = 2f;
@@ -54,6 +55,7 @@ namespace CuteIssac.Player
         public float CurrentKnockback => CurrentStats.Knockback;
         public float CurrentProjectilePierce => CurrentStats.ProjectilePierce;
         public float CurrentHomingStrength => CurrentStats.HomingStrength;
+        public ProjectileTraitState CurrentProjectileTraits => _currentProjectileTraits;
         public IReadOnlyList<string> ActiveSynergyNames => _activeSynergyNames;
 
         private readonly List<ItemData> _cachedPassiveItems = new();
@@ -63,12 +65,21 @@ namespace CuteIssac.Player
         private readonly List<ProjectileModifier> _runtimeStartingBuildProjectileModifiers = new();
         private readonly List<StatModifier> _runtimeActiveItemStatModifiers = new();
         private readonly List<ProjectileModifier> _runtimeActiveItemProjectileModifiers = new();
+        private readonly List<StatModifier> _runtimeCombatMomentumStatModifiers = new();
+        private readonly List<ProjectileModifier> _runtimeCombatMomentumProjectileModifiers = new();
+        private readonly List<StatModifier> _runtimeTraversalStatModifiers = new();
+        private readonly List<ProjectileModifier> _runtimeTraversalProjectileModifiers = new();
+        private readonly List<StatModifier> _runtimeRoutePlanStatModifiers = new();
+        private readonly List<ProjectileModifier> _runtimeRoutePlanProjectileModifiers = new();
+        private readonly List<StatModifier> _runtimeRouteBreakthroughStatModifiers = new();
+        private readonly List<ProjectileModifier> _runtimeRouteBreakthroughProjectileModifiers = new();
         private readonly List<StatModifier> _runtimeEventStatModifiers = new();
         private readonly List<ProjectileModifier> _runtimeEventProjectileModifiers = new();
         private readonly List<ItemSynergyDefinition> _activeSynergies = new();
         private readonly ModifierStack _resolvedSynergyModifierStack = new();
         private readonly List<string> _activeSynergyNames = new();
         private readonly ModifierStack _resolvedItemModifierStack = new();
+        private ProjectileTraitState _currentProjectileTraits;
 
         private void Awake()
         {
@@ -104,6 +115,11 @@ namespace CuteIssac.Player
         public void Recalculate(IReadOnlyList<ItemData> passiveItems)
         {
             CachePassiveItems(passiveItems);
+            RebuildCurrentStats();
+        }
+
+        public void RefreshCurrentStats()
+        {
             RebuildCurrentStats();
         }
 
@@ -158,6 +174,54 @@ namespace CuteIssac.Player
             RebuildCurrentStats();
         }
 
+        public void SetCombatMomentumRuntimeModifiers(
+            IReadOnlyList<StatModifier> statModifiers,
+            IReadOnlyList<ProjectileModifier> projectileModifiers)
+        {
+            _runtimeCombatMomentumStatModifiers.Clear();
+            _runtimeCombatMomentumProjectileModifiers.Clear();
+
+            CopyStatModifiers(statModifiers, _runtimeCombatMomentumStatModifiers);
+            CopyProjectileModifiers(projectileModifiers, _runtimeCombatMomentumProjectileModifiers);
+            RebuildCurrentStats();
+        }
+
+        public void SetTraversalRuntimeModifiers(
+            IReadOnlyList<StatModifier> statModifiers,
+            IReadOnlyList<ProjectileModifier> projectileModifiers)
+        {
+            _runtimeTraversalStatModifiers.Clear();
+            _runtimeTraversalProjectileModifiers.Clear();
+
+            CopyStatModifiers(statModifiers, _runtimeTraversalStatModifiers);
+            CopyProjectileModifiers(projectileModifiers, _runtimeTraversalProjectileModifiers);
+            RebuildCurrentStats();
+        }
+
+        public void SetRoutePlanRuntimeModifiers(
+            IReadOnlyList<StatModifier> statModifiers,
+            IReadOnlyList<ProjectileModifier> projectileModifiers)
+        {
+            _runtimeRoutePlanStatModifiers.Clear();
+            _runtimeRoutePlanProjectileModifiers.Clear();
+
+            CopyStatModifiers(statModifiers, _runtimeRoutePlanStatModifiers);
+            CopyProjectileModifiers(projectileModifiers, _runtimeRoutePlanProjectileModifiers);
+            RebuildCurrentStats();
+        }
+
+        public void SetRouteBreakthroughRuntimeModifiers(
+            IReadOnlyList<StatModifier> statModifiers,
+            IReadOnlyList<ProjectileModifier> projectileModifiers)
+        {
+            _runtimeRouteBreakthroughStatModifiers.Clear();
+            _runtimeRouteBreakthroughProjectileModifiers.Clear();
+
+            CopyStatModifiers(statModifiers, _runtimeRouteBreakthroughStatModifiers);
+            CopyProjectileModifiers(projectileModifiers, _runtimeRouteBreakthroughProjectileModifiers);
+            RebuildCurrentStats();
+        }
+
         private void RebuildCurrentStats()
         {
             ResolveDependencies();
@@ -174,7 +238,26 @@ namespace CuteIssac.Player
                 _runtimeConsumableProjectileModifiers,
                 _runtimeActiveItemStatModifiers,
                 _runtimeActiveItemProjectileModifiers,
+                _runtimeCombatMomentumStatModifiers,
+                _runtimeCombatMomentumProjectileModifiers,
+                _runtimeTraversalStatModifiers,
+                _runtimeTraversalProjectileModifiers,
+                _runtimeRoutePlanStatModifiers,
+                _runtimeRoutePlanProjectileModifiers,
+                _runtimeRouteBreakthroughStatModifiers,
+                _runtimeRouteBreakthroughProjectileModifiers,
                 _runtimeEventStatModifiers,
+                _runtimeEventProjectileModifiers);
+            _currentProjectileTraits = ResolveProjectileTraits(
+                _cachedPassiveItems,
+                _resolvedSynergyModifierStack.ProjectileModifiers,
+                _runtimeStartingBuildProjectileModifiers,
+                _runtimeConsumableProjectileModifiers,
+                _runtimeActiveItemProjectileModifiers,
+                _runtimeCombatMomentumProjectileModifiers,
+                _runtimeTraversalProjectileModifiers,
+                _runtimeRoutePlanProjectileModifiers,
+                _runtimeRouteBreakthroughProjectileModifiers,
                 _runtimeEventProjectileModifiers);
             StatsRecalculated?.Invoke(CurrentStats);
         }
@@ -251,6 +334,14 @@ namespace CuteIssac.Player
             IReadOnlyList<ProjectileModifier> runtimeProjectileModifiers,
             IReadOnlyList<StatModifier> runtimeActiveItemStatModifiers,
             IReadOnlyList<ProjectileModifier> runtimeActiveItemProjectileModifiers,
+            IReadOnlyList<StatModifier> runtimeCombatMomentumStatModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeCombatMomentumProjectileModifiers,
+            IReadOnlyList<StatModifier> runtimeTraversalStatModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeTraversalProjectileModifiers,
+            IReadOnlyList<StatModifier> runtimeRoutePlanStatModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeRoutePlanProjectileModifiers,
+            IReadOnlyList<StatModifier> runtimeRouteBreakthroughStatModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeRouteBreakthroughProjectileModifiers,
             IReadOnlyList<StatModifier> runtimeEventStatModifiers,
             IReadOnlyList<ProjectileModifier> runtimeEventProjectileModifiers)
         {
@@ -467,12 +558,148 @@ namespace CuteIssac.Player
                 }
             }
 
+            if (runtimeCombatMomentumStatModifiers != null)
+            {
+                for (int modifierIndex = 0; modifierIndex < runtimeCombatMomentumStatModifiers.Count; modifierIndex++)
+                {
+                    ApplyModifier(
+                        runtimeCombatMomentumStatModifiers[modifierIndex],
+                        ref damage,
+                        ref moveSpeed,
+                        ref fireRate,
+                        ref projectileSpeed,
+                        ref range,
+                        ref luck,
+                        ref projectileCount,
+                        ref knockback,
+                        ref maxHealth);
+                }
+            }
+
             if (runtimeEventProjectileModifiers != null)
             {
                 for (int modifierIndex = 0; modifierIndex < runtimeEventProjectileModifiers.Count; modifierIndex++)
                 {
                     ApplyProjectileModifier(
                         runtimeEventProjectileModifiers[modifierIndex],
+                        ref projectileSpeed,
+                        ref range,
+                        ref projectileLifetime,
+                        ref projectileScale,
+                        ref projectileCount,
+                        ref projectilePierce,
+                        ref homingStrength);
+                }
+            }
+
+            if (runtimeCombatMomentumProjectileModifiers != null)
+            {
+                for (int modifierIndex = 0; modifierIndex < runtimeCombatMomentumProjectileModifiers.Count; modifierIndex++)
+                {
+                    ApplyProjectileModifier(
+                        runtimeCombatMomentumProjectileModifiers[modifierIndex],
+                        ref projectileSpeed,
+                        ref range,
+                        ref projectileLifetime,
+                        ref projectileScale,
+                        ref projectileCount,
+                        ref projectilePierce,
+                        ref homingStrength);
+                }
+            }
+
+            if (runtimeTraversalStatModifiers != null)
+            {
+                for (int modifierIndex = 0; modifierIndex < runtimeTraversalStatModifiers.Count; modifierIndex++)
+                {
+                    ApplyModifier(
+                        runtimeTraversalStatModifiers[modifierIndex],
+                        ref damage,
+                        ref moveSpeed,
+                        ref fireRate,
+                        ref projectileSpeed,
+                        ref range,
+                        ref luck,
+                        ref projectileCount,
+                        ref knockback,
+                        ref maxHealth);
+                }
+            }
+
+            if (runtimeTraversalProjectileModifiers != null)
+            {
+                for (int modifierIndex = 0; modifierIndex < runtimeTraversalProjectileModifiers.Count; modifierIndex++)
+                {
+                    ApplyProjectileModifier(
+                        runtimeTraversalProjectileModifiers[modifierIndex],
+                        ref projectileSpeed,
+                        ref range,
+                        ref projectileLifetime,
+                        ref projectileScale,
+                        ref projectileCount,
+                        ref projectilePierce,
+                        ref homingStrength);
+                }
+            }
+
+            if (runtimeRoutePlanStatModifiers != null)
+            {
+                for (int modifierIndex = 0; modifierIndex < runtimeRoutePlanStatModifiers.Count; modifierIndex++)
+                {
+                    ApplyModifier(
+                        runtimeRoutePlanStatModifiers[modifierIndex],
+                        ref damage,
+                        ref moveSpeed,
+                        ref fireRate,
+                        ref projectileSpeed,
+                        ref range,
+                        ref luck,
+                        ref projectileCount,
+                        ref knockback,
+                        ref maxHealth);
+                }
+            }
+
+            if (runtimeRoutePlanProjectileModifiers != null)
+            {
+                for (int modifierIndex = 0; modifierIndex < runtimeRoutePlanProjectileModifiers.Count; modifierIndex++)
+                {
+                    ApplyProjectileModifier(
+                        runtimeRoutePlanProjectileModifiers[modifierIndex],
+                        ref projectileSpeed,
+                        ref range,
+                        ref projectileLifetime,
+                        ref projectileScale,
+                        ref projectileCount,
+                        ref projectilePierce,
+                        ref homingStrength);
+                }
+            }
+
+            if (runtimeRouteBreakthroughStatModifiers != null)
+            {
+                for (int modifierIndex = 0; modifierIndex < runtimeRouteBreakthroughStatModifiers.Count; modifierIndex++)
+                {
+                    ApplyModifier(
+                        runtimeRouteBreakthroughStatModifiers[modifierIndex],
+                        ref damage,
+                        ref moveSpeed,
+                        ref fireRate,
+                        ref projectileSpeed,
+                        ref range,
+                        ref luck,
+                        ref projectileCount,
+                        ref knockback,
+                        ref maxHealth);
+                }
+            }
+
+            if (runtimeRouteBreakthroughProjectileModifiers != null)
+            {
+                for (int modifierIndex = 0; modifierIndex < runtimeRouteBreakthroughProjectileModifiers.Count; modifierIndex++)
+                {
+                    ApplyProjectileModifier(
+                        runtimeRouteBreakthroughProjectileModifiers[modifierIndex],
                         ref projectileSpeed,
                         ref range,
                         ref projectileLifetime,
@@ -650,6 +877,62 @@ namespace CuteIssac.Player
                 case ProjectileModifierType.Shield:
                 case ProjectileModifierType.Lifesteal:
                     break;
+            }
+        }
+
+        private ProjectileTraitState ResolveProjectileTraits(
+            IReadOnlyList<ItemData> passiveItems,
+            IReadOnlyList<ProjectileModifier> synergyProjectileModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeStartingBuildProjectileModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeProjectileModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeActiveItemProjectileModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeCombatMomentumProjectileModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeTraversalProjectileModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeRoutePlanProjectileModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeRouteBreakthroughProjectileModifiers,
+            IReadOnlyList<ProjectileModifier> runtimeEventProjectileModifiers)
+        {
+            ProjectileTraitState traits = ProjectileTraitState.Default;
+
+            if (passiveItems != null)
+            {
+                for (int itemIndex = 0; itemIndex < passiveItems.Count; itemIndex++)
+                {
+                    ItemData itemData = passiveItems[itemIndex];
+
+                    if (itemData == null)
+                    {
+                        continue;
+                    }
+
+                    _resolvedItemModifierStack.Clear();
+                    itemData.BuildModifierStack(_resolvedItemModifierStack);
+                    ApplyProjectileTraits(_resolvedItemModifierStack.ProjectileModifiers, ref traits);
+                }
+            }
+
+            ApplyProjectileTraits(synergyProjectileModifiers, ref traits);
+            ApplyProjectileTraits(runtimeStartingBuildProjectileModifiers, ref traits);
+            ApplyProjectileTraits(runtimeProjectileModifiers, ref traits);
+            ApplyProjectileTraits(runtimeActiveItemProjectileModifiers, ref traits);
+            ApplyProjectileTraits(runtimeCombatMomentumProjectileModifiers, ref traits);
+            ApplyProjectileTraits(runtimeTraversalProjectileModifiers, ref traits);
+            ApplyProjectileTraits(runtimeRoutePlanProjectileModifiers, ref traits);
+            ApplyProjectileTraits(runtimeRouteBreakthroughProjectileModifiers, ref traits);
+            ApplyProjectileTraits(runtimeEventProjectileModifiers, ref traits);
+            return traits;
+        }
+
+        private static void ApplyProjectileTraits(IReadOnlyList<ProjectileModifier> projectileModifiers, ref ProjectileTraitState traits)
+        {
+            if (projectileModifiers == null)
+            {
+                return;
+            }
+
+            for (int modifierIndex = 0; modifierIndex < projectileModifiers.Count; modifierIndex++)
+            {
+                ProjectileTraitResolver.Apply(projectileModifiers[modifierIndex], ref traits);
             }
         }
 

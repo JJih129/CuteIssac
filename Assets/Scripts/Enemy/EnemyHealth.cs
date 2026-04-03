@@ -4,6 +4,7 @@ using CuteIssac.Core.Audio;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Pooling;
+using CuteIssac.Core.Run;
 using UnityEngine;
 
 namespace CuteIssac.Enemy
@@ -20,6 +21,8 @@ namespace CuteIssac.Enemy
         [SerializeField] private bool destroyOnDeath = true;
         [SerializeField] [Min(1f)] private float regularEnemyHealthMultiplier = 2f;
         [SerializeField] [Min(1f)] private float bossHealthMultiplier = 12f;
+        [SerializeField] [Range(0.1f, 1f)] private float firstFloorBossHealthScale = 0.5f;
+        [SerializeField] [Range(0.4f, 1.2f)] private float regularEnemyGlobalHealthScale = 0.82f;
         [SerializeField] private ChampionEnemyModifier championEnemyModifier;
         [SerializeField] private EnemyVisual enemyVisual;
 
@@ -37,6 +40,7 @@ namespace CuteIssac.Enemy
         private EnemyMovement _enemyMovement;
         private DamageInfo _lastDamageInfo;
         private bool _isBossEnemy;
+        private RunManager _runManager;
 
         private void Awake()
         {
@@ -51,6 +55,7 @@ namespace CuteIssac.Enemy
                 enemyVisual = GetComponent<EnemyVisual>();
             }
             _isBossEnemy = GetComponent<BossEnemyController>() != null;
+            _runManager = FindFirstObjectByType<RunManager>(FindObjectsInactive.Exclude);
             ResetForSpawn();
         }
 
@@ -143,8 +148,24 @@ namespace CuteIssac.Enemy
 
         private float ResolveEffectiveMaxHealth()
         {
-            float multiplier = _isBossEnemy ? bossHealthMultiplier : regularEnemyHealthMultiplier;
+            float multiplier = _isBossEnemy
+                ? ResolveBossHealthMultiplier()
+                : regularEnemyHealthMultiplier * regularEnemyGlobalHealthScale;
             return maxHealth * Mathf.Max(1f, multiplier);
+        }
+
+        private float ResolveBossHealthMultiplier()
+        {
+            float multiplier = bossHealthMultiplier;
+
+            if (_runManager != null
+                && _runManager.CurrentContext.HasActiveRun
+                && _runManager.CurrentContext.CurrentFloorIndex <= 1)
+            {
+                multiplier *= Mathf.Clamp(firstFloorBossHealthScale, 0.1f, 1f);
+            }
+
+            return multiplier;
         }
 
         private void Die()
@@ -169,7 +190,7 @@ namespace CuteIssac.Enemy
 
         private void ApplyKnockback(in DamageInfo damageInfo)
         {
-            if (_enemyMovement == null || damageInfo.KnockbackForce <= 0f)
+            if (_isBossEnemy || _enemyMovement == null || damageInfo.KnockbackForce <= 0f)
             {
                 return;
             }

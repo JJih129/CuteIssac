@@ -41,6 +41,7 @@ namespace CuteIssac.Data.Room
         [SerializeField] private ItemPoolData itemPoolOverride;
         [SerializeField] private GameObject itemPickupPrefabOverride;
         [SerializeField] private GameObject entryContentPrefab;
+        [SerializeField] private GameObject combatSetpiecePrefab;
         [SerializeField] private bool spawnContentOnFirstEntry = true;
         [SerializeField] private bool applyRoomTint;
         [SerializeField] private Color roomTintColor = Color.white;
@@ -50,6 +51,7 @@ namespace CuteIssac.Data.Room
         public ItemPoolData ItemPoolOverride => itemPoolOverride;
         public GameObject ItemPickupPrefabOverride => itemPickupPrefabOverride;
         public GameObject EntryContentPrefab => entryContentPrefab;
+        public GameObject CombatSetpiecePrefab => combatSetpiecePrefab;
         public bool SpawnContentOnFirstEntry => spawnContentOnFirstEntry && entryContentPrefab != null;
         public bool ApplyRoomTint => applyRoomTint;
         public Color RoomTintColor => roomTintColor;

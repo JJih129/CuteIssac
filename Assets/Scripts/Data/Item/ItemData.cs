@@ -24,6 +24,10 @@ namespace CuteIssac.Data.Item
         [SerializeField] private List<StatModifier> statModifiers = new();
         [SerializeField] private List<ProjectileModifier> projectileModifiers = new();
         [SerializeField] private List<ItemGameplayEventEffect> gameplayEventEffects = new();
+        [SerializeField] private List<ItemShopPriceModifier> shopPriceModifiers = new();
+        [SerializeField] private List<ItemDoorCostModifier> doorCostModifiers = new();
+        [SerializeField] private List<ItemRoomRewardModifier> roomRewardModifiers = new();
+        [SerializeField] private ItemWeaponProfile weaponProfile = new();
         private readonly List<StatModifier> _resolvedStatModifiers = new();
         private readonly List<ProjectileModifier> _resolvedProjectileModifiers = new();
         private readonly ModifierStack _modifierStack = new();
@@ -40,12 +44,53 @@ namespace CuteIssac.Data.Item
         public IReadOnlyList<StatModifier> StatModifiers => ResolveStatModifiers();
         public IReadOnlyList<ProjectileModifier> ProjectileModifiers => ResolveProjectileModifiers();
         public override IReadOnlyList<ItemGameplayEventEffect> GameplayEventEffects => gameplayEventEffects;
+        public IReadOnlyList<ItemShopPriceModifier> ShopPriceModifiers => shopPriceModifiers;
+        public IReadOnlyList<ItemDoorCostModifier> DoorCostModifiers => doorCostModifiers;
+        public IReadOnlyList<ItemRoomRewardModifier> RoomRewardModifiers => roomRewardModifiers;
+        public ItemWeaponProfile WeaponProfile => weaponProfile;
+        public bool IsWeaponRelic => ItemType == ItemType.Weapon && weaponProfile != null && weaponProfile.IsValid;
+        public string WeaponMotif => IsWeaponRelic ? weaponProfile.FirearmMotif : string.Empty;
+        public string WeaponHudLabel => IsWeaponRelic && !string.IsNullOrWhiteSpace(weaponProfile.HudLabel)
+            ? weaponProfile.HudLabel.Trim()
+            : displayName;
 
         protected override void AppendToModifierStack(ModifierStack modifierStack)
         {
             base.AppendToModifierStack(modifierStack);
             modifierStack.AddRange(statModifiers);
             modifierStack.AddRange(projectileModifiers);
+        }
+
+        public string BuildWeaponAmmoSummary()
+        {
+            if (!IsWeaponRelic)
+            {
+                return string.Empty;
+            }
+
+            string reserveLabel = weaponProfile.InfiniteReserveAmmo
+                ? "INF"
+                : weaponProfile.StartingReserveAmmo.ToString();
+            return $"{weaponProfile.MagazineCapacity}/{reserveLabel}";
+        }
+
+        public string BuildWeaponPickupSummary()
+        {
+            if (!IsWeaponRelic)
+            {
+                return string.Empty;
+            }
+
+            string reserveLabel = weaponProfile.InfiniteReserveAmmo
+                ? "INF"
+                : weaponProfile.StartingReserveAmmo.ToString();
+            string motifLabel = !string.IsNullOrWhiteSpace(weaponProfile.FirearmMotif)
+                ? weaponProfile.FirearmMotif.Trim()
+                : "modern firearm relic";
+            string pelletLabel = weaponProfile.ShotsPerTrigger > 1
+                ? $" · {weaponProfile.ShotsPerTrigger} pellets"
+                : string.Empty;
+            return $"{weaponProfile.MagazineCapacity}/{reserveLabel} rounds · {weaponProfile.ReloadDuration:0.#}s reload{pelletLabel}\n{motifLabel}";
         }
 
         private IReadOnlyList<StatModifier> ResolveStatModifiers()

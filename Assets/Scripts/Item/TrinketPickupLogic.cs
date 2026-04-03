@@ -14,6 +14,8 @@ namespace CuteIssac.Item
         [Header("Trinket Reward")]
         [SerializeField] private ItemData trinketData;
 
+        public ItemData TrinketData => trinketData;
+
         protected override void OnEnable()
         {
             base.OnEnable();

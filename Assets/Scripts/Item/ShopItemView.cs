@@ -35,17 +35,31 @@ namespace CuteIssac.Item
         [SerializeField] [Min(0.05f)] private float purchaseFlashDuration = 0.28f;
         [SerializeField] [Min(1f)] private float purchaseScaleMultiplier = 1.12f;
         [SerializeField] [Min(0f)] private float purchaseScaleRecoverSpeed = 7.5f;
+        [SerializeField] [Min(1f)] private float weaponBodyScaleMultiplier = 1.4f;
+        [SerializeField] [Min(1f)] private float weaponIconScaleMultiplier = 2.8f;
+        [SerializeField] [Min(1f)] private float weaponHighlightScaleMultiplier = 1.55f;
 
         private bool _isHighlighted;
         private float _purchaseFlashRemaining;
         private Vector3 _initialScale = Vector3.one;
         private bool _hasInitialScale;
+        private Vector3 _baseBodyScale = Vector3.one;
+        private Vector3 _baseIconScale = Vector3.one;
+        private Vector3 _baseHighlightScale = Vector3.one;
+        private Vector3 _baseSoldOverlayScale = Vector3.one;
+        private Vector3 _baseCurrencyMarkerScale = Vector3.one;
+        private bool _hasCapturedVisualScales;
 
-        public void Present(ShopItemData shopItemData, bool canAfford, bool isHighlighted, bool isSold)
+        public void Present(ShopItemData shopItemData, int effectivePrice, bool canAfford, bool isHighlighted, bool isSold)
         {
             EnsureWorldLabelsState();
             _isHighlighted = isHighlighted && !isSold;
             ShopCurrencyType currencyType = shopItemData != null ? shopItemData.CurrencyType : ShopCurrencyType.Coins;
+            bool isWeaponOffer = shopItemData != null
+                && shopItemData.Offer.RewardType == ShopOfferRewardType.PassiveItem
+                && shopItemData.Offer.PassiveItem != null
+                && shopItemData.Offer.PassiveItem.IsWeaponRelic;
+            ApplyScaleProfile(isWeaponOffer);
 
             if (bodyRenderer != null)
             {
@@ -94,7 +108,7 @@ namespace CuteIssac.Item
             {
                 priceText.gameObject.SetActive(showWorldTextLabels);
                 priceText.text = shopItemData != null
-                    ? $"{shopItemData.Price}{GetCurrencySuffix(currencyType)}"
+                    ? $"{Mathf.Max(0, effectivePrice)}{GetCurrencySuffix(currencyType)}"
                     : string.Empty;
                 priceText.color = isSold
                     ? soldBodyColor
@@ -232,6 +246,55 @@ namespace CuteIssac.Item
 
             _initialScale = transform.localScale;
             _hasInitialScale = true;
+        }
+
+        private void ApplyScaleProfile(bool isWeaponOffer)
+        {
+            CaptureVisualScales();
+
+            float bodyMultiplier = isWeaponOffer ? Mathf.Max(1f, weaponBodyScaleMultiplier) : 1f;
+            float iconMultiplier = isWeaponOffer ? Mathf.Max(1f, weaponIconScaleMultiplier) : 1f;
+            float highlightMultiplier = isWeaponOffer ? Mathf.Max(1f, weaponHighlightScaleMultiplier) : 1f;
+
+            if (bodyRenderer != null)
+            {
+                bodyRenderer.transform.localScale = _baseBodyScale * bodyMultiplier;
+            }
+
+            if (iconRenderer != null)
+            {
+                iconRenderer.transform.localScale = _baseIconScale * iconMultiplier;
+            }
+
+            if (highlightRenderer != null)
+            {
+                highlightRenderer.transform.localScale = _baseHighlightScale * highlightMultiplier;
+            }
+
+            if (soldOverlayRenderer != null)
+            {
+                soldOverlayRenderer.transform.localScale = _baseSoldOverlayScale * bodyMultiplier;
+            }
+
+            if (currencyMarkerRenderer != null)
+            {
+                currencyMarkerRenderer.transform.localScale = _baseCurrencyMarkerScale * Mathf.Lerp(1f, 1.22f, isWeaponOffer ? 1f : 0f);
+            }
+        }
+
+        private void CaptureVisualScales()
+        {
+            if (_hasCapturedVisualScales)
+            {
+                return;
+            }
+
+            _baseBodyScale = bodyRenderer != null ? bodyRenderer.transform.localScale : Vector3.one;
+            _baseIconScale = iconRenderer != null ? iconRenderer.transform.localScale : Vector3.one;
+            _baseHighlightScale = highlightRenderer != null ? highlightRenderer.transform.localScale : Vector3.one;
+            _baseSoldOverlayScale = soldOverlayRenderer != null ? soldOverlayRenderer.transform.localScale : Vector3.one;
+            _baseCurrencyMarkerScale = currencyMarkerRenderer != null ? currencyMarkerRenderer.transform.localScale : Vector3.one;
+            _hasCapturedVisualScales = true;
         }
 
         private void RecoverScale()

@@ -34,6 +34,11 @@ namespace CuteIssac.Room
 
         public RoomObstacleType ObstacleType => obstacleType;
         public Collider2D ObstacleCollider => obstacleCollider;
+        public bool DamagesPlayerOnContact => damagePlayerOnContact && contactDamage > 0f;
+        public float ContactDamage => contactDamage;
+        public float TraversalRiskRadius => obstacleCollider != null
+            ? Mathf.Max(obstacleCollider.bounds.extents.x, obstacleCollider.bounds.extents.y)
+            : 0.6f;
 
         private void Awake()
         {

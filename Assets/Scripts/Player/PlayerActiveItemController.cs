@@ -132,6 +132,11 @@ namespace CuteIssac.Player
             return true;
         }
 
+        public bool TryAddCharge(int amount)
+        {
+            return AddChargeInternal(amount);
+        }
+
         public bool TryRestoreHealth(float amount)
         {
             return playerHealth != null && playerHealth.RestoreHealth(amount);
@@ -270,7 +275,7 @@ namespace CuteIssac.Player
                 return;
             }
 
-            AddCharge(EquippedItem.ChargePerRoomClear);
+            AddChargeInternal(EquippedItem.ChargePerRoomClear);
         }
 
         private void HandleEnemyDied(EnemyHealth enemyHealth)
@@ -280,24 +285,25 @@ namespace CuteIssac.Player
                 return;
             }
 
-            AddCharge(EquippedItem.ChargePerEnemyKill);
+            AddChargeInternal(EquippedItem.ChargePerEnemyKill);
         }
 
-        private void AddCharge(int amount)
+        private bool AddChargeInternal(int amount)
         {
             if (EquippedItem == null || amount <= 0)
             {
-                return;
+                return false;
             }
 
             int nextCharge = Mathf.Clamp(_currentCharge + amount, 0, EquippedItem.MaxCharge);
             if (nextCharge == _currentCharge)
             {
-                return;
+                return false;
             }
 
             _currentCharge = nextCharge;
             NotifyStateChanged();
+            return true;
         }
 
         private void ClearTimedEffect()

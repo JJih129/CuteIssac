@@ -20,7 +20,7 @@ MonoBehaviour:
     entryContentPrefab: {fileID: 0}
     spawnContentOnFirstEntry: 1
     applyRoomTint: 1
-    roomTintColor: {r: 0.2, g: 0.31, b: 0.45, a: 0.26}
+    roomTintColor: {r: 0.98, g: 0.9, b: 0.78, a: 0.26}
   - roomType: 1
     rewardTableOverride: {fileID: 0}
     itemPoolOverride: {fileID: 0}
@@ -36,7 +36,7 @@ MonoBehaviour:
     entryContentPrefab: {fileID: 0}
     spawnContentOnFirstEntry: 1
     applyRoomTint: 1
-    roomTintColor: {r: 0.38, g: 0.31, b: 0.14, a: 0.34}
+    roomTintColor: {r: 1, g: 0.91, b: 0.56, a: 0.28}
   - roomType: 3
     rewardTableOverride: {fileID: 0}
     itemPoolOverride: {fileID: 11400000, guid: e5a1bac6d8ef40a5d7b2a6f4c3e5f506, type: 2}
@@ -44,7 +44,7 @@ MonoBehaviour:
     entryContentPrefab: {fileID: 950000100, guid: 59b8455ea59d4d78ba984354cf8d7fff, type: 3}
     spawnContentOnFirstEntry: 1
     applyRoomTint: 1
-    roomTintColor: {r: 0.12, g: 0.34, b: 0.34, a: 0.3}
+    roomTintColor: {r: 0.66, g: 0.93, b: 0.84, a: 0.28}
   - roomType: 4
     rewardTableOverride: {fileID: 0}
     itemPoolOverride: {fileID: 11400000, guid: f6b2cbd7e9f041b6e8c3b7a5d4f60718, type: 2}
@@ -52,7 +52,7 @@ MonoBehaviour:
     entryContentPrefab: {fileID: 0}
     spawnContentOnFirstEntry: 1
     applyRoomTint: 1
-    roomTintColor: {r: 0.35, g: 0.12, b: 0.14, a: 0.35}
+    roomTintColor: {r: 0.96, g: 0.64, b: 0.72, a: 0.34}
   - roomType: 5
     rewardTableOverride: {fileID: 0}
     itemPoolOverride: {fileID: 0}
@@ -60,7 +60,7 @@ MonoBehaviour:
     entryContentPrefab: {fileID: 0}
     spawnContentOnFirstEntry: 1
     applyRoomTint: 1
-    roomTintColor: {r: 0.26, g: 0.16, b: 0.34, a: 0.3}
+    roomTintColor: {r: 0.82, g: 0.73, b: 0.98, a: 0.28}
   - roomType: 6
     rewardTableOverride: {fileID: 0}
     itemPoolOverride: {fileID: 0}
@@ -68,7 +68,7 @@ MonoBehaviour:
     entryContentPrefab: {fileID: 0}
     spawnContentOnFirstEntry: 1
     applyRoomTint: 1
-    roomTintColor: {r: 0.42, g: 0.18, b: 0.12, a: 0.34}
+    roomTintColor: {r: 1, g: 0.74, b: 0.5, a: 0.3}
   - roomType: 8
     rewardTableOverride: {fileID: 0}
     itemPoolOverride: {fileID: 0}
@@ -76,7 +76,7 @@ MonoBehaviour:
     entryContentPrefab: {fileID: 910000100, guid: c2e7f4a6b8d94bb18f5f7c6d4a3e2101, type: 3}
     spawnContentOnFirstEntry: 1
     applyRoomTint: 1
-    roomTintColor: {r: 0.44, g: 0.14, b: 0.08, a: 0.26}
+    roomTintColor: {r: 0.98, g: 0.7, b: 0.58, a: 0.24}
   - roomType: 9
     rewardTableOverride: {fileID: 0}
     itemPoolOverride: {fileID: 0}
@@ -84,4 +84,4 @@ MonoBehaviour:
     entryContentPrefab: {fileID: 0}
     spawnContentOnFirstEntry: 1
     applyRoomTint: 1
-    roomTintColor: {r: 0.36, g: 0.06, b: 0.12, a: 0.42}
+    roomTintColor: {r: 0.9, g: 0.56, b: 0.7, a: 0.34}

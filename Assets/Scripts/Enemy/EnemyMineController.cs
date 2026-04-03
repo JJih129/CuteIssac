@@ -28,6 +28,15 @@ namespace CuteIssac.Enemy
         private bool _isInitialized;
         private bool _hasExploded;
 
+        public bool IsThreatActive => _isInitialized && !_hasExploded;
+        public bool IsTriggering => IsThreatActive && _remainingTriggerWindup > 0f;
+        public float TraversalRiskRadius => Mathf.Max(explosionRadius, triggerRange + 0.32f);
+        public float TraversalThreatWeight => IsTriggering
+            ? 1.35f
+            : _remainingArmDelay > 0f
+                ? 0.55f
+                : 1f;
+
         private void Awake()
         {
             ResolveReferences();

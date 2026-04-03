@@ -12,6 +12,8 @@ namespace CuteIssac.Item
         [Header("Healing")]
         [SerializeField] [Min(0.5f)] private float healAmount = 1f;
 
+        public float HealAmount => healAmount;
+
         protected override bool TryCollect(PlayerInventory inventory, PlayerHealth health, PlayerItemManager itemManager)
         {
             return health != null && health.RestoreHealth(healAmount);

@@ -9,7 +9,8 @@ namespace CuteIssac.Core.Feedback
         EnemyDamage = 1,
         PlayerDamage = 2,
         Pickup = 3,
-        EventLabel = 4
+        EventLabel = 4,
+        Momentum = 5
     }
 
     public readonly struct FloatingFeedbackRequest

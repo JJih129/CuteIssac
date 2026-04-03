@@ -47,6 +47,13 @@ namespace CuteIssac.Enemy
                 moveDirection = (chaseDirection * (1f - orbitBlend)) + (perpendicular * orbitBlend);
             }
 
+            moveDirection = EnemyFormationTactics.ResolveEscortFrontlineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                moveDirection,
+                1.18f,
+                0.38f);
             Controller.SetMoveSpeedMultiplier(distance >= surgeRange ? surgeSpeedMultiplier : 1f);
             Controller.SetDesiredMoveDirection(moveDirection.normalized);
         }

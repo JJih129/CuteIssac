@@ -133,6 +133,8 @@ MonoBehaviour:
   destroyOnDeath: 1
   regularEnemyHealthMultiplier: 2
   bossHealthMultiplier: 12
+  firstFloorBossHealthScale: 0.5
+  regularEnemyGlobalHealthScale: 0.82
   championEnemyModifier: {fileID: 0}
   enemyVisual: {fileID: 930000107}
 --- !u!114 &930000106
@@ -209,6 +211,20 @@ MonoBehaviour:
   speedParameter: Speed
   damagedTriggerParameter: Damaged
   deadBoolParameter: Dead
+  healthNormalizedParameter: HealthNormalized
+  lowHealthBoolParameter: LowHealth
+  healthPhaseIndexParameter: HealthPhaseIndex
+  healthPhaseChangedTriggerParameter: HealthPhaseChanged
+  useTemporaryLowHealthPreview: 1
+  temporaryLowHealthThreshold: 0.5
+  temporaryLowHealthTintBlend: 0.72
+  temporaryLowHealthTint: {r: 0.88, g: 0.54, b: 0.54, a: 1}
+  temporaryLowHealthHitFlashColor: {r: 1, g: 0.9, b: 0.9, a: 1}
+  temporaryLowHealthDamagedColor: {r: 0.84, g: 0.16, b: 0.16, a: 1}
+  temporaryLowHealthDeadColor: {r: 0.46, g: 0.08, b: 0.08, a: 0.55}
+  temporaryLowHealthScaleMultiplier: 0.92
+  temporaryLowHealthBandageColor: {r: 1, g: 0.96, b: 0.88, a: 0.98}
+  temporaryLowHealthSlashColor: {r: 0.58, g: 0.06, b: 0.06, a: 0.9}
 --- !u!114 &930000108
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -227,6 +243,7 @@ MonoBehaviour:
   projectileDefinition: {fileID: 11400000, guid: 060126269ccf4f9f813266466fbe4d30, type: 2}
   muzzleOffset: {x: 0.42, y: 0}
   prewarmCount: 12
+  runtimeProjectileSpeedMultiplier: 1
 --- !u!114 &930000109
 MonoBehaviour:
   m_ObjectHideFlags: 0

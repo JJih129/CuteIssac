@@ -353,7 +353,7 @@ namespace CuteIssac.Dungeon
 
             if (_recordsByPosition.TryGetValue(gridPosition, out RoomExplorationRecord record))
             {
-                record.HasCollectedRewardContent = record.HasRewardContent;
+                record.HasCollectedRewardContent = record.HasRewardContent && signal.IsFinalRewardCollection;
                 Changed?.Invoke();
             }
         }

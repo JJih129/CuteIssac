@@ -3,6 +3,7 @@ using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Pooling;
 using CuteIssac.Data.Dungeon;
+using CuteIssac.Player;
 using CuteIssac.Room;
 using UnityEngine;
 using UnityEngine.UI;
@@ -27,6 +28,8 @@ namespace CuteIssac.UI
         [Header("Optional References")]
         [Tooltip("Optional gameplay camera used for fallback world-space sorting or future screen projection.")]
         [SerializeField] private Camera worldCamera;
+        [Tooltip("Optional screen feedback driver used for short room-end camera punches.")]
+        [SerializeField] private PlayerScreenFeedback playerScreenFeedback;
         [Tooltip("Optional canvas used for top-center banners. If empty, the presenter finds one at runtime.")]
         [SerializeField] private Canvas overlayCanvas;
         [Tooltip("Optional parent under the overlay canvas for spawned banners.")]
@@ -84,7 +87,9 @@ namespace CuteIssac.UI
             GameplayFeedbackEvents.ThreatFlashRequested += HandleThreatFlashRequested;
             GameplayRuntimeEvents.RoomCleared += HandleRoomCleared;
             GameplayRuntimeEvents.RoomRewardPhaseCompleted += HandleRoomRewardPhaseCompleted;
+            GameplayRuntimeEvents.RoomRewardCollected += HandleRoomRewardCollected;
             GameplayRuntimeEvents.EnemyKilled += HandleEnemyKilled;
+            GameplayRuntimeEvents.MomentumExecuted += HandleMomentumExecuted;
             GameplayRuntimeEvents.CurseRewardManifested += HandleCurseRewardManifested;
             BossHudEvents.BossShownOrUpdated += HandleBossShownOrUpdated;
             BossHudEvents.BossHidden += HandleBossHidden;
@@ -98,7 +103,9 @@ namespace CuteIssac.UI
             GameplayFeedbackEvents.ThreatFlashRequested -= HandleThreatFlashRequested;
             GameplayRuntimeEvents.RoomCleared -= HandleRoomCleared;
             GameplayRuntimeEvents.RoomRewardPhaseCompleted -= HandleRoomRewardPhaseCompleted;
+            GameplayRuntimeEvents.RoomRewardCollected -= HandleRoomRewardCollected;
             GameplayRuntimeEvents.EnemyKilled -= HandleEnemyKilled;
+            GameplayRuntimeEvents.MomentumExecuted -= HandleMomentumExecuted;
             GameplayRuntimeEvents.CurseRewardManifested -= HandleCurseRewardManifested;
             BossHudEvents.BossShownOrUpdated -= HandleBossShownOrUpdated;
             BossHudEvents.BossHidden -= HandleBossHidden;
@@ -275,6 +282,39 @@ namespace CuteIssac.UI
             SpawnEnemyDeathEffect(signal.Position, enemyDeathAccentColor);
         }
 
+        private void HandleMomentumExecuted(MomentumExecutionSignal signal)
+        {
+            if (_suppressPresentationForModal || !signal.IsValid)
+            {
+                return;
+            }
+
+            string label = ResolveMomentumExecutionLabel(signal);
+            if (!string.IsNullOrWhiteSpace(label))
+            {
+                SpawnFloatingFeedback(new FloatingFeedbackRequest(
+                    signal.Position + new Vector3(0.06f, 1.08f, 0f),
+                    label,
+                    Color.Lerp(signal.AccentColor, Color.white, 0.16f),
+                    0.54f,
+                    0.68f,
+                    1.16f,
+                    visualProfile: FloatingFeedbackVisualProfile.Momentum));
+            }
+
+            if (signal.IsCriticalExecution)
+            {
+                SpawnThreatFlash(new ThreatFlashRequest(
+                    Color.Lerp(signal.AccentColor, Color.white, 0.08f),
+                    0.14f,
+                    0.24f,
+                    2,
+                    0.24f,
+                    1.18f,
+                    0.42f));
+            }
+        }
+
         private void HandleRoomRewardPhaseCompleted(RoomRewardPhaseSignal signal)
         {
             if (_suppressPresentationForModal)
@@ -285,6 +325,14 @@ namespace CuteIssac.UI
             if (!signal.HasRewards)
             {
                 return;
+            }
+
+            if (signal.HasMomentumBonusPresentation
+                && signal.Room != null
+                && signal.Room.RoomType != RoomType.Challenge
+                && signal.Room.RoomType != RoomType.Secret)
+            {
+                SpawnMomentumRewardReadyPresentation(signal);
             }
 
             if (signal.Room != null
@@ -314,6 +362,76 @@ namespace CuteIssac.UI
                 rewardLabel,
                 rewardAccentColor,
                 1.25f));
+        }
+
+        private void HandleRoomRewardCollected(RoomRewardCollectedSignal signal)
+        {
+            if (_suppressPresentationForModal || !signal.IsValid || !signal.IsMomentumReward)
+            {
+                return;
+            }
+
+            SpawnMomentumRewardClaimPresentation(signal);
+        }
+
+        private void SpawnMomentumRewardReadyPresentation(RoomRewardPhaseSignal signal)
+        {
+            if (signal.Room == null)
+            {
+                return;
+            }
+
+            Color accentColor = ResolveMomentumRewardAccentColor(signal.MomentumAccentColor);
+            SpawnRoomClearEffect(Color.Lerp(roomClearAccentColor, accentColor, 0.42f));
+            SpawnThreatFlash(new ThreatFlashRequest(
+                accentColor,
+                signal.MomentumBonusItemRolls > 0 ? 0.1f : 0.075f,
+                signal.MomentumBonusItemRolls > 0 ? 0.34f : 0.28f,
+                signal.MomentumBonusItemRolls > 0 ? 2 : 1,
+                signal.MomentumBonusItemRolls > 0 ? 0.24f : 0.18f,
+                1.02f,
+                0.4f));
+            SpawnFloatingFeedback(new FloatingFeedbackRequest(
+                signal.Room.CameraFocusPosition + Vector3.up * 1.14f,
+                ResolveMomentumRewardReadyLabel(signal),
+                Color.Lerp(accentColor, Color.white, 0.18f),
+                0.74f,
+                0.9f,
+                1.18f,
+                visualProfile: FloatingFeedbackVisualProfile.Momentum));
+            PlayPresentationScreenFeedback(signal.MomentumBonusItemRolls > 0 ? 0.58f : 0.42f);
+        }
+
+        private void SpawnMomentumRewardClaimPresentation(RoomRewardCollectedSignal signal)
+        {
+            if (signal.Room == null)
+            {
+                return;
+            }
+
+            Color accentColor = ResolveMomentumRewardAccentColor(signal.MomentumAccentColor);
+            SpawnFloatingFeedback(new FloatingFeedbackRequest(
+                signal.Room.CameraFocusPosition + Vector3.up * 1.06f,
+                ResolveMomentumRewardClaimLabel(signal),
+                Color.Lerp(accentColor, Color.white, 0.14f),
+                0.62f,
+                0.72f,
+                signal.IsHighValueMomentumReward ? 1.14f : 1.06f,
+                visualProfile: FloatingFeedbackVisualProfile.Momentum));
+
+            if (signal.IsHighValueMomentumReward || signal.IsFinalRewardCollection)
+            {
+                SpawnRoomClearEffect(Color.Lerp(roomClearAccentColor, accentColor, signal.IsHighValueMomentumReward ? 0.52f : 0.34f));
+                SpawnThreatFlash(new ThreatFlashRequest(
+                    accentColor,
+                    signal.IsHighValueMomentumReward ? 0.1f : 0.06f,
+                    signal.IsHighValueMomentumReward ? 0.26f : 0.2f,
+                    signal.IsHighValueMomentumReward ? 2 : 1,
+                    signal.IsHighValueMomentumReward ? 0.22f : 0.14f,
+                    1f,
+                    0.36f));
+                PlayPresentationScreenFeedback(signal.IsHighValueMomentumReward ? 0.44f : 0.28f);
+            }
         }
 
         private void SpawnChallengeRewardPresentation(RoomRewardPhaseSignal signal)
@@ -611,7 +729,81 @@ namespace CuteIssac.UI
             }
 
             return visualProfile == FloatingFeedbackVisualProfile.EnemyDamage
-                || visualProfile == FloatingFeedbackVisualProfile.PlayerDamage;
+                || visualProfile == FloatingFeedbackVisualProfile.PlayerDamage
+                || visualProfile == FloatingFeedbackVisualProfile.Momentum;
+        }
+
+        private void PlayPresentationScreenFeedback(float scale)
+        {
+            ResolveReferences();
+            playerScreenFeedback?.PlayHitFeedback(scale);
+        }
+
+        private static string ResolveMomentumExecutionLabel(MomentumExecutionSignal signal)
+        {
+            if (signal.IsCriticalExecution)
+            {
+                return signal.RestoredHealth > 0.01f
+                    ? $"EXECUTE +{signal.RestoredHealth:0.0}HP"
+                    : "EXECUTE";
+            }
+
+            if (signal.IsPriorityExecution)
+            {
+                return signal.SustainedDuration > 0.05f
+                    ? $"CUT IN +{signal.SustainedDuration:0.0}s"
+                    : "CUT IN";
+            }
+
+            if (signal.MatchesActiveFormation)
+            {
+                return signal.SustainedDuration > 0.05f
+                    ? $"FLOW +{signal.SustainedDuration:0.0}s"
+                    : "FLOW";
+            }
+
+            return string.Empty;
+        }
+
+        private Color ResolveMomentumRewardAccentColor(Color accentColor)
+        {
+            return accentColor.a > 0.01f
+                ? accentColor
+                : rewardAccentColor;
+        }
+
+        private static string ResolveMomentumRewardReadyLabel(RoomRewardPhaseSignal signal)
+        {
+            if (signal.MomentumBonusItemRolls > 0 && signal.MomentumBonusRewardSelections > 0)
+            {
+                return $"FLOW PAYOUT +R{signal.MomentumBonusRewardSelections} +I{signal.MomentumBonusItemRolls}";
+            }
+
+            if (signal.MomentumBonusItemRolls > 0)
+            {
+                return $"FLOW ITEM x{signal.MomentumBonusItemRolls}";
+            }
+
+            if (signal.MomentumBonusRewardSelections > 0)
+            {
+                return $"FLOW CACHE x{signal.MomentumBonusRewardSelections}";
+            }
+
+            return "FLOW READY";
+        }
+
+        private static string ResolveMomentumRewardClaimLabel(RoomRewardCollectedSignal signal)
+        {
+            if (signal.IsHighValueMomentumReward)
+            {
+                return signal.IsFinalRewardCollection
+                    ? "FLOW ITEM SECURED"
+                    : $"FLOW ITEM SECURED / {signal.RemainingRewardCount} LEFT";
+            }
+
+            return signal.IsFinalRewardCollection
+                ? "PAYOUT SECURED"
+                : $"FLOW CACHE / {signal.RemainingRewardCount} LEFT";
         }
 
         private void ResolveReferences()
@@ -619,6 +811,11 @@ namespace CuteIssac.UI
             if (worldCamera == null)
             {
                 worldCamera = Camera.main;
+            }
+
+            if (playerScreenFeedback == null)
+            {
+                playerScreenFeedback = FindFirstObjectByType<PlayerScreenFeedback>(FindObjectsInactive.Exclude);
             }
 
             if (overlayCanvas == null)

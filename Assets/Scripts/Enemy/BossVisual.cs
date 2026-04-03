@@ -74,6 +74,16 @@ namespace CuteIssac.Enemy
         [SerializeField] [Min(0f)] private float phaseTransitionAuraScalePulse = 0.18f;
         [SerializeField] [Min(0f)] private float phaseTransitionAlphaBoost = 0.18f;
 
+        [Header("Telegraph Visibility")]
+        [SerializeField] [Min(1f)] private float telegraphScaleMultiplier = 1.28f;
+        [SerializeField] [Min(1f)] private float telegraphAlphaMultiplier = 1.32f;
+        [SerializeField] [Range(0.5f, 1f)] private float telegraphMinAlpha = 0.76f;
+        [SerializeField] private int minimumTelegraphSortingOrder = 48;
+        [SerializeField] private bool useRuntimeTelegraphOutline = true;
+        [SerializeField] private Color telegraphOutlineColor = new(0.08f, 0.04f, 0.04f, 0.94f);
+        [SerializeField] [Min(1f)] private float telegraphOutlineScaleMultiplier = 1.12f;
+        [SerializeField] private int telegraphOutlineSortingOffset = -1;
+
         public EnemyVisual EnemyVisual => enemyVisual;
         public BossPhaseType CurrentPhase { get; private set; } = BossPhaseType.PhaseOne;
         public bool IsEnraged { get; private set; }
@@ -85,10 +95,13 @@ namespace CuteIssac.Enemy
         private Quaternion _telegraphBaseRotation = Quaternion.identity;
         private float _phaseTransitionRemaining;
         private float _phaseTransitionDuration;
+        private SpriteRenderer _telegraphOutlineRenderer;
 
         private void Awake()
         {
             ResolveReferences();
+            NormalizeTelegraphRenderer();
+            SyncTelegraphOutlineRenderer();
             SetPhase(BossPhaseType.PhaseOne);
             SetEnraged(false);
             SetTelegraphActive(false, BossPatternType.Burst);
@@ -107,6 +120,7 @@ namespace CuteIssac.Enemy
                 Color boosted = telegraphRenderer.color;
                 boosted.a = Mathf.Min(0.82f, boosted.a + 0.18f);
                 telegraphRenderer.color = boosted;
+                SyncTelegraphOutlineRenderer();
             }
         }
 
@@ -167,6 +181,7 @@ namespace CuteIssac.Enemy
             {
                 telegraphRenderer.transform.localScale = _currentTelegraphScale;
                 telegraphRenderer.transform.localRotation = _telegraphBaseRotation;
+                SyncTelegraphOutlineRenderer();
                 return;
             }
 
@@ -175,36 +190,36 @@ namespace CuteIssac.Enemy
             switch (patternType)
             {
                 case BossPatternType.Charge:
-                    _currentTelegraphColor = chargeTelegraphColor;
-                    _currentTelegraphScale = chargeTelegraphScale;
+                    _currentTelegraphColor = ResolveVisibleTelegraphColor(chargeTelegraphColor);
+                    _currentTelegraphScale = ResolveVisibleTelegraphScale(chargeTelegraphScale);
                     break;
                 case BossPatternType.Volley:
-                    _currentTelegraphColor = volleyTelegraphColor;
-                    _currentTelegraphScale = volleyTelegraphScale;
+                    _currentTelegraphColor = ResolveVisibleTelegraphColor(volleyTelegraphColor);
+                    _currentTelegraphScale = ResolveVisibleTelegraphScale(volleyTelegraphScale);
                     break;
                 case BossPatternType.Sweep:
-                    _currentTelegraphColor = sweepTelegraphColor;
-                    _currentTelegraphScale = sweepTelegraphScale;
+                    _currentTelegraphColor = ResolveVisibleTelegraphColor(sweepTelegraphColor);
+                    _currentTelegraphScale = ResolveVisibleTelegraphScale(sweepTelegraphScale);
                     break;
                 case BossPatternType.Spiral:
-                    _currentTelegraphColor = spiralTelegraphColor;
-                    _currentTelegraphScale = spiralTelegraphScale;
+                    _currentTelegraphColor = ResolveVisibleTelegraphColor(spiralTelegraphColor);
+                    _currentTelegraphScale = ResolveVisibleTelegraphScale(spiralTelegraphScale);
                     break;
                 case BossPatternType.Fan:
-                    _currentTelegraphColor = fanTelegraphColor;
-                    _currentTelegraphScale = fanTelegraphScale;
+                    _currentTelegraphColor = ResolveVisibleTelegraphColor(fanTelegraphColor);
+                    _currentTelegraphScale = ResolveVisibleTelegraphScale(fanTelegraphScale);
                     break;
                 case BossPatternType.Shockwave:
-                    _currentTelegraphColor = shockwaveTelegraphColor;
-                    _currentTelegraphScale = shockwaveTelegraphScale;
+                    _currentTelegraphColor = ResolveVisibleTelegraphColor(shockwaveTelegraphColor);
+                    _currentTelegraphScale = ResolveVisibleTelegraphScale(shockwaveTelegraphScale);
                     break;
                 case BossPatternType.Crossfire:
-                    _currentTelegraphColor = crossfireTelegraphColor;
-                    _currentTelegraphScale = crossfireTelegraphScale;
+                    _currentTelegraphColor = ResolveVisibleTelegraphColor(crossfireTelegraphColor);
+                    _currentTelegraphScale = ResolveVisibleTelegraphScale(crossfireTelegraphScale);
                     break;
                 default:
-                    _currentTelegraphColor = burstTelegraphColor;
-                    _currentTelegraphScale = burstTelegraphScale;
+                    _currentTelegraphColor = ResolveVisibleTelegraphColor(burstTelegraphColor);
+                    _currentTelegraphScale = ResolveVisibleTelegraphScale(burstTelegraphScale);
                     break;
             }
 
@@ -212,6 +227,7 @@ namespace CuteIssac.Enemy
             telegraphRenderer.color = _currentTelegraphColor;
             telegraphRenderer.transform.localScale = _currentTelegraphScale;
             telegraphRenderer.transform.localRotation = _telegraphBaseRotation;
+            SyncTelegraphOutlineRenderer();
         }
 
         private void RefreshAuraState()
@@ -236,10 +252,19 @@ namespace CuteIssac.Enemy
             }
         }
 
+        private void NormalizeTelegraphRenderer()
+        {
+            if (telegraphRenderer != null)
+            {
+                telegraphRenderer.sortingOrder = Mathf.Max(telegraphRenderer.sortingOrder, minimumTelegraphSortingOrder);
+            }
+        }
+
         private void UpdateTelegraphMotion()
         {
             if (!_telegraphActive || telegraphRenderer == null || !telegraphRenderer.gameObject.activeSelf)
             {
+                SyncTelegraphOutlineRenderer();
                 return;
             }
 
@@ -270,6 +295,8 @@ namespace CuteIssac.Enemy
                     AnimateBurstTelegraph();
                     break;
             }
+
+            SyncTelegraphOutlineRenderer();
         }
 
         private void AnimateBurstTelegraph()
@@ -277,10 +304,7 @@ namespace CuteIssac.Enemy
             float pulse = 0.5f + (0.5f * Mathf.Sin(Time.time * burstPulseSpeed));
             float scaleMultiplier = 1f + (burstScalePulse * pulse);
             telegraphRenderer.transform.localScale = _currentTelegraphScale * scaleMultiplier;
-
-            Color color = _currentTelegraphColor;
-            color.a = Mathf.Lerp(_currentTelegraphColor.a * 0.62f, _currentTelegraphColor.a, pulse);
-            telegraphRenderer.color = color;
+            telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.84f);
             telegraphRenderer.transform.localRotation = _telegraphBaseRotation;
         }
 
@@ -291,10 +315,7 @@ namespace CuteIssac.Enemy
             scale.x *= 1f + (chargeStretchPulse * pulse);
             scale.y *= 1f - (chargeStretchPulse * 0.25f * pulse);
             telegraphRenderer.transform.localScale = scale;
-
-            Color color = _currentTelegraphColor;
-            color.a = Mathf.Lerp(_currentTelegraphColor.a * 0.45f, _currentTelegraphColor.a, pulse);
-            telegraphRenderer.color = color;
+            telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.8f);
             telegraphRenderer.transform.localRotation = _telegraphBaseRotation;
         }
 
@@ -305,10 +326,7 @@ namespace CuteIssac.Enemy
             scale.x *= 1f + (volleyWidthPulse * pulse);
             scale.y *= 1f - (volleyWidthPulse * 0.18f * pulse);
             telegraphRenderer.transform.localScale = scale;
-
-            Color color = _currentTelegraphColor;
-            color.a = Mathf.Lerp(_currentTelegraphColor.a * 0.58f, _currentTelegraphColor.a, pulse);
-            telegraphRenderer.color = color;
+            telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.82f);
             telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (volleyPulseSpeed * 0.6f)) * volleyRotateSpeed);
         }
 
@@ -319,10 +337,7 @@ namespace CuteIssac.Enemy
             scale.x *= 1f + (sweepWidthPulse * pulse);
             scale.y *= 1f - (sweepWidthPulse * 0.22f * pulse);
             telegraphRenderer.transform.localScale = scale;
-
-            Color color = _currentTelegraphColor;
-            color.a = Mathf.Lerp(_currentTelegraphColor.a * 0.54f, _currentTelegraphColor.a, pulse);
-            telegraphRenderer.color = color;
+            telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.82f);
             telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (sweepPulseSpeed * 0.45f)) * sweepRotateSpeed);
         }
 
@@ -331,10 +346,7 @@ namespace CuteIssac.Enemy
             float pulse = 0.5f + (0.5f * Mathf.Sin(Time.time * spiralPulseSpeed));
             float scaleMultiplier = 1f + (spiralScalePulse * pulse);
             telegraphRenderer.transform.localScale = _currentTelegraphScale * scaleMultiplier;
-
-            Color color = _currentTelegraphColor;
-            color.a = Mathf.Lerp(_currentTelegraphColor.a * 0.5f, _currentTelegraphColor.a, pulse);
-            telegraphRenderer.color = color;
+            telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.8f);
             telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Time.time * spiralRotateSpeed);
         }
 
@@ -345,10 +357,7 @@ namespace CuteIssac.Enemy
             scale.x *= 1f + (fanWidthPulse * pulse);
             scale.y *= 1f - (fanWidthPulse * 0.16f * pulse);
             telegraphRenderer.transform.localScale = scale;
-
-            Color color = _currentTelegraphColor;
-            color.a = Mathf.Lerp(_currentTelegraphColor.a * 0.52f, _currentTelegraphColor.a, pulse);
-            telegraphRenderer.color = color;
+            telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.82f);
             telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (fanPulseSpeed * 0.35f)) * fanRotateSpeed);
         }
 
@@ -357,10 +366,7 @@ namespace CuteIssac.Enemy
             float pulse = 0.5f + (0.5f * Mathf.Sin(Time.time * shockwavePulseSpeed));
             float scaleMultiplier = 1f + (shockwaveScalePulse * pulse);
             telegraphRenderer.transform.localScale = _currentTelegraphScale * scaleMultiplier;
-
-            Color color = _currentTelegraphColor;
-            color.a = Mathf.Lerp(_currentTelegraphColor.a * 0.46f, _currentTelegraphColor.a, pulse);
-            telegraphRenderer.color = color;
+            telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.8f);
             telegraphRenderer.transform.localRotation = _telegraphBaseRotation;
         }
 
@@ -371,11 +377,34 @@ namespace CuteIssac.Enemy
             scale.x *= 1f + (crossfireWidthPulse * pulse);
             scale.y *= 1f - (crossfireWidthPulse * 0.2f * pulse);
             telegraphRenderer.transform.localScale = scale;
-
-            Color color = _currentTelegraphColor;
-            color.a = Mathf.Lerp(_currentTelegraphColor.a * 0.5f, _currentTelegraphColor.a, pulse);
-            telegraphRenderer.color = color;
+            telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.82f);
             telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (crossfirePulseSpeed * 0.42f)) * crossfireRotateSpeed);
+        }
+
+        private Color ResolveVisibleTelegraphColor(Color source)
+        {
+            Color.RGBToHSV(source, out float hue, out float saturation, out float value);
+            saturation = Mathf.Clamp01(Mathf.Max(0.8f, saturation));
+            value = Mathf.Clamp01(Mathf.Max(0.84f, value));
+            Color boosted = Color.HSVToRGB(hue, saturation, value);
+            boosted.a = Mathf.Clamp01(Mathf.Max(telegraphMinAlpha, source.a * telegraphAlphaMultiplier));
+            return boosted;
+        }
+
+        private Vector3 ResolveVisibleTelegraphScale(Vector3 sourceScale)
+        {
+            return new Vector3(
+                sourceScale.x * telegraphScaleMultiplier,
+                sourceScale.y * telegraphScaleMultiplier,
+                sourceScale.z);
+        }
+
+        private Color ResolveAnimatedTelegraphColor(float pulse, float alphaFloorFactor)
+        {
+            Color color = _currentTelegraphColor;
+            float alphaFloor = Mathf.Clamp01(Mathf.Max(telegraphMinAlpha, _currentTelegraphColor.a * alphaFloorFactor));
+            color.a = Mathf.Lerp(alphaFloor, _currentTelegraphColor.a, pulse);
+            return color;
         }
 
         private void UpdatePhaseTransitionMotion()
@@ -427,6 +456,69 @@ namespace CuteIssac.Enemy
         private void OnValidate()
         {
             ResolveReferences();
+            NormalizeTelegraphRenderer();
+        }
+
+        private void SyncTelegraphOutlineRenderer()
+        {
+            if (!useRuntimeTelegraphOutline || telegraphRenderer == null || telegraphRenderer.sprite == null)
+            {
+                if (_telegraphOutlineRenderer != null)
+                {
+                    _telegraphOutlineRenderer.enabled = false;
+                }
+
+                return;
+            }
+
+            EnsureTelegraphOutlineRenderer();
+
+            Transform telegraphTransform = telegraphRenderer.transform;
+            Transform outlineTransform = _telegraphOutlineRenderer.transform;
+            outlineTransform.localPosition = telegraphTransform.localPosition;
+            outlineTransform.localRotation = telegraphTransform.localRotation;
+            outlineTransform.localScale = telegraphTransform.localScale * telegraphOutlineScaleMultiplier;
+
+            _telegraphOutlineRenderer.enabled = _telegraphActive && telegraphRenderer.enabled && telegraphRenderer.gameObject.activeSelf;
+            _telegraphOutlineRenderer.sprite = telegraphRenderer.sprite;
+            _telegraphOutlineRenderer.color = telegraphOutlineColor;
+            _telegraphOutlineRenderer.flipX = telegraphRenderer.flipX;
+            _telegraphOutlineRenderer.flipY = telegraphRenderer.flipY;
+            _telegraphOutlineRenderer.drawMode = telegraphRenderer.drawMode;
+            _telegraphOutlineRenderer.size = telegraphRenderer.size;
+            _telegraphOutlineRenderer.maskInteraction = telegraphRenderer.maskInteraction;
+            _telegraphOutlineRenderer.sortingLayerID = telegraphRenderer.sortingLayerID;
+            _telegraphOutlineRenderer.sortingOrder = telegraphRenderer.sortingOrder + telegraphOutlineSortingOffset;
+        }
+
+        private void EnsureTelegraphOutlineRenderer()
+        {
+            if (_telegraphOutlineRenderer != null)
+            {
+                return;
+            }
+
+            Transform telegraphTransform = telegraphRenderer.transform;
+            Transform outlineTransform = telegraphTransform.parent != null
+                ? telegraphTransform.parent.Find("RuntimeTelegraphOutline")
+                : transform.Find("RuntimeTelegraphOutline");
+
+            if (outlineTransform == null)
+            {
+                GameObject outlineObject = new("RuntimeTelegraphOutline");
+                outlineTransform = outlineObject.transform;
+                outlineTransform.SetParent(telegraphTransform.parent != null ? telegraphTransform.parent : transform, false);
+            }
+
+            _telegraphOutlineRenderer = outlineTransform.GetComponent<SpriteRenderer>();
+            if (_telegraphOutlineRenderer == null)
+            {
+                _telegraphOutlineRenderer = outlineTransform.gameObject.AddComponent<SpriteRenderer>();
+            }
+
+            _telegraphOutlineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _telegraphOutlineRenderer.receiveShadows = false;
+            _telegraphOutlineRenderer.allowOcclusionWhenDynamic = false;
         }
     }
 }

@@ -124,6 +124,13 @@ namespace CuteIssac.Enemy
             Controller.SetMoveSpeedMultiplier(1f);
             Vector2 perpendicular = new Vector2(-normalizedDirection.y, normalizedDirection.x * _orbitSign);
             Vector2 moveDirection = (normalizedDirection * approachBlend) + (perpendicular * orbitBlend);
+            moveDirection = EnemyFormationTactics.ResolveEscortFrontlineMove(
+                FormationModifier,
+                Controller.Position,
+                Controller.TargetPosition,
+                moveDirection,
+                1.26f,
+                0.44f);
             Controller.SetDesiredMoveDirection(moveDirection.normalized * approachBlend);
         }
 
