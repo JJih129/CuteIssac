@@ -45,6 +45,10 @@ namespace CuteIssac.Room
         [SerializeField] private SpawnReusePolicy rewardSpawnReusePolicy = SpawnReusePolicy.Pooled;
         [SerializeField] [Min(0)] private int rewardPrewarmBufferCount = 1;
 
+        [Header("Boss Rewards")]
+        [Tooltip("How many normal enemy drop rolls the boss reward budget should emulate.")]
+        [SerializeField] [Min(0)] private int bossEquivalentEnemyDropRollCount = 15;
+
         [Header("Challenge Reveal Layout")]
         [SerializeField] [Min(0.2f)] private float challengeRevealPrimarySpacing = 1.05f;
         [SerializeField] [Min(0.2f)] private float challengeRevealSecondarySpacing = 0.92f;
@@ -213,6 +217,16 @@ namespace CuteIssac.Room
 
         private RoomRewardPhaseSummary HandleResolvedRoom(RoomController resolvedRoom, bool allowNonCombatRewards)
         {
+            if (_isShuttingDown || _hasSpawnedRewards || resolvedRoom == null || roomController != resolvedRoom)
+            {
+                return default;
+            }
+
+            if (roomTypeForRewards == RoomType.Boss)
+            {
+                return HandleBossRewardRoom(resolvedRoom);
+            }
+
             RoomRewardTable resolvedRewardTable = ResolveRewardTable();
             ChallengeClearRank challengeClearRank = ResolveChallengeClearRank(resolvedRoom, allowNonCombatRewards);
             ChallengePressureTier challengePressureTier = ResolveChallengePressureTier(resolvedRoom, allowNonCombatRewards);
@@ -232,11 +246,6 @@ namespace CuteIssac.Room
             string momentumBonusTitle = string.Empty;
             string momentumBonusSubtitle = string.Empty;
             Color momentumBonusAccentColor = Color.white;
-
-            if (_isShuttingDown || _hasSpawnedRewards || resolvedRoom == null || roomController != resolvedRoom)
-            {
-                return default;
-            }
 
             if (allowNonCombatRewards && !ShouldSpawnRewardsOnNonCombatResolve())
             {
@@ -400,6 +409,216 @@ namespace CuteIssac.Room
             _activeRewardPhaseSummary = result;
             _activeRewardLayoutCount = Mathf.Max(_activeRewardLayoutCount, standardSpawnCount);
             return result;
+        }
+
+        private RoomRewardPhaseSummary HandleBossRewardRoom(RoomController resolvedRoom)
+        {
+            if (resolvedRoom == null || roomController != resolvedRoom)
+            {
+                return default;
+            }
+
+            int spawnedCount = 0;
+            int spawnIndex = 0;
+            spawnedCount += SpawnBossResourceBudget(ref spawnIndex);
+            spawnedCount += SpawnBossArtifactReward();
+
+            _hasSpawnedRewards = spawnedCount > 0;
+            _activeRewardPhaseSummary = new RoomRewardPhaseSummary(spawnedCount);
+            _activeRewardLayoutCount = spawnedCount;
+
+            if (_hasSpawnedRewards && logRewardSpawnsInEditor)
+            {
+                Debug.Log($"RoomRewardSpawner spawned {spawnedCount} boss reward pickup(s) for room '{resolvedRoom.RoomId}'.", this);
+            }
+
+            if (_hasSpawnedRewards)
+            {
+                GameAudioEvents.Raise(GameAudioEventType.RewardSpawned, ResolveBossRewardCenter());
+            }
+
+            return _activeRewardPhaseSummary;
+        }
+
+        private int SpawnBossResourceBudget(ref int spawnIndex)
+        {
+            int spawnedCount = 0;
+            int rollCount = Mathf.Max(0, bossEquivalentEnemyDropRollCount);
+
+            for (int rollIndex = 0; rollIndex < rollCount; rollIndex++)
+            {
+                switch (CuteIssac.Item.EnemyDropRules.RollDropKind(
+                    CuteIssac.Item.EnemyDropRules.CoinDropChance,
+                    CuteIssac.Item.EnemyDropRules.AmmoDropChance,
+                    CuteIssac.Item.EnemyDropRules.BombDropChance,
+                    CuteIssac.Item.EnemyDropRules.NoDropChance))
+                {
+                    case EnemyDropKind.Coins:
+                        spawnedCount += SpawnBossCoinDrops(ref spawnIndex, CuteIssac.Item.EnemyDropRules.RollCoinDropCount(
+                            CuteIssac.Item.EnemyDropRules.SingleCoinChance,
+                            CuteIssac.Item.EnemyDropRules.DoubleCoinChance,
+                            CuteIssac.Item.EnemyDropRules.TripleCoinChance));
+                        break;
+                    case EnemyDropKind.Ammo:
+                        if (TrySpawnBossResourcePickup(EnemyDropKind.Ammo, spawnIndex + 1))
+                        {
+                            spawnIndex++;
+                            spawnedCount++;
+                        }
+                        break;
+                    case EnemyDropKind.Bomb:
+                        if (TrySpawnBossResourcePickup(EnemyDropKind.Bomb, spawnIndex + 1))
+                        {
+                            spawnIndex++;
+                            spawnedCount++;
+                        }
+                        break;
+                }
+            }
+
+            return spawnedCount;
+        }
+
+        private int SpawnBossCoinDrops(ref int spawnIndex, int coinCount)
+        {
+            int spawnedCount = 0;
+            int actualCoinCount = Mathf.Max(1, coinCount);
+
+            for (int coinIndex = 0; coinIndex < actualCoinCount; coinIndex++)
+            {
+                if (TrySpawnBossResourcePickup(EnemyDropKind.Coins, spawnIndex + 1))
+                {
+                    spawnIndex++;
+                    spawnedCount++;
+                }
+            }
+
+            return spawnedCount;
+        }
+
+        private bool TrySpawnBossResourcePickup(EnemyDropKind dropKind, int spawnIndex)
+        {
+            Vector3 spawnPosition = ResolveBossRewardPosition(spawnIndex);
+            GameObject rewardObject = dropKind switch
+            {
+                EnemyDropKind.Coins => CuteIssac.Item.RuntimePickupFactory.SpawnCoinPickup(
+                    spawnPosition,
+                    spawnedRewardParent,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupScale,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupColliderRadius,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupSortingOrder,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultCoinPickupBaseColor,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultCoinPickupCollectedColor,
+                    "CandyCoinPickup"),
+                EnemyDropKind.Ammo => CuteIssac.Item.RuntimePickupFactory.SpawnAmmoPickup(
+                    spawnPosition,
+                    spawnedRewardParent,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupScale,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupColliderRadius,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupSortingOrder,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultAmmoPickupBaseColor,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultAmmoPickupCollectedColor,
+                    1,
+                    false,
+                    "AmmoPickup"),
+                EnemyDropKind.Bomb => CuteIssac.Item.RuntimePickupFactory.SpawnBombPickup(
+                    spawnPosition,
+                    spawnedRewardParent,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupScale,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupColliderRadius,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupSortingOrder,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultBombPickupBaseColor,
+                    CuteIssac.Item.RuntimePickupFactory.DefaultBombPickupCollectedColor,
+                    "BombPickup"),
+                _ => null
+            };
+
+            if (rewardObject == null)
+            {
+                return false;
+            }
+
+            ConfigureRewardPickupTracking(rewardObject);
+            return true;
+        }
+
+        private int SpawnBossArtifactReward()
+        {
+            if (_runtimeItemRewardPool == null || _runtimeItemRewardPickupPrefab == null)
+            {
+                if (logRewardSpawnsInEditor)
+                {
+                    Debug.LogWarning(
+                        $"RoomRewardSpawner boss reward is missing an item pool or pickup prefab for room '{roomController?.RoomId}'.",
+                        this);
+                }
+
+                return 0;
+            }
+
+            ItemPoolSelectionContext selectionContext = _runItemPoolService != null
+                ? _runItemPoolService.BuildSelectionContext(roomTypeForRewards, _selectedRewardItemIds)
+                : new ItemPoolSelectionContext(roomTypeForRewards, 1, _selectedRewardItemIds, null, null, null, null, null);
+
+            if (!_runtimeItemRewardPool.TrySelectRandomNonWeaponItem(selectionContext, out ItemData selectedItem) || selectedItem == null)
+            {
+                if (logRewardSpawnsInEditor)
+                {
+                    Debug.LogWarning(
+                        $"RoomRewardSpawner could not resolve an artifact boss reward for room '{roomController?.RoomId}'.",
+                        this);
+                }
+
+                return 0;
+            }
+
+            PrewarmPickupIfNeeded(_runtimeItemRewardPickupPrefab, 1);
+
+            GameObject rewardObject = GameplaySpawnFactory.SpawnGameObject(
+                _runtimeItemRewardPickupPrefab,
+                ResolveBossRewardCenter(),
+                Quaternion.identity,
+                spawnedRewardParent,
+                rewardSpawnReusePolicy);
+
+            if (rewardObject == null)
+            {
+                return 0;
+            }
+
+            ConfigureRewardPickupTracking(rewardObject);
+
+            if (rewardObject.TryGetComponent(out ItemPickupLogic itemPickupLogic))
+            {
+                itemPickupLogic.ConfigureItem(selectedItem);
+                _selectedRewardItemIds.Add(selectedItem.ItemId);
+                _runItemPoolService?.RegisterOffer(selectedItem);
+                return 1;
+            }
+
+            Debug.LogWarning("RoomRewardSpawner boss reward prefab is missing ItemPickupLogic.", rewardObject);
+            PrefabPoolService.Return(rewardObject);
+            return 0;
+        }
+
+        private Vector3 ResolveBossRewardCenter()
+        {
+            return rewardSpawnAnchor != null ? rewardSpawnAnchor.position : transform.position;
+        }
+
+        private Vector3 ResolveBossRewardPosition(int spawnIndex)
+        {
+            Vector3 center = ResolveBossRewardCenter();
+
+            if (scatterRadius <= 0f || spawnIndex <= 0)
+            {
+                return center;
+            }
+
+            float angle = 137.5f * spawnIndex * Mathf.Deg2Rad;
+            float radius = Mathf.Max(0f, scatterRadius) * Mathf.Clamp01(0.35f + (0.18f * spawnIndex));
+            Vector2 offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+            return center + new Vector3(offset.x, offset.y, 0f);
         }
 
         private void OnDestroy()
@@ -846,18 +1065,20 @@ namespace CuteIssac.Room
                 || roomTypeForRewards == RoomType.Curse;
         }
 
-    private static void FilterRoomClearRewardCandidates(List<RoomRewardEntry> candidates)
-    {
-        if (candidates == null || candidates.Count == 0)
+        private void FilterRoomClearRewardCandidates(List<RoomRewardEntry> candidates)
         {
-            return;
-        }
+            if (candidates == null || candidates.Count == 0)
+            {
+                return;
+            }
 
-        candidates.RemoveAll(static entry =>
-            entry.RewardType != RoomRewardType.Bomb &&
-            entry.RewardType != RoomRewardType.Key &&
-            entry.RewardType != RoomRewardType.PassiveItem);
-    }
+            bool allowPassiveItems = roomTypeForRewards != RoomType.Normal;
+
+            candidates.RemoveAll(entry =>
+                entry.RewardType != RoomRewardType.Bomb &&
+                entry.RewardType != RoomRewardType.Key &&
+                (entry.RewardType != RoomRewardType.PassiveItem || !allowPassiveItems));
+        }
 
         private ChallengeClearRank ResolveChallengeClearRank(RoomController resolvedRoom, bool allowNonCombatRewards)
         {
@@ -970,41 +1191,41 @@ namespace CuteIssac.Room
 
             string title = challengeClearRank switch
             {
-                ChallengeClearRank.S => "도전 평가 S",
-                ChallengeClearRank.A => "도전 평가 A",
-                ChallengeClearRank.B => "도전 완주",
-                _ => "도전 압박 보상"
+                ChallengeClearRank.S => "?꾩쟾 ?됯? S",
+                ChallengeClearRank.A => "?꾩쟾 ?됯? A",
+                ChallengeClearRank.B => "?꾩쟾 ?꾩＜",
+                _ => "?꾩쟾 ?뺣컯 蹂댁긽"
             };
 
             string rewardSummary;
             if (bonusRewardSelections > 0 && bonusItemRolls > 0)
             {
-                rewardSummary = $"+보상 {bonusRewardSelections} / +아이템 {bonusItemRolls}";
+                rewardSummary = $"+蹂댁긽 {bonusRewardSelections} / +?꾩씠??{bonusItemRolls}";
             }
             else if (bonusRewardSelections > 0)
             {
-                rewardSummary = $"+보상 {bonusRewardSelections}";
+                rewardSummary = $"+蹂댁긽 {bonusRewardSelections}";
             }
             else if (bonusItemRolls > 0)
             {
-                rewardSummary = $"+아이템 {bonusItemRolls}";
+                rewardSummary = $"+?꾩씠??{bonusItemRolls}";
             }
             else
             {
-                rewardSummary = "기본 보상 획득";
+                rewardSummary = "湲곕낯 蹂댁긽 ?띾뱷";
             }
 
             string pressureSummary = challengePressureTier switch
             {
-                ChallengePressureTier.Deadly => "치명 압박 돌파",
-                ChallengePressureTier.Elite => "엘리트 압박 돌파",
-                ChallengePressureTier.Reinforced => "증원 압박 돌파",
+                ChallengePressureTier.Deadly => "移섎챸 ?뺣컯 ?뚰뙆",
+                ChallengePressureTier.Elite => "?섎━???뺣컯 ?뚰뙆",
+                ChallengePressureTier.Reinforced => "利앹썝 ?뺣컯 ?뚰뙆",
                 _ => string.Empty
             };
 
             string subtitle = string.IsNullOrEmpty(pressureSummary)
                 ? rewardSummary
-                : $"{rewardSummary} · {pressureSummary}";
+                : $"{rewardSummary} 쨌 {pressureSummary}";
 
             Color accentColor = challengeClearRank switch
             {
@@ -1035,19 +1256,19 @@ namespace CuteIssac.Room
             string subtitle;
             if (bonusRewardSelections > 0 && bonusItemRolls > 0)
             {
-                subtitle = $"+보상 {bonusRewardSelections} / +아이템 {bonusItemRolls}";
+                subtitle = $"+蹂댁긽 {bonusRewardSelections} / +?꾩씠??{bonusItemRolls}";
             }
             else if (bonusRewardSelections > 0)
             {
-                subtitle = $"+보상 {bonusRewardSelections}";
+                subtitle = $"+蹂댁긽 {bonusRewardSelections}";
             }
             else
             {
-                subtitle = $"+아이템 {bonusItemRolls}";
+                subtitle = $"+?꾩씠??{bonusItemRolls}";
             }
 
             GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                "비밀 은닉처 발견",
+                "鍮꾨? ??됱쿂 諛쒓껄",
                 subtitle,
                 new Color(0.88f, 0.62f, 1f, 1f),
                 1.9f));

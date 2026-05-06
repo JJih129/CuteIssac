@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!1 &930000100
 GameObject:
@@ -188,8 +188,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   summonPrefabs:
-  - {fileID: 930000106, guid: c7f3af65372d46ee83fd98579e23720d, type: 3}
-  - {fileID: 930000106, guid: 4d1a46c92ce84e5dbfe67f5db3dd2bd3, type: 3}
+  - {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
+  - {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
   summonAnchor: {fileID: 930000141}
   spawnedEnemyParent: {fileID: 0}
   summonCooldown: 4.8

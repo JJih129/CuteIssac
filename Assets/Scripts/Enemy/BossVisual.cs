@@ -9,7 +9,11 @@ namespace CuteIssac.Enemy
     [DisallowMultipleComponent]
     public sealed class BossVisual : MonoBehaviour
     {
+        public event System.Action AttackEmphasized;
+
         [Header("References")]
+        [Tooltip("Optional dormant gate so boss presentation stays paused before room entry.")]
+        [SerializeField] private EnemyController enemyController;
         [Tooltip("Base enemy visual used by the boss root.")]
         [SerializeField] private EnemyVisual enemyVisual;
         [Tooltip("Optional renderer used for phase aura or boss emphasis.")]
@@ -109,6 +113,11 @@ namespace CuteIssac.Enemy
 
         private void Update()
         {
+            if (enemyController != null && enemyController.IsCombatDormant)
+            {
+                return;
+            }
+
             UpdatePhaseTransitionMotion();
             UpdateTelegraphMotion();
         }
@@ -122,6 +131,8 @@ namespace CuteIssac.Enemy
                 telegraphRenderer.color = boosted;
                 SyncTelegraphOutlineRenderer();
             }
+
+            AttackEmphasized?.Invoke();
         }
 
         public void HandleDamaged()
@@ -246,6 +257,11 @@ namespace CuteIssac.Enemy
 
         private void ResolveReferences()
         {
+            if (enemyController == null)
+            {
+                enemyController = GetComponentInParent<EnemyController>();
+            }
+
             if (enemyVisual == null)
             {
                 enemyVisual = GetComponent<EnemyVisual>();

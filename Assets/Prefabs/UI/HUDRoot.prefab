@@ -61,6 +61,7 @@ MonoBehaviour:
   bossHpPanelView: {fileID: 820000234}
   minimapPanelView: {fileID: 820000254}
   topHudBarView: {fileID: 820000104}
+  weaponAmmoUiSprite: {fileID: -5476636203795425448, guid: 386ef2e61084d6b4b8327118c13bad9d, type: 3}
 --- !u!114 &820000103
 MonoBehaviour:
   m_ObjectHideFlags: 0

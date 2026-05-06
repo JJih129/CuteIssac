@@ -360,6 +360,10 @@ namespace CuteIssac.Room
                     outcomeLabel = $"+{offer.HealthAmount:0.#} HP";
                     outcomeColor = new Color(1f, 0.54f, 0.62f, 1f);
                     return true;
+                case ShopOfferRewardType.Ammo:
+                    outcomeLabel = $"+{offer.ResourceAmount} AMMO";
+                    outcomeColor = new Color(0.96f, 0.78f, 0.28f, 1f);
+                    return true;
                 case ShopOfferRewardType.Coins:
                     outcomeLabel = $"+{offer.ResourceAmount} COIN";
                     outcomeColor = new Color(0.98f, 0.86f, 0.34f, 1f);
@@ -487,6 +491,7 @@ namespace CuteIssac.Room
             {
                 ShopOfferRewardType.PassiveItem when offer.PassiveItem != null => BuildPassiveItemDetail(offer.PassiveItem),
                 ShopOfferRewardType.Health => $"+{offer.HealthAmount:0.#} HP",
+                ShopOfferRewardType.Ammo => $"+{offer.ResourceAmount} AMMO",
                 ShopOfferRewardType.Coins => $"+{offer.ResourceAmount} COIN CACHE",
                 ShopOfferRewardType.Keys => $"+{offer.ResourceAmount} KEY CACHE",
                 ShopOfferRewardType.Bombs => $"+{offer.ResourceAmount} BOMB CACHE",
@@ -527,6 +532,7 @@ namespace CuteIssac.Room
             {
                 ShopOfferRewardType.PassiveItem when offer.PassiveItem != null => ResolvePassiveItemCompareLabel(offer.PassiveItem, playerStats),
                 ShopOfferRewardType.Health => ResolveHeartCompareLabel(offer.HealthAmount, playerHealth),
+                ShopOfferRewardType.Ammo => ResolveAmmoCompareLabel(offer.ResourceAmount, playerInventory, playerItemManager, playerHealth),
                 ShopOfferRewardType.Coins => ResolveResourceCompareLabel(ResourcePickupType.Coin, offer.ResourceAmount, playerInventory, true),
                 ShopOfferRewardType.Keys => ResolveResourceCompareLabel(ResourcePickupType.Key, offer.ResourceAmount, playerInventory, true),
                 ShopOfferRewardType.Bombs => ResolveResourceCompareLabel(ResourcePickupType.Bomb, offer.ResourceAmount, playerInventory, true),
@@ -558,7 +564,9 @@ namespace CuteIssac.Room
                 "SOLD OUT" => -100f,
                 "ALREADY OWNED" => -64f,
                 "COIN SHORT" or "KEY SHORT" or "BOMB SHORT" or "SHOP LOCKED" => -34f,
+                "NO WEAPON" => -30f,
                 "FULL HP" => -24f,
+                "AMMO FULL" => -22f,
                 "STASH FULL" => -18f,
                 "DMG SPIKE" => 30f,
                 "SHOT SPIKE" => 29f,
@@ -571,6 +579,7 @@ namespace CuteIssac.Room
                 "FULL HEAL" => 21f,
                 "HEAL NOW" => 19f,
                 "KEY RELIEF" or "BOMB RELIEF" => 18f,
+                "RESTOCK AMMO" or "AMMO NOW" => 17f,
                 "ACTIVE OPEN" => 17f,
                 "TRINKET OPEN" => 16f,
                 "ACTIVE SWAP" => 15f,
@@ -1034,6 +1043,26 @@ namespace CuteIssac.Room
             return "HEAL NOW";
         }
 
+        private static string ResolveAmmoCompareLabel(
+            int ammoAmount,
+            PlayerInventory playerInventory,
+            PlayerItemManager playerItemManager,
+            PlayerHealth playerHealth)
+        {
+            PlayerWeaponLoadout weaponLoadout = ResolveWeaponLoadout(playerInventory, playerHealth, playerItemManager);
+            if (weaponLoadout == null || !weaponLoadout.HasWeapon)
+            {
+                return "NO WEAPON";
+            }
+
+            if (!weaponLoadout.CanReceiveAmmoPickup())
+            {
+                return "AMMO FULL";
+            }
+
+            return ammoAmount >= 8 ? "RESTOCK AMMO" : "AMMO NOW";
+        }
+
         private static string ResolveResourceCompareLabel(
             ResourcePickupType resourceType,
             int amount,
@@ -1065,6 +1094,29 @@ namespace CuteIssac.Room
 
                     return amount >= 5 ? "ECON SPIKE" : "COIN UP";
             }
+        }
+
+        private static PlayerWeaponLoadout ResolveWeaponLoadout(
+            PlayerInventory playerInventory,
+            PlayerHealth playerHealth,
+            PlayerItemManager playerItemManager)
+        {
+            if (playerItemManager != null && playerItemManager.TryGetComponent(out PlayerWeaponLoadout itemManagerLoadout))
+            {
+                return itemManagerLoadout;
+            }
+
+            if (playerInventory != null && playerInventory.TryGetComponent(out PlayerWeaponLoadout inventoryLoadout))
+            {
+                return inventoryLoadout;
+            }
+
+            if (playerHealth != null && playerHealth.TryGetComponent(out PlayerWeaponLoadout healthLoadout))
+            {
+                return healthLoadout;
+            }
+
+            return null;
         }
 
         private static string BuildPassiveItemDetail(ItemData itemData)
@@ -1650,6 +1702,7 @@ namespace CuteIssac.Room
             {
                 ShopOfferRewardType.PassiveItem when offer.PassiveItem != null => ResolveItemAccent(offer.PassiveItem.Rarity),
                 ShopOfferRewardType.Health => new Color(1f, 0.52f, 0.62f, 1f),
+                ShopOfferRewardType.Ammo => new Color(0.96f, 0.78f, 0.28f, 1f),
                 ShopOfferRewardType.Coins => new Color(0.96f, 0.84f, 0.28f, 1f),
                 ShopOfferRewardType.Keys => new Color(0.74f, 0.88f, 1f, 1f),
                 ShopOfferRewardType.Bombs => new Color(1f, 0.56f, 0.24f, 1f),

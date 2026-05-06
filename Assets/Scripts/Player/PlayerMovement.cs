@@ -16,6 +16,7 @@ namespace CuteIssac.Player
 
         [Header("Optional Runtime Providers")]
         [SerializeField] private MonoBehaviour moveSpeedProviderSource;
+        [SerializeField] private PlayerMovementLockState movementLockState;
 
         private Rigidbody2D _rigidbody2D;
         private IPlayerMoveSpeedProvider _moveSpeedProvider;
@@ -23,11 +24,19 @@ namespace CuteIssac.Player
         private Vector2 _externalVelocity;
 
         public float BaseMoveSpeed => baseMoveSpeed;
-        public float CurrentMoveSpeed => ResolveMoveSpeed();
+        public float CurrentMoveSpeed => IsMovementLocked ? 0f : ResolveMoveSpeed();
+        public bool IsMovementLocked
+        {
+            get
+            {
+                ResolveMovementLockState();
+                return movementLockState != null && movementLockState.IsLocked;
+            }
+        }
         public Vector2 MoveInput => _moveInput;
         public Vector2 CurrentVelocity => _rigidbody2D != null
             ? _rigidbody2D.linearVelocity
-            : (_moveInput * ResolveMoveSpeed()) + _externalVelocity;
+            : (ResolveEffectiveMoveInput() * ResolveMoveSpeed()) + _externalVelocity;
 
         private void Awake()
         {
@@ -38,6 +47,8 @@ namespace CuteIssac.Player
             {
                 _moveSpeedProvider = GetComponent<PlayerStats>();
             }
+
+            ResolveMovementLockState();
 
             if (_rigidbody2D != null)
             {
@@ -56,7 +67,7 @@ namespace CuteIssac.Player
                     externalVelocityDamping * Time.fixedDeltaTime);
             }
 
-            _rigidbody2D.linearVelocity = (_moveInput * ResolveMoveSpeed()) + _externalVelocity;
+            _rigidbody2D.linearVelocity = (ResolveEffectiveMoveInput() * ResolveMoveSpeed()) + _externalVelocity;
         }
 
         private void OnDisable()
@@ -108,6 +119,20 @@ namespace CuteIssac.Player
             _externalVelocity += impulse;
         }
 
+        /// <summary>
+        /// Lets runtime-created web/lock gimmicks reconnect after adding PlayerMovementLockState post-Awake.
+        /// </summary>
+        public void RefreshMovementLockState(PlayerMovementLockState lockState = null)
+        {
+            if (lockState != null && lockState.gameObject == gameObject)
+            {
+                movementLockState = lockState;
+                return;
+            }
+
+            ResolveMovementLockState();
+        }
+
         private float ResolveMoveSpeed()
         {
             if (_moveSpeedProvider != null)
@@ -116,6 +141,19 @@ namespace CuteIssac.Player
             }
 
             return baseMoveSpeed;
+        }
+
+        private Vector2 ResolveEffectiveMoveInput()
+        {
+            return IsMovementLocked ? Vector2.zero : _moveInput;
+        }
+
+        private void ResolveMovementLockState()
+        {
+            if (movementLockState == null)
+            {
+                movementLockState = GetComponent<PlayerMovementLockState>();
+            }
         }
     }
 }

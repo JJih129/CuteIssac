@@ -8,6 +8,7 @@ namespace CuteIssac.Data.Visual
         [Header("Sprites")]
         [SerializeField] private Sprite bodySprite;
         [SerializeField] private Sprite shadowSprite;
+        [SerializeField] private Sprite hitSprite;
 
         [Header("Animation")]
         [SerializeField] private RuntimeAnimatorController animatorController;
@@ -21,6 +22,7 @@ namespace CuteIssac.Data.Visual
 
         public Sprite BodySprite => bodySprite;
         public Sprite ShadowSprite => shadowSprite;
+        public Sprite HitSprite => hitSprite;
         public RuntimeAnimatorController AnimatorController => animatorController;
         public Color BaseColor => baseColor;
         public Color HitFlashColor => hitFlashColor;

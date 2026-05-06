@@ -40,16 +40,70 @@ namespace CuteIssac.Data.Item
                 return null;
             }
 
+            string runtimeDescription = passiveItem.IsWeaponRelic && string.IsNullOrWhiteSpace(passiveItem.Description)
+                ? passiveItem.BuildWeaponPickupSummary()
+                : passiveItem.Description;
+            return CreateRuntimeOffer(
+                $"RuntimeShop_{passiveItem.ItemId}",
+                $"runtime_shop_{passiveItem.ItemId}",
+                passiveItem.DisplayName,
+                runtimeDescription,
+                passiveItem.Icon,
+                runtimePrice,
+                runtimeCurrencyType,
+                ShopDeliveryMode.Immediate,
+                ShopOffer.CreatePassiveItemOffer(passiveItem));
+        }
+
+        public static ShopItemData CreateRuntimeHealthOffer(float healthAmount, int runtimePrice, ShopCurrencyType runtimeCurrencyType)
+        {
+            return CreateRuntimeOffer(
+                "RuntimeShop_Health",
+                $"runtime_shop_health_{Mathf.Max(0.5f, healthAmount):0.#}",
+                "Heart Cache",
+                $"+{Mathf.Max(0.5f, healthAmount):0.#} HP",
+                RuntimeShopIconFactory.GetHeartSprite(),
+                runtimePrice,
+                runtimeCurrencyType,
+                ShopDeliveryMode.Immediate,
+                ShopOffer.CreateHealthOffer(healthAmount));
+        }
+
+        public static ShopItemData CreateRuntimeAmmoOffer(int ammoAmount, int runtimePrice, ShopCurrencyType runtimeCurrencyType)
+        {
+            return CreateRuntimeOffer(
+                "RuntimeShop_Ammo",
+                $"runtime_shop_ammo_{Mathf.Max(1, ammoAmount)}",
+                "Ammo Cache",
+                $"+{Mathf.Max(1, ammoAmount)} AMMO",
+                RuntimeShopIconFactory.GetAmmoSprite(),
+                runtimePrice,
+                runtimeCurrencyType,
+                ShopDeliveryMode.Immediate,
+                ShopOffer.CreateAmmoOffer(ammoAmount));
+        }
+
+        private static ShopItemData CreateRuntimeOffer(
+            string runtimeName,
+            string runtimeOfferId,
+            string displayName,
+            string description,
+            Sprite icon,
+            int runtimePrice,
+            ShopCurrencyType runtimeCurrencyType,
+            ShopDeliveryMode runtimeDeliveryMode,
+            ShopOffer runtimeOffer)
+        {
             ShopItemData runtimeItemData = CreateInstance<ShopItemData>();
-            runtimeItemData.name = $"RuntimeShop_{passiveItem.ItemId}";
-            runtimeItemData.offerId = $"runtime_shop_{passiveItem.ItemId}";
-            runtimeItemData.displayName = passiveItem.DisplayName;
-            runtimeItemData.description = passiveItem.Description;
-            runtimeItemData.icon = passiveItem.Icon;
+            runtimeItemData.name = runtimeName;
+            runtimeItemData.offerId = runtimeOfferId;
+            runtimeItemData.displayName = displayName;
+            runtimeItemData.description = description;
+            runtimeItemData.icon = icon;
             runtimeItemData.price = Mathf.Max(1, runtimePrice);
             runtimeItemData.currencyType = runtimeCurrencyType;
-            runtimeItemData.deliveryMode = ShopDeliveryMode.Immediate;
-            runtimeItemData.offer = ShopOffer.CreatePassiveItemOffer(passiveItem);
+            runtimeItemData.deliveryMode = runtimeDeliveryMode;
+            runtimeItemData.offer = runtimeOffer;
             return runtimeItemData;
         }
     }

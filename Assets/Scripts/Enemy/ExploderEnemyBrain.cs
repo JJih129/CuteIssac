@@ -17,6 +17,7 @@ namespace CuteIssac.Enemy
         [SerializeField] private ExploderEnemyConfigurator configurator;
         [SerializeField] private DamageArea damageArea;
         [SerializeField] private Collider2D ownerCollider;
+        [SerializeField] private DubaiStickyRabbitExploderController stickyRabbitController;
 
         private float _windupRemaining;
         private bool _hasExploded;
@@ -35,6 +36,17 @@ namespace CuteIssac.Enemy
             _windupRemaining = 0f;
             _hasExploded = false;
             _armingDelayRemaining = _runtimeFirstAttackDelayBonus;
+            stickyRabbitController?.HandleResetForSpawn();
+            Controller?.EnemyVisual?.StopAttackTelegraph();
+        }
+
+        private void OnDisable()
+        {
+            if (!_hasExploded)
+            {
+                stickyRabbitController?.HandleChargeCancelled();
+            }
+
             Controller?.EnemyVisual?.StopAttackTelegraph();
         }
 
@@ -58,6 +70,11 @@ namespace CuteIssac.Enemy
 
             if (toTarget.sqrMagnitude <= 0.0001f)
             {
+                if (_windupRemaining > 0f)
+                {
+                    CancelWindup();
+                }
+
                 Controller.StopMovement();
                 return;
             }
@@ -65,12 +82,26 @@ namespace CuteIssac.Enemy
             float distance = toTarget.magnitude;
             Vector2 chaseDirection = toTarget / distance;
             _armingDelayRemaining = Mathf.Max(0f, _armingDelayRemaining - fixedDeltaTime);
+            float triggerRange = ResolveTriggerRange(enemyData);
 
             if (_windupRemaining > 0f)
             {
+                if (ShouldCancelWindup(distance, triggerRange))
+                {
+                    CancelWindup();
+                    return;
+                }
+
                 _windupRemaining -= fixedDeltaTime;
                 Controller.SetMoveSpeedMultiplier(enemyData.WindupMoveSpeedMultiplier);
-                Controller.StopMovement();
+                if (stickyRabbitController == null || stickyRabbitController.StopWhileCharging)
+                {
+                    Controller.StopMovement();
+                }
+                else
+                {
+                    Controller.SetDesiredMoveDirection(chaseDirection);
+                }
                 Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TelegraphColor);
 
                 if (_windupRemaining <= 0f)
@@ -81,10 +112,17 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            if (_armingDelayRemaining <= 0f && distance <= enemyData.TriggerRange)
+            if (_armingDelayRemaining <= 0f && distance <= triggerRange)
             {
-                _windupRemaining = enemyData.WindupDuration * _runtimeTelegraphDurationMultiplier;
+                _windupRemaining = ResolveWindupDuration(enemyData) * _runtimeTelegraphDurationMultiplier;
+                stickyRabbitController?.HandleChargeStarted();
                 Controller.EnemyVisual?.StartAttackTelegraph(enemyData.TelegraphColor);
+
+                if (_windupRemaining <= 0f)
+                {
+                    Explode(enemyData);
+                }
+
                 return;
             }
 
@@ -119,11 +157,12 @@ namespace CuteIssac.Enemy
 
             BombExplosionInfo explosionInfo = new(
                 Controller.Position,
-                enemyData.ExplosionRadius,
-                enemyData.ExplosionDamage,
-                enemyData.ExplosionKnockback,
+                ResolveExplosionRadius(enemyData),
+                ResolveExplosionDamage(enemyData),
+                ResolveExplosionKnockback(enemyData),
                 transform);
             damageArea.ApplyExplosion(in explosionInfo, ownerCollider);
+            stickyRabbitController?.HandleExploded();
 
             GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
                 transform.position + Vector3.up * 0.7f,
@@ -145,6 +184,55 @@ namespace CuteIssac.Enemy
             }
         }
 
+        private void CancelWindup()
+        {
+            _windupRemaining = 0f;
+            stickyRabbitController?.HandleChargeCancelled();
+            Controller.EnemyVisual?.StopAttackTelegraph();
+        }
+
+        private bool ShouldCancelWindup(float distance, float triggerRange)
+        {
+            return stickyRabbitController != null
+                && stickyRabbitController.CancelChargeIfTargetLeavesRange
+                && distance > triggerRange * stickyRabbitController.CancelRangeMultiplier;
+        }
+
+        private float ResolveTriggerRange(ExploderEnemyData enemyData)
+        {
+            return stickyRabbitController != null
+                ? stickyRabbitController.ResolveTriggerRange(enemyData.TriggerRange)
+                : enemyData.TriggerRange;
+        }
+
+        private float ResolveWindupDuration(ExploderEnemyData enemyData)
+        {
+            return stickyRabbitController != null
+                ? stickyRabbitController.ResolveWindupDuration(enemyData.WindupDuration)
+                : enemyData.WindupDuration;
+        }
+
+        private float ResolveExplosionRadius(ExploderEnemyData enemyData)
+        {
+            return stickyRabbitController != null
+                ? stickyRabbitController.ResolveExplosionRadius(enemyData.ExplosionRadius)
+                : enemyData.ExplosionRadius;
+        }
+
+        private float ResolveExplosionDamage(ExploderEnemyData enemyData)
+        {
+            return stickyRabbitController != null
+                ? stickyRabbitController.ResolveExplosionDamage(enemyData.ExplosionDamage)
+                : enemyData.ExplosionDamage;
+        }
+
+        private float ResolveExplosionKnockback(ExploderEnemyData enemyData)
+        {
+            return stickyRabbitController != null
+                ? stickyRabbitController.ResolveExplosionKnockback(enemyData.ExplosionKnockback)
+                : enemyData.ExplosionKnockback;
+        }
+
         private void ResolveReferences()
         {
             if (configurator == null)
@@ -160,6 +248,11 @@ namespace CuteIssac.Enemy
             if (ownerCollider == null)
             {
                 ownerCollider = GetComponent<Collider2D>();
+            }
+
+            if (stickyRabbitController == null)
+            {
+                stickyRabbitController = GetComponent<DubaiStickyRabbitExploderController>();
             }
         }
 

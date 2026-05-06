@@ -108,6 +108,13 @@ namespace CuteIssac.UI
             if (textMesh != null)
             {
                 textMesh.font = GetFont();
+
+                MeshRenderer renderer = textMesh.GetComponent<MeshRenderer>();
+                if (renderer != null)
+                {
+                    renderer.enabled = true;
+                    renderer.sharedMaterial = textMesh.font != null ? textMesh.font.material : renderer.sharedMaterial;
+                }
             }
         }
 

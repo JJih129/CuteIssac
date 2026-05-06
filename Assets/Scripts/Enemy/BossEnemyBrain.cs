@@ -123,6 +123,11 @@ namespace CuteIssac.Enemy
         [SerializeField] [Range(0.2f, 1f)] private float globalProjectileSpeedMultiplier = 0.42f;
         [SerializeField] [Range(0.2f, 1f)] private float globalChargeSpeedMultiplier = 0.58f;
 
+        [Header("Authored Boss Pattern Set")]
+        [Tooltip("Keep disabled for authored sprite bosses. Enable only when intentionally testing legacy bullet-hell prototype patterns.")]
+        [SerializeField] private bool usePrototypeProjectilePatterns;
+        [SerializeField] private BossPatternType[] authoredPatternCycle = { BossPatternType.Charge };
+
         private BossBrainState _state;
         private float _stateTimer;
         private float _burstCooldownRemaining;
@@ -1041,20 +1046,78 @@ namespace CuteIssac.Enemy
 
         private BossPatternType ResolveNextPattern()
         {
+            BossPatternType[] patternCycle;
+
+            if (!usePrototypeProjectilePatterns)
+            {
+                patternCycle = authoredPatternCycle != null && authoredPatternCycle.Length > 0
+                    ? authoredPatternCycle
+                    : new[] { BossPatternType.Charge };
+
+                if (TryResolveEnabledPattern(patternCycle, out BossPatternType authoredPattern))
+                {
+                    return authoredPattern;
+                }
+
+                return BossPatternType.Charge;
+            }
+
             if (_currentPhaseDefinition?.PatternCycle != null && _currentPhaseDefinition.PatternCycle.Length > 0)
             {
                 BossPatternType[] phasePatternCycle = _currentPhaseDefinition.PatternCycle;
-                return phasePatternCycle[_patternCycleIndex % phasePatternCycle.Length];
+                if (TryResolveEnabledPattern(phasePatternCycle, out BossPatternType phasePattern))
+                {
+                    return phasePattern;
+                }
             }
 
-            BossPatternType[] patternCycle = _currentPhase switch
+            patternCycle = _currentPhase switch
             {
                 BossPhaseType.PhaseTwo => new[] { BossPatternType.Burst, BossPatternType.Volley, BossPatternType.Spiral, BossPatternType.Fan, BossPatternType.Shockwave, BossPatternType.Charge },
                 BossPhaseType.PhaseThree => new[] { BossPatternType.Burst, BossPatternType.Spiral, BossPatternType.Crossfire, BossPatternType.Fan, BossPatternType.Shockwave, BossPatternType.Sweep, BossPatternType.Charge, BossPatternType.Volley },
                 _ => new[] { BossPatternType.Burst, BossPatternType.Charge }
             };
 
-            return patternCycle[_patternCycleIndex % patternCycle.Length];
+            if (TryResolveEnabledPattern(patternCycle, out BossPatternType pattern))
+            {
+                return pattern;
+            }
+
+            return BossPatternType.Charge;
+        }
+
+        private bool TryResolveEnabledPattern(BossPatternType[] patternCycle, out BossPatternType pattern)
+        {
+            pattern = BossPatternType.Charge;
+
+            if (patternCycle == null || patternCycle.Length == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < patternCycle.Length; i++)
+            {
+                BossPatternType candidate = patternCycle[(_patternCycleIndex + i) % patternCycle.Length];
+                if (IsPatternEnabled(candidate))
+                {
+                    pattern = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsPatternEnabled(BossPatternType pattern)
+        {
+            if (usePrototypeProjectilePatterns)
+            {
+                return true;
+            }
+
+            // Current authored boss art only supports direct attack poses.
+            // Legacy projectile patterns stay compiled but are removed from gameplay selection.
+            return pattern == BossPatternType.Charge;
         }
 
         private void AdvancePatternCycle()

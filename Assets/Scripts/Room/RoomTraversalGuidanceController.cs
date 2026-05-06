@@ -848,6 +848,8 @@ namespace CuteIssac.Room
                 {
                     RoomObstacleType.Spike => 6.8f,
                     RoomObstacleType.Pit => 3.9f,
+                    RoomObstacleType.Web => 4.4f,
+                    RoomObstacleType.Fountain => 3.3f,
                     RoomObstacleType.Rock => 2.4f,
                     _ => 1.8f
                 };
@@ -859,13 +861,23 @@ namespace CuteIssac.Room
                     contactRisk += weightedRisk;
                     RegisterRiskReason(
                         weightedRisk,
-                        obstacle.ObstacleType == RoomObstacleType.Spike ? "SPIKE EDGE" : "WATCH STEP");
+                        obstacle.ObstacleType == RoomObstacleType.Spike
+                            ? "SPIKE EDGE"
+                            : obstacle.ObstacleType == RoomObstacleType.Fountain
+                                ? "SPLASH ZONE"
+                                : "WATCH STEP");
                 }
                 else
                 {
                     float weightedRisk = proximity * severity * 0.78f;
                     congestionRisk += weightedRisk;
-                    RegisterRiskReason(weightedRisk, "TIGHT DOOR");
+                    RegisterRiskReason(
+                        weightedRisk,
+                        obstacle.ObstacleType == RoomObstacleType.Web
+                            ? "WEB STRAND"
+                            : obstacle.ObstacleType == RoomObstacleType.Fountain
+                                ? "SPLASH ZONE"
+                                : "TIGHT DOOR");
                 }
             }
 
@@ -1498,11 +1510,17 @@ namespace CuteIssac.Room
                 ? roomLabel
                 : $"{roomLabel} {directionLabel}";
 
+            if (reasonTag == "SPLASH ZONE")
+            {
+                return $"{routeLabel} is still risky. The fountain spray will kill your pace if you rush it.";
+            }
+
             return reasonTag switch
             {
                 "CLEAR LANE" => $"{routeLabel} is the cleanest exit from your current position, with almost no doorway friction.",
                 "TIGHT DOOR" => $"{routeLabel} is live, but the doorway is tighter than it looks because props choke the entry.",
                 "SPIKE EDGE" => $"{routeLabel} stays viable, but a contact hazard is hugging the threshold. Enter clean.",
+                "WEB STRAND" => $"{routeLabel} is pinned by sticky strands, so your tempo drops the moment you step in.",
                 "WATCH MINE" => $"{routeLabel} still works, but a mine is close enough to punish a lazy entry angle.",
                 "ON PATH" => $"{routeLabel} is already on your current line, so you keep tempo by taking it now.",
                 "CLEAN ENTRY" => $"{routeLabel} is the smoothest entry from your current angle and door spacing.",
@@ -1529,6 +1547,7 @@ namespace CuteIssac.Room
                 "SCOUT MORE" => $"{routeLabel} gives you one more room to round the build out.",
                 "HIGH RISK" => $"{routeLabel} is a high-risk line. Take it only if you want volatility.",
                 "WATCH STEP" => $"{routeLabel} is still risky. Respect the route before committing.",
+                "SPLASH ZONE" => $"{routeLabel} is still risky. The fountain spray will kill your pace if you rush it.",
                 "HOLD LINE" => $"{routeLabel} exists, but the build still wants one more stabilizing room.",
                 "SUPPLY RUN" => $"{routeLabel} is the cleanest supply route from your current state.",
                 _ => $"{routeLabel} is your best next push from the current build state."
@@ -1990,7 +2009,9 @@ namespace CuteIssac.Room
             return reasonTag == "SPIKE EDGE"
                 || reasonTag == "WATCH STEP"
                 || reasonTag == "WATCH MINE"
-                || reasonTag == "TIGHT DOOR";
+                || reasonTag == "TIGHT DOOR"
+                || reasonTag == "WEB STRAND"
+                || reasonTag == "SPLASH ZONE";
         }
 
         private static bool IsCleanReasonTag(string reasonTag)
@@ -2009,6 +2030,8 @@ namespace CuteIssac.Room
             {
                 "WATCH MINE" => Color.Lerp(baseAccent, warningAccent, 0.78f),
                 "SPIKE EDGE" => Color.Lerp(baseAccent, warningAccent, 0.7f),
+                "WEB STRAND" => Color.Lerp(baseAccent, new Color(0.35f, 0.9f, 1f, 1f), 0.76f),
+                "SPLASH ZONE" => Color.Lerp(baseAccent, new Color(0.34f, 0.86f, 1f, 1f), 0.78f),
                 _ => Color.Lerp(baseAccent, warningAccent, 0.58f)
             };
         }

@@ -20,6 +20,7 @@ namespace CuteIssac.Player
         [SerializeField] private MonoBehaviour inputReaderSource;
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private PlayerVisual playerVisual;
+        [SerializeField] private PlayerHeldWeaponVisual heldWeaponVisual;
         [SerializeField] private Rigidbody2D playerRigidbody;
         [SerializeField] private PlayerRoutePlanCarryController routePlanCarryController;
         [SerializeField] private PlayerWeaponLoadout weaponLoadout;
@@ -29,10 +30,19 @@ namespace CuteIssac.Player
         [SerializeField] [Range(0f, 30f)] private float multishotSpreadDegrees = 9f;
         [SerializeField] [Range(0f, 1f)] private float inertiaFactor = 0.22f;
 
+        [Header("Burst Fire")]
+        [SerializeField] [Min(1)] private int smgShotsPerTrigger = 4;
+        [SerializeField] [Min(1)] private int assaultRifleShotsPerTrigger = 3;
+        [SerializeField] [Min(1)] private int minigunShotsPerTrigger = 7;
+
         private IPlayerInputReader _inputReader;
         private float _shotCooldown;
         private Vector2 _lastAttackDirection = Vector2.right;
         private float _lastAimInputTimestamp = float.NegativeInfinity;
+        private int _queuedMinigunShotsRemaining;
+        private Vector2 _queuedMinigunDirection = Vector2.right;
+        private GameAudioEventType _activeAutomaticFireAudioEvent;
+        private bool _hasActiveAutomaticFireAudio;
 
         public PlayerAttackDefinition StartingAttackDefinition => attackDefinition;
         public PlayerAttackDefinition AttackDefinition => weaponLoadout != null && weaponLoadout.CurrentAttackDefinition != null
@@ -113,6 +123,11 @@ namespace CuteIssac.Player
                 playerVisual = GetComponent<PlayerVisual>();
             }
 
+            if (heldWeaponVisual == null)
+            {
+                heldWeaponVisual = GetComponent<PlayerHeldWeaponVisual>();
+            }
+
             if (playerRigidbody == null)
             {
                 playerRigidbody = GetComponent<Rigidbody2D>();
@@ -152,11 +167,21 @@ namespace CuteIssac.Player
 
             if (resolvedAttackDefinition == null || !resolvedAttackDefinition.IsValid)
             {
+                _queuedMinigunShotsRemaining = 0;
+                StopActiveAutomaticWeaponAudio();
                 return;
             }
 
             if (!inputState.HasAimInput)
             {
+                _queuedMinigunShotsRemaining = 0;
+                StopActiveAutomaticWeaponAudio();
+                return;
+            }
+
+            if (_queuedMinigunShotsRemaining > 0)
+            {
+                TryFire(_queuedMinigunDirection, resolvedAttackDefinition, true);
                 return;
             }
 
@@ -170,7 +195,7 @@ namespace CuteIssac.Player
             _lastAttackDirection = attackDirection;
             _lastAimInputTimestamp = Time.unscaledTime;
             playerVisual?.SetAimDirection(attackDirection);
-            TryFire(attackDirection, resolvedAttackDefinition);
+            TryFire(attackDirection, resolvedAttackDefinition, false);
         }
 
         public bool TryGetRecentAimDirection(float freshnessWindow, out Vector2 aimDirection)
@@ -186,15 +211,28 @@ namespace CuteIssac.Player
             return Time.unscaledTime - _lastAimInputTimestamp <= clampedWindow;
         }
 
-        private void TryFire(Vector2 attackDirection, PlayerAttackDefinition resolvedAttackDefinition)
+        private void TryFire(Vector2 attackDirection, PlayerAttackDefinition resolvedAttackDefinition, bool queuedMinigunShot)
         {
             if (_shotCooldown > 0f)
             {
                 return;
             }
 
+            if (heldWeaponVisual == null)
+            {
+                heldWeaponVisual = GetComponent<PlayerHeldWeaponVisual>();
+            }
+
+            heldWeaponVisual?.RefreshForAim(attackDirection);
+
             if (weaponLoadout != null && !weaponLoadout.TryConsumeShot())
             {
+                if (queuedMinigunShot)
+                {
+                    _queuedMinigunShotsRemaining = 0;
+                }
+
+                StopActiveAutomaticWeaponAudio();
                 return;
             }
 
@@ -230,7 +268,21 @@ namespace CuteIssac.Player
                 projectileSpawner.GetSpawnPosition(fireDirection, resolvedAttackDefinition.MuzzleOffset),
                 fireDirection,
                 shotCount));
-            GameAudioEvents.Raise(GameAudioEventType.ProjectileFired, transform.position);
+            GameAudioEventType fireAudioEvent = weaponLoadout != null ? weaponLoadout.CurrentFireAudioEventType : GameAudioEventType.PistolFired;
+            if (!queuedMinigunShot)
+            {
+                GameAudioEvents.Raise(fireAudioEvent, transform.position);
+                if (IsAutomaticFireAudioEvent(fireAudioEvent))
+                {
+                    _activeAutomaticFireAudioEvent = fireAudioEvent;
+                    _hasActiveAutomaticFireAudio = true;
+                }
+                else
+                {
+                    StopActiveAutomaticWeaponAudio();
+                }
+            }
+
             float resolvedFireInterval = ResolveFireInterval();
             if (routePlanCarryController != null)
             {
@@ -239,6 +291,19 @@ namespace CuteIssac.Player
             }
 
             _shotCooldown = resolvedFireInterval;
+
+            if (queuedMinigunShot)
+            {
+                _queuedMinigunShotsRemaining = Mathf.Max(0, _queuedMinigunShotsRemaining - 1);
+                return;
+            }
+
+            int queuedBurstShotCount = ResolveQueuedBurstShotCount(fireAudioEvent);
+            if (queuedBurstShotCount > 1)
+            {
+                _queuedMinigunDirection = fireDirection;
+                _queuedMinigunShotsRemaining = queuedBurstShotCount - 1;
+            }
         }
 
         private ProjectileSpawnRequest BuildSpawnRequest(Vector2 attackDirection, Vector2 inheritedVelocity, PlayerAttackDefinition resolvedAttackDefinition)
@@ -352,9 +417,31 @@ namespace CuteIssac.Player
 
         private ProjectileTraitState ResolveProjectileTraits()
         {
-            return playerStats != null
+            ProjectileTraitState traits = playerStats != null
                 ? playerStats.CurrentProjectileTraits
                 : ProjectileTraitState.Default;
+
+            if (weaponLoadout == null)
+            {
+                return traits;
+            }
+
+            ProjectileTraitState weaponTraits = weaponLoadout.CurrentProjectileTraits;
+
+            if (weaponTraits.Flags == ProjectileTraitFlags.None)
+            {
+                return traits;
+            }
+
+            traits.Flags |= weaponTraits.Flags;
+            traits.ExplosionStrength += weaponTraits.ExplosionStrength;
+            traits.LaserStrength += weaponTraits.LaserStrength;
+            traits.SplitStrength += weaponTraits.SplitStrength;
+            traits.BounceStrength += weaponTraits.BounceStrength;
+            traits.OrbitStrength += weaponTraits.OrbitStrength;
+            traits.ShieldStrength += weaponTraits.ShieldStrength;
+            traits.LifestealStrength += weaponTraits.LifestealStrength;
+            return traits;
         }
 
         private int ResolveShotCount()
@@ -430,6 +517,35 @@ namespace CuteIssac.Player
             return new Vector2(
                 (direction.x * cos) - (direction.y * sin),
                 (direction.x * sin) + (direction.y * cos));
+        }
+
+        private int ResolveQueuedBurstShotCount(GameAudioEventType fireAudioEvent)
+        {
+            return fireAudioEvent switch
+            {
+                GameAudioEventType.SmgFired => Mathf.Max(1, smgShotsPerTrigger),
+                GameAudioEventType.AssaultRifleFired => Mathf.Max(1, assaultRifleShotsPerTrigger),
+                GameAudioEventType.MinigunFired => Mathf.Max(1, minigunShotsPerTrigger),
+                _ => 1
+            };
+        }
+
+        private static bool IsAutomaticFireAudioEvent(GameAudioEventType fireAudioEvent)
+        {
+            return fireAudioEvent == GameAudioEventType.SmgFired
+                || fireAudioEvent == GameAudioEventType.AssaultRifleFired
+                || fireAudioEvent == GameAudioEventType.MinigunFired;
+        }
+
+        private void StopActiveAutomaticWeaponAudio()
+        {
+            if (!_hasActiveAutomaticFireAudio)
+            {
+                return;
+            }
+
+            GameAudioEvents.Stop(_activeAutomaticFireAudioEvent);
+            _hasActiveAutomaticFireAudio = false;
         }
 
         private Vector2 QuantizeAimToCardinal(Vector2 rawAim)

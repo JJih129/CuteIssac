@@ -47,6 +47,9 @@ namespace CuteIssac.Data.Dungeon
         [SerializeField] [Min(1)] private int bossRoomEnemyBudget = 14;
         [SerializeField] [Min(0)] private int normalRoomDistanceBudgetBonusPerStep = 1;
         [SerializeField] [Min(0f)] private float encounterBudgetMultiplier = 1f;
+        [SerializeField] private List<EnemyWavePresetEntry> normalRoomWavePresets = new();
+        [SerializeField] private List<EnemyWavePresetEntry> eliteRoomWavePresets = new();
+        [SerializeField] private List<EnemyWavePresetEntry> bossRoomWavePresets = new();
         [SerializeField] private EncounterPacingSettings encounterPacing = new();
         [SerializeField] private EncounterPacingSettings challengeRoomEncounterPacing = EncounterPacingSettings.CreateChallengeDefault();
         [SerializeField] private ChallengeRewardSettings challengeRewardSettings = ChallengeRewardSettings.CreateDefault();
@@ -99,6 +102,9 @@ namespace CuteIssac.Data.Dungeon
         public int BossRoomEnemyBudget => bossRoomEnemyBudget;
         public int NormalRoomDistanceBudgetBonusPerStep => normalRoomDistanceBudgetBonusPerStep;
         public float EncounterBudgetMultiplier => encounterBudgetMultiplier;
+        public IReadOnlyList<EnemyWavePresetEntry> NormalRoomWavePresets => normalRoomWavePresets;
+        public IReadOnlyList<EnemyWavePresetEntry> EliteRoomWavePresets => eliteRoomWavePresets;
+        public IReadOnlyList<EnemyWavePresetEntry> BossRoomWavePresets => bossRoomWavePresets;
         public EncounterPacingSettings EncounterPacing => encounterPacing;
         public EncounterPacingSettings ChallengeRoomEncounterPacing => challengeRoomEncounterPacing;
         public ChallengeRewardSettings ChallengeRewardSettings => challengeRewardSettings ?? ChallengeRewardSettings.CreateDefault();
@@ -186,6 +192,30 @@ namespace CuteIssac.Data.Dungeon
             }
 
             enemyPool.CollectEntries(encounterTier, floorIndex, results);
+        }
+
+        /// <summary>
+        /// Exposes floor-authored wave presets so room generation can prefer exact packs such as
+        /// "4 chasers" or "2 shooters" before falling back to the weighted pool generator.
+        /// </summary>
+        public void CollectEnemyWavePresets(EnemyEncounterTier encounterTier, List<EnemyWavePresetEntry> results)
+        {
+            if (results == null)
+            {
+                return;
+            }
+
+            List<EnemyWavePresetEntry> source = GetWavePresetSourceList(encounterTier);
+
+            for (int i = 0; i < source.Count; i++)
+            {
+                EnemyWavePresetEntry entry = source[i];
+
+                if (entry != null && entry.WaveData != null && entry.SelectionWeight > 0)
+                {
+                    results.Add(entry);
+                }
+            }
         }
 
         public int GetEnemyBudget(EnemyEncounterTier encounterTier)
@@ -288,6 +318,16 @@ namespace CuteIssac.Data.Dungeon
             return false;
         }
 
+        private List<EnemyWavePresetEntry> GetWavePresetSourceList(EnemyEncounterTier encounterTier)
+        {
+            return encounterTier switch
+            {
+                EnemyEncounterTier.Elite => eliteRoomWavePresets,
+                EnemyEncounterTier.Boss => bossRoomWavePresets,
+                _ => normalRoomWavePresets
+            };
+        }
+
         private void CollectExactCandidateRooms(RoomType roomType, List<RoomData> results)
         {
             if (startRoomPool != null && startRoomPool.RoomType == roomType)
@@ -323,6 +363,18 @@ namespace CuteIssac.Data.Dungeon
             public IReadOnlyList<RoomData> CandidateRooms => candidateRooms;
             public int MinimumCount => minimumCount;
             public int MaximumCount => maximumCount;
+        }
+
+        [Serializable]
+        public sealed class EnemyWavePresetEntry
+        {
+            [SerializeField] private string presetId = "wave";
+            [SerializeField] private EnemyWaveData waveData;
+            [SerializeField] [Min(0)] private int selectionWeight = 1;
+
+            public string PresetId => presetId;
+            public EnemyWaveData WaveData => waveData;
+            public int SelectionWeight => selectionWeight;
         }
     }
 }

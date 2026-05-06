@@ -329,6 +329,37 @@ namespace CuteIssac.Dungeon
             return true;
         }
 
+        /// <summary>
+        /// Development-only room warp. It bypasses doors but keeps normal room activation,
+        /// player placement, camera snap, and room entry hooks.
+        /// </summary>
+        public bool TryDebugWarpToRoomType(RoomType roomType)
+        {
+            if (rooms == null || rooms.Length == 0 || playerController == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                RoomController candidate = rooms[i];
+
+                if (candidate == null || candidate.RoomType != roomType)
+                {
+                    continue;
+                }
+
+                SetCurrentRoom(candidate);
+                playerController.transform.position = candidate.DefaultPlayerSpawnPosition;
+                candidate.EnterRoom();
+                SnapCameraTo(candidate);
+                _lastTransitionTime = Time.unscaledTime;
+                return true;
+            }
+
+            return false;
+        }
+
         private void ApplyInitialRoomState()
         {
             if (rooms == null || rooms.Length == 0)

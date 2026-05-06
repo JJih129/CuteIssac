@@ -74,6 +74,10 @@ namespace CuteIssac.UI
         [Tooltip("Optional pause menu view. If empty, PauseMenuController creates a fallback parchment menu at runtime.")]
         [SerializeField] private PauseMenuView pauseMenuView;
 
+        [Header("Fallback Weapon HUD Art")]
+        [Tooltip("Optional authored ammo label/icon used by the runtime weapon HUD ammo plate.")]
+        [SerializeField] private Sprite weaponAmmoUiSprite;
+
         [Header("Run Sources")]
         [Tooltip("Optional. Assign the run manager here. If empty, the controller tries to find one in the scene.")]
         [SerializeField] private RunManager runManager;
@@ -1362,6 +1366,25 @@ namespace CuteIssac.UI
             ammoPlateImage.color = new Color(0.07f, 0.11f, 0.17f, 0.97f);
             ammoPlateImage.raycastTarget = false;
 
+            bool hasAmmoUiSprite = weaponAmmoUiSprite != null;
+            if (hasAmmoUiSprite)
+            {
+                GameObject ammoIconObject = new("WeaponAmmoIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                RectTransform ammoIconRect = ammoIconObject.GetComponent<RectTransform>();
+                ammoIconRect.SetParent(ammoPlateRect, false);
+                ammoIconRect.anchorMin = new Vector2(0f, 0.5f);
+                ammoIconRect.anchorMax = new Vector2(0f, 0.5f);
+                ammoIconRect.pivot = new Vector2(0f, 0.5f);
+                ammoIconRect.anchoredPosition = new Vector2(14f, 0f);
+                ammoIconRect.sizeDelta = new Vector2(68f, 28f);
+
+                Image ammoIconImage = ammoIconObject.GetComponent<Image>();
+                ammoIconImage.sprite = weaponAmmoUiSprite;
+                ammoIconImage.preserveAspect = true;
+                ammoIconImage.raycastTarget = false;
+                ammoIconImage.color = Color.white;
+            }
+
             GameObject reloadTrackObject = new("ReloadTrack", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             RectTransform reloadTrackRect = reloadTrackObject.GetComponent<RectTransform>();
             reloadTrackRect.SetParent(panelRect, false);
@@ -1395,7 +1418,9 @@ namespace CuteIssac.UI
             statusText.rectTransform.pivot = new Vector2(0.5f, 0.5f);
             statusText.rectTransform.anchoredPosition = Vector2.zero;
             statusText.rectTransform.sizeDelta = Vector2.zero;
-            Text ammoText = CreateFallbackHudText("WeaponAmmo", ammoPlateRect, new Vector2(12f, -5f), new Vector2(220f, 68f), 52, FontStyle.Bold);
+            Vector2 ammoTextPosition = hasAmmoUiSprite ? new Vector2(88f, -5f) : new Vector2(12f, -5f);
+            Vector2 ammoTextSize = hasAmmoUiSprite ? new Vector2(146f, 68f) : new Vector2(220f, 68f);
+            Text ammoText = CreateFallbackHudText("WeaponAmmo", ammoPlateRect, ammoTextPosition, ammoTextSize, 52, FontStyle.Bold);
             ammoText.alignment = TextAnchor.MiddleLeft;
             Text detailText = CreateFallbackHudText("WeaponDetail", panelRect, new Vector2(20f, -152f), new Vector2(520f, 26f), 18, FontStyle.Normal);
             Text loadoutText = CreateFallbackHudText("WeaponLoadout", panelRect, new Vector2(20f, -182f), new Vector2(520f, 22f), 16, FontStyle.Normal);

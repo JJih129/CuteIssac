@@ -34,6 +34,10 @@ namespace CuteIssac.Room
         [Tooltip("Optional sprite renderers tinted by the current room type. Leave empty to skip visual tinting.")]
         [SerializeField] private SpriteRenderer[] roomTintTargets;
 
+        [Header("Instantiation")]
+        [Tooltip("Spawn room-type content during dungeon instantiation instead of waiting for first entry.")]
+        [SerializeField] private bool preSpawnEntryContentOnConfigure = true;
+
         private RoomType _runtimeRoomType = RoomType.Normal;
         private RoomData _runtimeRoomData;
         private RoomTypeContentEntry _resolvedEntry;
@@ -102,6 +106,11 @@ namespace CuteIssac.Room
                 _resolvedEntry != null ? _resolvedEntry.ItemPickupPrefabOverride : null);
             ApplyRoomTint();
             InitializeCombatSetpiece();
+
+            if (preSpawnEntryContentOnConfigure)
+            {
+                TrySpawnEntryContent();
+            }
         }
 
         public bool TryResolveContentFocusTarget(out Vector3 focusPosition, out float focusRadius)
@@ -243,7 +252,17 @@ namespace CuteIssac.Room
 
         private void HandleRoomEntered(RoomController enteredRoom)
         {
-            if (enteredRoom == null || enteredRoom != roomController || _hasSpawnedEntryContent || _resolvedEntry == null)
+            if (enteredRoom == null || enteredRoom != roomController)
+            {
+                return;
+            }
+
+            TrySpawnEntryContent();
+        }
+
+        private void TrySpawnEntryContent()
+        {
+            if (_hasSpawnedEntryContent || _resolvedEntry == null)
             {
                 return;
             }
@@ -255,6 +274,7 @@ namespace CuteIssac.Room
 
             if (_runtimeRoomType == RoomType.Treasure && treasureRoomSpawner != null && treasureRoomSpawner.CanHandleRoomType(_runtimeRoomType))
             {
+                _hasSpawnedEntryContent = treasureRoomSpawner.PreSpawnTreasureContent();
                 return;
             }
 

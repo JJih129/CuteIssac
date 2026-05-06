@@ -43,6 +43,19 @@ namespace CuteIssac.Room
         [SerializeField] private Color spikeCoreColor = new(0.82f, 0.54f, 0.6f, 1f);
         [SerializeField] private Color spikeShadowColor = new(0.18f, 0.12f, 0.18f, 0.42f);
 
+        [Header("Web Palette")]
+        [SerializeField] private Color webShadowColor = new(0.11f, 0.15f, 0.2f, 0.38f);
+        [SerializeField] private Color webOuterColor = new(0.94f, 0.98f, 1f, 0.88f);
+        [SerializeField] private Color webInnerColor = new(0.7f, 0.9f, 1f, 0.8f);
+        [SerializeField] private Color webKnotColor = new(1f, 1f, 1f, 1f);
+
+        [Header("Fountain Palette")]
+        [SerializeField] private Color fountainShadowColor = new(0.1f, 0.15f, 0.22f, 0.38f);
+        [SerializeField] private Color fountainBasinColor = new(0.8f, 0.92f, 1f, 1f);
+        [SerializeField] private Color fountainWaterColor = new(0.36f, 0.9f, 1f, 1f);
+        [SerializeField] private Color fountainFoamColor = new(0.96f, 0.99f, 1f, 1f);
+        [SerializeField] private Color fountainAccentColor = new(0.6f, 0.82f, 1f, 1f);
+
         private float _flashRemaining;
         private Color _currentFlashColor;
         private RoomObstacleController _obstacleController;
@@ -159,6 +172,12 @@ namespace CuteIssac.Room
                 case RoomObstacleType.Spike:
                     BuildSpikeVisual();
                     break;
+                case RoomObstacleType.Web:
+                    BuildWebVisual();
+                    break;
+                case RoomObstacleType.Fountain:
+                    BuildFountainVisual();
+                    break;
                 default:
                     BuildRockVisual();
                     break;
@@ -203,6 +222,36 @@ namespace CuteIssac.Room
             CreatePart("SpikeC", GetWhiteSprite(), new Vector2(0f, 0.12f), new Vector2(0.16f, 0.58f), spikeTeethColor, 3, 45f);
             CreatePart("SpikeD", GetWhiteSprite(), new Vector2(0.18f, 0.04f), new Vector2(0.14f, 0.46f), spikeTeethColor, 2, 45f);
             CreatePart("SpikeE", GetWhiteSprite(), new Vector2(0.4f, 0f), new Vector2(0.12f, 0.38f), spikeTeethColor, 2, 45f);
+        }
+
+        private void BuildWebVisual()
+        {
+            CreatePart("Shadow", GetCircleSprite(), new Vector2(0f, -0.08f), new Vector2(1.62f, 1.08f), webShadowColor, -4);
+            CreatePart("OuterRing", GetCircleSprite(), new Vector2(0f, 0.02f), new Vector2(1.32f, 1.32f), webOuterColor, -2);
+            CreatePart("InnerRing", GetCircleSprite(), new Vector2(0f, 0.03f), new Vector2(0.86f, 0.86f), webInnerColor, -1);
+            CreatePart("Vertical", GetWhiteSprite(), new Vector2(0f, 0f), new Vector2(0.05f, 1.02f), webOuterColor, 0);
+            CreatePart("Horizontal", GetWhiteSprite(), new Vector2(0f, 0f), new Vector2(1.02f, 0.05f), webOuterColor, 0);
+            CreatePart("DiagonalA", GetWhiteSprite(), new Vector2(0f, 0f), new Vector2(0.04f, 0.9f), webInnerColor, 1, 45f);
+            CreatePart("DiagonalB", GetWhiteSprite(), new Vector2(0f, 0f), new Vector2(0.04f, 0.9f), webInnerColor, 1, -45f);
+            CreatePart("DiagonalC", GetWhiteSprite(), new Vector2(0f, 0f), new Vector2(0.04f, 0.78f), webOuterColor, 1, 30f);
+            CreatePart("DiagonalD", GetWhiteSprite(), new Vector2(0f, 0f), new Vector2(0.04f, 0.78f), webOuterColor, 1, -30f);
+            CreatePart("Knot", GetCircleSprite(), new Vector2(0f, 0.02f), new Vector2(0.24f, 0.24f), webKnotColor, 3);
+        }
+
+        private void BuildFountainVisual()
+        {
+            CreatePart("Shadow", GetCircleSprite(), new Vector2(0f, -0.14f), new Vector2(1.72f, 0.5f), fountainShadowColor, -4);
+            CreatePart("BasinShadow", GetCircleSprite(), new Vector2(0f, 0.0f), new Vector2(1.4f, 1.0f), fountainShadowColor, -2);
+            CreatePart("Basin", GetCircleSprite(), new Vector2(0f, 0.04f), new Vector2(1.2f, 0.88f), fountainBasinColor, -1);
+            CreatePart("Pedestal", GetWhiteSprite(), new Vector2(0f, -0.16f), new Vector2(0.24f, 0.54f), fountainBasinColor, 0);
+            CreatePart("WaterPool", GetCircleSprite(), new Vector2(0f, 0.1f), new Vector2(0.88f, 0.58f), fountainWaterColor, 1);
+            CreatePart("WaterGlow", GetCircleSprite(), new Vector2(0f, 0.18f), new Vector2(0.52f, 0.22f), fountainFoamColor, 2);
+            CreatePart("JetCenter", GetWhiteSprite(), new Vector2(0f, 0.34f), new Vector2(0.08f, 0.72f), fountainFoamColor, 3);
+            CreatePart("JetLeft", GetWhiteSprite(), new Vector2(-0.14f, 0.28f), new Vector2(0.06f, 0.44f), fountainAccentColor, 2, 18f);
+            CreatePart("JetRight", GetWhiteSprite(), new Vector2(0.14f, 0.28f), new Vector2(0.06f, 0.44f), fountainAccentColor, 2, -18f);
+            CreatePart("SplashLeft", GetCircleSprite(), new Vector2(-0.24f, 0.46f), new Vector2(0.12f, 0.12f), fountainFoamColor, 3);
+            CreatePart("SplashRight", GetCircleSprite(), new Vector2(0.24f, 0.46f), new Vector2(0.12f, 0.12f), fountainFoamColor, 3);
+            CreatePart("TopHalo", GetCircleSprite(), new Vector2(0f, 0.34f), new Vector2(0.62f, 0.16f), fountainAccentColor, 2);
         }
 
         private SpriteRenderer CreatePart(

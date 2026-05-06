@@ -128,7 +128,7 @@ namespace CuteIssac.Room
                     ResolveArrivalAccent(roomType),
                     "BOSS CHAMBER",
                     "Arena pressure expected",
-                    true,
+                    false,
                     true,
                     2f,
                     0.32f,

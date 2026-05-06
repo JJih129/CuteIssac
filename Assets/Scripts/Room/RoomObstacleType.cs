@@ -4,6 +4,8 @@ namespace CuteIssac.Room
     {
         Rock = 0,
         Pit = 1,
-        Spike = 2
+        Spike = 2,
+        Web = 3,
+        Fountain = 4
     }
 }

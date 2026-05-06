@@ -75,11 +75,13 @@ namespace CuteIssac.Player
         private readonly List<ProjectileModifier> _runtimeRouteBreakthroughProjectileModifiers = new();
         private readonly List<StatModifier> _runtimeEventStatModifiers = new();
         private readonly List<ProjectileModifier> _runtimeEventProjectileModifiers = new();
+        private readonly List<RuntimeMultiplierSource> _runtimeObstacleMoveSpeedSources = new();
         private readonly List<ItemSynergyDefinition> _activeSynergies = new();
         private readonly ModifierStack _resolvedSynergyModifierStack = new();
         private readonly List<string> _activeSynergyNames = new();
         private readonly ModifierStack _resolvedItemModifierStack = new();
         private ProjectileTraitState _currentProjectileTraits;
+        private float _runtimeObstacleMoveSpeedMultiplier = 1f;
 
         private void Awake()
         {
@@ -222,6 +224,70 @@ namespace CuteIssac.Player
             RebuildCurrentStats();
         }
 
+        public void SetRuntimeObstacleMoveSpeedMultiplier(int sourceKey, float multiplier)
+        {
+            float resolvedMultiplier = Mathf.Max(0.05f, multiplier);
+
+            for (int i = 0; i < _runtimeObstacleMoveSpeedSources.Count; i++)
+            {
+                RuntimeMultiplierSource source = _runtimeObstacleMoveSpeedSources[i];
+
+                if (source.SourceKey != sourceKey)
+                {
+                    continue;
+                }
+
+                if (Mathf.Approximately(source.Multiplier, resolvedMultiplier))
+                {
+                    return;
+                }
+
+                source.Multiplier = resolvedMultiplier;
+                _runtimeObstacleMoveSpeedSources[i] = source;
+                RebuildRuntimeObstacleMoveSpeedMultiplier();
+                RebuildCurrentStats();
+                return;
+            }
+
+            _runtimeObstacleMoveSpeedSources.Add(new RuntimeMultiplierSource(sourceKey, resolvedMultiplier));
+            RebuildRuntimeObstacleMoveSpeedMultiplier();
+            RebuildCurrentStats();
+        }
+
+        public void ClearRuntimeObstacleMoveSpeedMultiplier(int sourceKey)
+        {
+            for (int i = 0; i < _runtimeObstacleMoveSpeedSources.Count; i++)
+            {
+                if (_runtimeObstacleMoveSpeedSources[i].SourceKey != sourceKey)
+                {
+                    continue;
+                }
+
+                int lastIndex = _runtimeObstacleMoveSpeedSources.Count - 1;
+                if (i != lastIndex)
+                {
+                    _runtimeObstacleMoveSpeedSources[i] = _runtimeObstacleMoveSpeedSources[lastIndex];
+                }
+
+                _runtimeObstacleMoveSpeedSources.RemoveAt(lastIndex);
+                RebuildRuntimeObstacleMoveSpeedMultiplier();
+                RebuildCurrentStats();
+                return;
+            }
+        }
+
+        public void ClearRuntimeObstacleMoveSpeedMultipliers()
+        {
+            if (_runtimeObstacleMoveSpeedSources.Count == 0)
+            {
+                return;
+            }
+
+            _runtimeObstacleMoveSpeedSources.Clear();
+            _runtimeObstacleMoveSpeedMultiplier = 1f;
+            RebuildCurrentStats();
+        }
+
         private void RebuildCurrentStats()
         {
             ResolveDependencies();
@@ -247,7 +313,8 @@ namespace CuteIssac.Player
                 _runtimeRouteBreakthroughStatModifiers,
                 _runtimeRouteBreakthroughProjectileModifiers,
                 _runtimeEventStatModifiers,
-                _runtimeEventProjectileModifiers);
+                _runtimeEventProjectileModifiers,
+                _runtimeObstacleMoveSpeedMultiplier);
             _currentProjectileTraits = ResolveProjectileTraits(
                 _cachedPassiveItems,
                 _resolvedSynergyModifierStack.ProjectileModifiers,
@@ -343,7 +410,8 @@ namespace CuteIssac.Player
             IReadOnlyList<StatModifier> runtimeRouteBreakthroughStatModifiers,
             IReadOnlyList<ProjectileModifier> runtimeRouteBreakthroughProjectileModifiers,
             IReadOnlyList<StatModifier> runtimeEventStatModifiers,
-            IReadOnlyList<ProjectileModifier> runtimeEventProjectileModifiers)
+            IReadOnlyList<ProjectileModifier> runtimeEventProjectileModifiers,
+            float runtimeObstacleMoveSpeedMultiplier)
         {
             StatAccumulator damage = StatAccumulator.Create();
             StatAccumulator moveSpeed = StatAccumulator.Create();
@@ -715,10 +783,11 @@ namespace CuteIssac.Player
             float resolvedProjectileLifetime = projectileLifetime.Apply(baseStats.ProjectileLifetime, 0.05f);
             resolvedRange = Mathf.Max(resolvedRange, resolvedProjectileSpeed * resolvedProjectileLifetime);
             resolvedProjectileLifetime = ResolveProjectileLifetime(resolvedProjectileSpeed, resolvedRange);
+            float resolvedMoveSpeed = moveSpeed.Apply(baseStats.MoveSpeed, 0f) * Mathf.Max(0f, runtimeObstacleMoveSpeedMultiplier);
 
             return new PlayerStatSnapshot(
                 maxHealth.Apply(baseStats.MaxHealth, 1f),
-                moveSpeed.Apply(baseStats.MoveSpeed, 0f),
+                resolvedMoveSpeed,
                 damage.Apply(baseStats.Damage, 0f),
                 ResolveFireInterval(baseStats.FireInterval, fireRate),
                 resolvedProjectileSpeed,
@@ -792,6 +861,18 @@ namespace CuteIssac.Player
             {
                 destination.Add(source[i]);
             }
+        }
+
+        private void RebuildRuntimeObstacleMoveSpeedMultiplier()
+        {
+            float multiplier = 1f;
+
+            for (int i = 0; i < _runtimeObstacleMoveSpeedSources.Count; i++)
+            {
+                multiplier *= _runtimeObstacleMoveSpeedSources[i].Multiplier;
+            }
+
+            _runtimeObstacleMoveSpeedMultiplier = multiplier;
         }
 
         private static void ApplyModifier(
@@ -1069,6 +1150,18 @@ namespace CuteIssac.Player
 
                 return Mathf.Clamp(resolvedShotsPerSecond, minShotsPerSecond, maxShotsPerSecond);
             }
+        }
+
+        private struct RuntimeMultiplierSource
+        {
+            public RuntimeMultiplierSource(int sourceKey, float multiplier)
+            {
+                SourceKey = sourceKey;
+                Multiplier = multiplier;
+            }
+
+            public int SourceKey;
+            public float Multiplier;
         }
     }
 }

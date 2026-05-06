@@ -85,11 +85,13 @@ namespace CuteIssac.Room
 
         private void Awake()
         {
+            ValidateDirectionFromTransform(false);
             ResolveReferences();
         }
 
         private void Reset()
         {
+            ValidateDirectionFromTransform(false);
             ResolveReferences();
         }
 
@@ -383,7 +385,62 @@ namespace CuteIssac.Room
 
         private void OnValidate()
         {
+            ValidateDirectionFromTransform(true);
             ResolveReferences();
+        }
+
+        /// <summary>
+        /// Ensures the serialized door direction matches the door's local placement.
+        /// This guards against prefab overrides or rotated authoring setups that would otherwise desync navigation and visuals.
+        /// </summary>
+        public void ValidateDirectionFromTransform(bool logCorrection)
+        {
+            if (!TryResolveDirectionFromLocalPosition(transform.localPosition, out RoomDirection resolvedDirection))
+            {
+                return;
+            }
+
+            if (doorDirection == resolvedDirection)
+            {
+                return;
+            }
+
+            RoomDirection previousDirection = doorDirection;
+            doorDirection = resolvedDirection;
+
+            if (logCorrection)
+            {
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                {
+                    UnityEditor.EditorUtility.SetDirty(this);
+                }
+#endif
+                Debug.LogWarning(
+                    $"RoomDoor '{name}' direction corrected from {previousDirection} to {resolvedDirection} based on local position {transform.localPosition}.",
+                    this);
+            }
+        }
+
+        private static bool TryResolveDirectionFromLocalPosition(Vector3 localPosition, out RoomDirection resolvedDirection)
+        {
+            float absX = Mathf.Abs(localPosition.x);
+            float absY = Mathf.Abs(localPosition.y);
+
+            if (absX < 0.001f && absY < 0.001f)
+            {
+                resolvedDirection = RoomDirection.Up;
+                return false;
+            }
+
+            if (absX >= absY)
+            {
+                resolvedDirection = localPosition.x >= 0f ? RoomDirection.Right : RoomDirection.Left;
+                return true;
+            }
+
+            resolvedDirection = localPosition.y >= 0f ? RoomDirection.Up : RoomDirection.Down;
+            return true;
         }
 
         private void ResolveSecretHintTargets()

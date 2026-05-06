@@ -19,3 +19,8 @@ MonoBehaviour:
     weight: 1
   - itemData: {fileID: 11400000, guid: d37ee3cba3e24cba95344dc31f8ec8d3, type: 2}
     weight: 2
+  - itemData: {fileID: 11400000, guid: b9dffd700c384c6dae5df4f0aa36baab, type: 2}
+    weight: 0.35
+    minimumFloor: 2
+    maximumFloor: 0
+    allowedRoomTypes: []

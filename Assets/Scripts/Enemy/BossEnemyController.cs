@@ -68,10 +68,15 @@ namespace CuteIssac.Enemy
 
         private void Start()
         {
-            AnnounceEncounterStart();
-            EvaluatePhaseState(true);
-            UpdateBossHud();
-            EvaluateEnrageState();
+            TryStartEncounterPresentation();
+        }
+
+        private void Update()
+        {
+            if (!_encounterAnnounced)
+            {
+                TryStartEncounterPresentation();
+            }
         }
 
         private void OnDestroy()
@@ -150,6 +155,20 @@ namespace CuteIssac.Enemy
                 2.1f));
         }
 
+        private void TryStartEncounterPresentation()
+        {
+            // Boss enemies are pre-spawned dormant with their rooms. Do not announce or show HUD until combat is actually released.
+            if (enemyController != null && enemyController.IsCombatDormant)
+            {
+                return;
+            }
+
+            AnnounceEncounterStart();
+            EvaluatePhaseState(true);
+            UpdateBossHud();
+            EvaluateEnrageState();
+        }
+
         private void EvaluatePhaseState(bool force)
         {
             if (enemyHealth == null)
@@ -214,7 +233,7 @@ namespace CuteIssac.Enemy
 
         private void UpdateBossHud()
         {
-            if (enemyHealth == null || enemyHealth.IsDead)
+            if (enemyHealth == null || enemyHealth.IsDead || (enemyController != null && enemyController.IsCombatDormant))
             {
                 return;
             }

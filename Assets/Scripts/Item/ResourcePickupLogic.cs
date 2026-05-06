@@ -71,4 +71,371 @@ namespace CuteIssac.Item
             };
         }
     }
+
+    public enum EnemyDropKind
+    {
+        None = 0,
+        Coins = 1,
+        Ammo = 2,
+        Bomb = 3
+    }
+
+    public static class EnemyDropRules
+    {
+        public const float CoinDropChance = 0.50f;
+        public const float AmmoDropChance = 0.05f;
+        public const float BombDropChance = 0.05f;
+        public const float NoDropChance = 0.40f;
+        public const float SingleCoinChance = 0.50f;
+        public const float DoubleCoinChance = 0.40f;
+        public const float TripleCoinChance = 0.10f;
+
+        public static EnemyDropKind RollDropKind(
+            float coinWeight,
+            float ammoWeight,
+            float bombWeight,
+            float noDropWeight)
+        {
+            float resolvedCoinWeight = Mathf.Max(0f, coinWeight);
+            float resolvedAmmoWeight = Mathf.Max(0f, ammoWeight);
+            float resolvedBombWeight = Mathf.Max(0f, bombWeight);
+            float resolvedNoDropWeight = Mathf.Max(0f, noDropWeight);
+            float totalWeight = resolvedCoinWeight + resolvedAmmoWeight + resolvedBombWeight + resolvedNoDropWeight;
+
+            if (totalWeight <= 0.0001f)
+            {
+                return EnemyDropKind.None;
+            }
+
+            float roll = Random.value * totalWeight;
+            if (roll < resolvedCoinWeight)
+            {
+                return EnemyDropKind.Coins;
+            }
+
+            roll -= resolvedCoinWeight;
+            if (roll < resolvedAmmoWeight)
+            {
+                return EnemyDropKind.Ammo;
+            }
+
+            roll -= resolvedAmmoWeight;
+            if (roll < resolvedBombWeight)
+            {
+                return EnemyDropKind.Bomb;
+            }
+
+            return EnemyDropKind.None;
+        }
+
+        public static int RollCoinDropCount(float singleWeight, float doubleWeight, float tripleWeight)
+        {
+            float resolvedSingleWeight = Mathf.Max(0f, singleWeight);
+            float resolvedDoubleWeight = Mathf.Max(0f, doubleWeight);
+            float resolvedTripleWeight = Mathf.Max(0f, tripleWeight);
+            float totalWeight = resolvedSingleWeight + resolvedDoubleWeight + resolvedTripleWeight;
+
+            if (totalWeight <= 0.0001f)
+            {
+                return 1;
+            }
+
+            float roll = Random.value * totalWeight;
+            if (roll < resolvedSingleWeight)
+            {
+                return 1;
+            }
+
+            roll -= resolvedSingleWeight;
+            if (roll < resolvedDoubleWeight)
+            {
+                return 2;
+            }
+
+            return 3;
+        }
+    }
+
+    public static class RuntimePickupFactory
+    {
+        public const float DefaultPickupScale = 0.72f;
+        public const float DefaultPickupColliderRadius = 0.42f;
+        public const int DefaultPickupSortingOrder = 31;
+        public static readonly Color DefaultAmmoPickupBaseColor = new(0.96f, 0.78f, 0.28f, 1f);
+        public static readonly Color DefaultAmmoPickupCollectedColor = new(1f, 1f, 1f, 0.24f);
+        public static readonly Color DefaultCoinPickupBaseColor = new(0.98f, 0.84f, 0.26f, 1f);
+        public static readonly Color DefaultCoinPickupCollectedColor = new(1f, 0.96f, 0.74f, 0.24f);
+        public static readonly Color DefaultBombPickupBaseColor = new(1f, 0.54f, 0.26f, 1f);
+        public static readonly Color DefaultBombPickupCollectedColor = new(1f, 0.9f, 0.78f, 0.24f);
+
+        private static Sprite _ammoClipSprite;
+        private static Sprite _coinSprite;
+        private static Sprite _bombSprite;
+
+        public static GameObject SpawnCoinPickup(
+            Vector3 position,
+            Transform parent,
+            float pickupScale,
+            float pickupColliderRadius,
+            int pickupSortingOrder,
+            Color baseColor,
+            Color collectedColor,
+            string objectName = "CandyCoinPickup")
+        {
+            return SpawnResourcePickup(
+                position,
+                parent,
+                pickupScale,
+                pickupColliderRadius,
+                pickupSortingOrder,
+                baseColor,
+                collectedColor,
+                objectName,
+                ResourcePickupType.Coin,
+                1,
+                ResolveCoinSprite());
+        }
+
+        public static GameObject SpawnBombPickup(
+            Vector3 position,
+            Transform parent,
+            float pickupScale,
+            float pickupColliderRadius,
+            int pickupSortingOrder,
+            Color baseColor,
+            Color collectedColor,
+            string objectName = "BombPickup")
+        {
+            return SpawnResourcePickup(
+                position,
+                parent,
+                pickupScale,
+                pickupColliderRadius,
+                pickupSortingOrder,
+                baseColor,
+                collectedColor,
+                objectName,
+                ResourcePickupType.Bomb,
+                1,
+                ResolveBombSprite());
+        }
+
+        public static GameObject SpawnAmmoPickup(
+            Vector3 position,
+            Transform parent,
+            float pickupScale,
+            float pickupColliderRadius,
+            int pickupSortingOrder,
+            Color baseColor,
+            Color collectedColor,
+            int amount = 1,
+            bool restockEquipped = true,
+            string objectName = "AmmoPickup")
+        {
+            GameObject pickupObject = CreatePickupObject(position, parent, pickupScale, objectName);
+
+            SpriteRenderer spriteRenderer = pickupObject.AddComponent<SpriteRenderer>();
+            spriteRenderer.sortingOrder = pickupSortingOrder;
+            spriteRenderer.sprite = ResolveAmmoClipSprite();
+            spriteRenderer.color = baseColor;
+
+            PickupVisual pickupVisual = pickupObject.AddComponent<PickupVisual>();
+            CircleCollider2D triggerCollider = pickupObject.AddComponent<CircleCollider2D>();
+            triggerCollider.isTrigger = true;
+            triggerCollider.radius = Mathf.Max(0.1f, pickupColliderRadius);
+
+            AmmoPickupLogic pickupLogic = pickupObject.AddComponent<AmmoPickupLogic>();
+            pickupLogic.Configure(Mathf.Max(1, amount), restockEquipped);
+
+            pickupVisual.ApplyRuntimeVisual(spriteRenderer.sprite, baseColor, collectedColor);
+            return pickupObject;
+        }
+
+        private static GameObject SpawnResourcePickup(
+            Vector3 position,
+            Transform parent,
+            float pickupScale,
+            float pickupColliderRadius,
+            int pickupSortingOrder,
+            Color baseColor,
+            Color collectedColor,
+            string objectName,
+            ResourcePickupType resourceType,
+            int amount,
+            Sprite sprite)
+        {
+            GameObject pickupObject = CreatePickupObject(position, parent, pickupScale, objectName);
+
+            SpriteRenderer spriteRenderer = pickupObject.AddComponent<SpriteRenderer>();
+            spriteRenderer.sortingOrder = pickupSortingOrder;
+            spriteRenderer.sprite = sprite;
+            spriteRenderer.color = baseColor;
+
+            PickupVisual pickupVisual = pickupObject.AddComponent<PickupVisual>();
+            CircleCollider2D triggerCollider = pickupObject.AddComponent<CircleCollider2D>();
+            triggerCollider.isTrigger = true;
+            triggerCollider.radius = Mathf.Max(0.1f, pickupColliderRadius);
+
+            ResourcePickupLogic pickupLogic = pickupObject.AddComponent<ResourcePickupLogic>();
+            pickupLogic.Configure(resourceType, Mathf.Max(1, amount));
+
+            pickupVisual.ApplyRuntimeVisual(spriteRenderer.sprite, baseColor, collectedColor);
+            return pickupObject;
+        }
+
+        private static GameObject CreatePickupObject(Vector3 position, Transform parent, float pickupScale, string objectName)
+        {
+            GameObject pickupObject = new(objectName);
+            pickupObject.transform.position = position;
+
+            if (parent != null)
+            {
+                pickupObject.transform.SetParent(parent, true);
+            }
+
+            pickupObject.transform.localScale = Vector3.one * Mathf.Max(0.2f, pickupScale);
+            return pickupObject;
+        }
+
+        private static Sprite ResolveAmmoClipSprite()
+        {
+            if (_ammoClipSprite != null)
+            {
+                return _ammoClipSprite;
+            }
+
+            const int width = 16;
+            const int height = 22;
+            Texture2D texture = new(width, height, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = "RuntimeAmmoClipPickup"
+            };
+
+            Color32[] pixels = new Color32[width * height];
+            Color32 solid = new(255, 255, 255, 255);
+
+            FillRect(pixels, width, 5, 2, 6, 15, solid);
+            FillRect(pixels, width, 4, 16, 8, 2, solid);
+            FillRect(pixels, width, 6, 18, 4, 2, solid);
+            FillRect(pixels, width, 5, 0, 6, 2, solid);
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+
+            _ammoClipSprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, width, height),
+                new Vector2(0.5f, 0.5f),
+                16f);
+            _ammoClipSprite.name = "RuntimeAmmoClipPickup";
+            return _ammoClipSprite;
+        }
+
+        private static Sprite ResolveCoinSprite()
+        {
+            if (_coinSprite != null)
+            {
+                return _coinSprite;
+            }
+
+            _coinSprite = CreateSpriteFromPattern(
+                "RuntimeCoinPickup",
+                new[]
+                {
+                    "....XXXX....",
+                    "..XXXXXXXX..",
+                    ".XXXXXXXXXX.",
+                    ".XXX....XXX.",
+                    "XXX......XXX",
+                    "XXX......XXX",
+                    "XXX......XXX",
+                    "XXX......XXX",
+                    ".XXX....XXX.",
+                    ".XXXXXXXXXX.",
+                    "..XXXXXXXX..",
+                    "....XXXX...."
+                });
+            return _coinSprite;
+        }
+
+        private static Sprite ResolveBombSprite()
+        {
+            if (_bombSprite != null)
+            {
+                return _bombSprite;
+            }
+
+            _bombSprite = CreateSpriteFromPattern(
+                "RuntimeBombPickup",
+                new[]
+                {
+                    ".....XX.....",
+                    "....XXXX....",
+                    "....XX......",
+                    "...XXXX.....",
+                    "..XXXXXX....",
+                    ".XXXXXXXX...",
+                    ".XXXXXXXX...",
+                    ".XXXXXXXX...",
+                    "..XXXXXX....",
+                    "..XXXXXX....",
+                    "...XXXX.....",
+                    "....XX......"
+                });
+            return _bombSprite;
+        }
+
+        private static Sprite CreateSpriteFromPattern(string spriteName, string[] pattern)
+        {
+            int height = pattern.Length;
+            int width = height > 0 ? pattern[0].Length : 0;
+            Texture2D texture = new(width, height, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = spriteName
+            };
+
+            Color32 transparent = new(0, 0, 0, 0);
+            Color32 solid = new(255, 255, 255, 255);
+            Color32[] pixels = new Color32[width * height];
+
+            for (int y = 0; y < height; y++)
+            {
+                string row = pattern[height - 1 - y];
+                for (int x = 0; x < width; x++)
+                {
+                    pixels[(y * width) + x] = row[x] == 'X' ? solid : transparent;
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+
+            Sprite sprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, width, height),
+                new Vector2(0.5f, 0.5f),
+                12f);
+            sprite.name = spriteName;
+            return sprite;
+        }
+
+        private static void FillRect(Color32[] pixels, int width, int x, int y, int rectWidth, int rectHeight, Color32 color)
+        {
+            int maxY = Mathf.Min(y + rectHeight, pixels.Length / width);
+            int maxX = Mathf.Min(x + rectWidth, width);
+
+            for (int py = Mathf.Max(0, y); py < maxY; py++)
+            {
+                int rowOffset = py * width;
+                for (int px = Mathf.Max(0, x); px < maxX; px++)
+                {
+                    pixels[rowOffset + px] = color;
+                }
+            }
+        }
+    }
 }

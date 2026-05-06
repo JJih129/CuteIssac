@@ -15,6 +15,11 @@ namespace CuteIssac.Item
         [SerializeField] private RoomRewardPickupTracker roomRewardPickupTracker;
         [SerializeField] [Min(1f)] private float weaponPickupScaleMultiplier = 3f;
 
+        [Header("Pickup Range")]
+        [SerializeField] private bool showAutoPickupRange = true;
+        [SerializeField] private Color weaponRangeColor = new(0.42f, 0.86f, 1f, 0.72f);
+        [SerializeField] private Color artifactRangeColor = new(1f, 0.82f, 0.28f, 0.72f);
+
         private bool _hasCapturedBaseScale;
         private Vector3 _baseLocalScale = Vector3.one;
 
@@ -39,6 +44,7 @@ namespace CuteIssac.Item
         {
             itemData = configuredItemData;
             ApplyPickupVisual();
+            RefreshPickupRangeIndicator();
         }
 
         protected override bool TryCollect(PlayerInventory inventory, PlayerHealth health, PlayerItemManager itemManager)
@@ -76,6 +82,18 @@ namespace CuteIssac.Item
             }
 
             return base.ResolvePickupFeedbackColor();
+        }
+
+        protected override bool ShouldShowPickupRangeIndicator()
+        {
+            return showAutoPickupRange;
+        }
+
+        protected override Color ResolvePickupRangeIndicatorColor()
+        {
+            return itemData != null && itemData.IsWeaponRelic
+                ? weaponRangeColor
+                : artifactRangeColor;
         }
 
         private bool TryBuildCurseRewardFeedbackLabel(out string feedbackLabel)

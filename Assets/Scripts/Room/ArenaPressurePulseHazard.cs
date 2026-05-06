@@ -23,6 +23,9 @@ namespace CuteIssac.Room
         [Header("Presentation")]
         [SerializeField] private Color accentColor = new(1f, 0.6f, 0.24f, 1f);
         [SerializeField] [Range(0.05f, 1f)] private float telegraphOpacity = 0.56f;
+        [SerializeField] private Color outlineColor = new(0.08f, 0.05f, 0.1f, 0.92f);
+        [SerializeField] [Range(0.05f, 1f)] private float outlineOpacity = 0.88f;
+        [SerializeField] [Min(1f)] private float outlineScaleMultiplier = 1.18f;
         [SerializeField] [Min(0.05f)] private float burstHoldDuration = 0.22f;
         [SerializeField] [Min(0.1f)] private float pulseSpeed = 5.6f;
 
@@ -39,6 +42,7 @@ namespace CuteIssac.Room
         private float _phaseTimer;
         private float _phaseOffset;
         private Transform _visualRoot;
+        private SpriteRenderer _outlineRenderer;
         private SpriteRenderer _ringRenderer;
         private SpriteRenderer _fillRenderer;
         private SpriteRenderer _coreRenderer;
@@ -152,6 +156,7 @@ namespace CuteIssac.Room
             root.transform.localPosition = Vector3.zero;
             _visualRoot = root.transform;
 
+            _outlineRenderer = CreatePart("Outline", GetCircleSprite(), 0);
             _ringRenderer = CreatePart("Ring", GetCircleSprite(), 1);
             _fillRenderer = CreatePart("Fill", GetCircleSprite(), 2);
             _coreRenderer = CreatePart("Core", GetWhiteSprite(), 3);
@@ -179,10 +184,21 @@ namespace CuteIssac.Room
             float normalized = 1f - Mathf.Clamp01(_phaseTimer / Mathf.Max(0.01f, telegraphDuration));
             float pulse = 0.5f + (0.5f * Mathf.Sin((Time.time * pulseSpeed) + _phaseOffset));
             float diameterScale = (radius * 2f) / SpriteWorldSize;
-            float ringScale = diameterScale * Mathf.Lerp(0.8f, 1.05f, normalized);
-            float fillScale = diameterScale * Mathf.Lerp(0.36f, 0.96f, normalized);
-            float coreScale = diameterScale * Mathf.Lerp(0.08f, 0.18f, pulse);
+            float ringScale = diameterScale * Mathf.Lerp(0.84f, 1.08f, normalized);
+            float fillScale = diameterScale * Mathf.Lerp(0.38f, 0.98f, normalized);
+            float coreScale = diameterScale * Mathf.Lerp(0.1f, 0.2f, pulse);
             _visualRoot.localScale = Vector3.one * Mathf.Lerp(0.98f, 1.05f, pulse * 0.42f);
+
+            if (_outlineRenderer != null)
+            {
+                float outlineScale = diameterScale * outlineScaleMultiplier * Mathf.Lerp(0.96f, 1.1f, normalized);
+                _outlineRenderer.transform.localScale = new Vector3(outlineScale, outlineScale, 1f);
+                _outlineRenderer.color = new Color(
+                    outlineColor.r,
+                    outlineColor.g,
+                    outlineColor.b,
+                    Mathf.Clamp01((outlineOpacity * 0.48f) + (normalized * outlineOpacity * 0.42f)));
+            }
 
             if (_ringRenderer != null)
             {
@@ -191,7 +207,7 @@ namespace CuteIssac.Room
                     accentColor.r,
                     accentColor.g,
                     accentColor.b,
-                    Mathf.Clamp01((telegraphOpacity * 0.22f) + (normalized * telegraphOpacity * 0.46f)));
+                    Mathf.Clamp01((telegraphOpacity * 0.32f) + (normalized * telegraphOpacity * 0.48f)));
             }
 
             if (_fillRenderer != null)
@@ -201,13 +217,15 @@ namespace CuteIssac.Room
                     accentColor.r,
                     accentColor.g,
                     accentColor.b,
-                    Mathf.Clamp01((telegraphOpacity * 0.06f) + (normalized * telegraphOpacity * 0.18f)));
+                    Mathf.Clamp01((telegraphOpacity * 0.12f) + (normalized * telegraphOpacity * 0.28f)));
             }
 
             if (_coreRenderer != null)
             {
                 _coreRenderer.transform.localScale = new Vector3(coreScale, coreScale, 1f);
-                _coreRenderer.color = new Color(1f, 1f, 1f, Mathf.Clamp01((telegraphOpacity * 0.46f) + (pulse * 0.18f)));
+                Color coreColor = Color.Lerp(accentColor, Color.white, 0.18f);
+                coreColor.a = Mathf.Clamp01((telegraphOpacity * 0.52f) + (pulse * 0.16f));
+                _coreRenderer.color = coreColor;
             }
         }
 
@@ -223,22 +241,43 @@ namespace CuteIssac.Room
             float burstScale = Mathf.Lerp(1f, 1.24f, normalized);
             _visualRoot.localScale = Vector3.one * burstScale;
 
+            if (_outlineRenderer != null)
+            {
+                float outlineScale = diameterScale * outlineScaleMultiplier;
+                _outlineRenderer.transform.localScale = new Vector3(outlineScale, outlineScale, 1f);
+                _outlineRenderer.color = new Color(
+                    outlineColor.r,
+                    outlineColor.g,
+                    outlineColor.b,
+                    Mathf.Lerp(outlineOpacity * 0.88f, 0f, normalized));
+            }
+
             if (_ringRenderer != null)
             {
                 _ringRenderer.transform.localScale = new Vector3(diameterScale * 1.06f, diameterScale * 1.06f, 1f);
-                _ringRenderer.color = new Color(1f, 1f, 1f, Mathf.Lerp(0.72f, 0f, normalized));
+                _ringRenderer.color = new Color(
+                    accentColor.r,
+                    accentColor.g,
+                    accentColor.b,
+                    Mathf.Lerp(0.76f, 0f, normalized));
             }
 
             if (_fillRenderer != null)
             {
                 _fillRenderer.transform.localScale = new Vector3(diameterScale, diameterScale, 1f);
-                _fillRenderer.color = new Color(accentColor.r, accentColor.g, accentColor.b, Mathf.Lerp(0.38f, 0f, normalized));
+                _fillRenderer.color = new Color(
+                    accentColor.r,
+                    accentColor.g,
+                    accentColor.b,
+                    Mathf.Lerp(0.42f, 0f, normalized));
             }
 
             if (_coreRenderer != null)
             {
                 _coreRenderer.transform.localScale = new Vector3(diameterScale * 0.2f, diameterScale * 0.2f, 1f);
-                _coreRenderer.color = new Color(1f, 1f, 1f, Mathf.Lerp(1f, 0f, normalized));
+                Color coreColor = Color.Lerp(accentColor, Color.white, 0.12f);
+                coreColor.a = Mathf.Lerp(1f, 0f, normalized);
+                _coreRenderer.color = coreColor;
             }
         }
 
@@ -273,6 +312,7 @@ namespace CuteIssac.Room
             }
 
             _visualRoot = null;
+            _outlineRenderer = null;
             _ringRenderer = null;
             _fillRenderer = null;
             _coreRenderer = null;
@@ -347,5 +387,6 @@ namespace CuteIssac.Room
                 100f);
             return s_WhiteSprite;
         }
+
     }
 }

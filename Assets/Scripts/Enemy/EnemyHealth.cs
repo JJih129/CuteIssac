@@ -129,6 +129,24 @@ namespace CuteIssac.Enemy
             return true;
         }
 
+        public bool RestoreHealthSilently(float amount)
+        {
+            if (IsDead)
+            {
+                return false;
+            }
+
+            float healAmount = Mathf.Max(0f, amount);
+
+            if (healAmount <= 0f || CurrentHealth >= MaxHealth)
+            {
+                return false;
+            }
+
+            CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + healAmount);
+            return true;
+        }
+
         public void SetMaxHealth(float healthValue)
         {
             maxHealth = Mathf.Max(1f, healthValue);

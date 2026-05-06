@@ -40,6 +40,17 @@ namespace CuteIssac.Enemy
         [SerializeField] [Min(0f)] private float bulwarkGuardFeedbackCooldown = 0.22f;
         [SerializeField] private Color bulwarkGuardFeedbackColor = new(1f, 0.78f, 0.35f, 1f);
 
+        [Header("Mutation Champion")]
+        [SerializeField] [Range(0.1f, 0.9f)] private float mutationHealthThreshold = 0.5f;
+        [SerializeField] [Min(0.05f)] private float mutationFreezeDuration = 0.5f;
+        [SerializeField] [Min(1f)] private float mutationMoveSpeedMultiplier = 1.16f;
+        [SerializeField] [Min(1f)] private float mutationContactDamageMultiplier = 1.2f;
+        [SerializeField] [Min(1f)] private float mutationHealthMultiplier = 1.15f;
+        [SerializeField] [Range(0f, 1f)] private float mutationHealthGainFraction = 0.6f;
+        [SerializeField] [Range(0f, 1f)] private float mutationColorBlendBonus = 0.14f;
+        [SerializeField] [Min(0.5f)] private float mutationVisualScaleMultiplier = 1.08f;
+        [SerializeField] private Color mutationFeedbackColor = new(1f, 0.82f, 0.32f, 1f);
+
         public bool IsChampion { get; private set; }
         public string VariantId { get; private set; }
         public string VariantLabel { get; private set; }
@@ -51,6 +62,14 @@ namespace CuteIssac.Enemy
         private float _baselineBaseMaxHealth;
         private float _baselineContactDamage;
         private bool _volatileDeathBurstConsumed;
+        private bool _mutationTriggered;
+        private bool _mutationApplied;
+        private float _mutationFreezeRemaining;
+        private float _championMoveSpeedMultiplier = 1f;
+        private float _championHealthMultiplier = 1f;
+        private float _championContactDamageMultiplier = 1f;
+        private float _championColorBlend;
+        private float _championVisualScaleMultiplier = 1f;
         private float _swiftBurstCooldownRemaining;
         private float _swiftBurstRemaining;
         private float _bulwarkGuardCooldownRemaining;
@@ -78,6 +97,18 @@ namespace CuteIssac.Enemy
 
         private void Update()
         {
+            if (enemyController != null && enemyController.IsCombatDormant)
+            {
+                return;
+            }
+
+            UpdateMutation(Time.deltaTime);
+
+            if (enemyController != null && enemyController.IsFrozen)
+            {
+                return;
+            }
+
             UpdateSwiftBurst(Time.deltaTime);
             UpdateBulwarkGuard(Time.deltaTime);
         }
@@ -92,6 +123,14 @@ namespace CuteIssac.Enemy
             }
 
             _volatileDeathBurstConsumed = false;
+            _mutationTriggered = false;
+            _mutationApplied = false;
+            _mutationFreezeRemaining = 0f;
+            _championMoveSpeedMultiplier = 1f;
+            _championHealthMultiplier = 1f;
+            _championContactDamageMultiplier = 1f;
+            _championColorBlend = 0f;
+            _championVisualScaleMultiplier = 1f;
             _swiftBurstCooldownRemaining = 0f;
             _swiftBurstRemaining = 0f;
             _bulwarkGuardCooldownRemaining = 0f;
@@ -113,12 +152,12 @@ namespace CuteIssac.Enemy
             VariantId = variant.VariantId;
             VariantLabel = variant.DisplayName;
             VariantAccentColor = variant.AccentColor;
-
-            enemyMovement?.SetBaseMoveSpeed(_baselineMoveSpeed * variant.MoveSpeedMultiplier);
-            float resolvedHealthMultiplier = Mathf.Max(minimumMutationHealthMultiplier, variant.MaxHealthMultiplier);
-            enemyHealth?.SetMaxHealth(_baselineBaseMaxHealth * resolvedHealthMultiplier);
-            enemyController?.SetContactDamage(_baselineContactDamage * variant.ContactDamageMultiplier);
-            enemyVisual?.ApplyChampionPresentation(variant.VariantId, variant.AccentColor, variant.ColorBlend, variant.VisualScaleMultiplier);
+            _championMoveSpeedMultiplier = variant.MoveSpeedMultiplier;
+            _championHealthMultiplier = Mathf.Max(minimumMutationHealthMultiplier, variant.MaxHealthMultiplier);
+            _championContactDamageMultiplier = variant.ContactDamageMultiplier;
+            _championColorBlend = variant.ColorBlend;
+            _championVisualScaleMultiplier = variant.VisualScaleMultiplier;
+            ApplyChampionStats();
         }
 
         public void ClearChampionState()
@@ -137,6 +176,14 @@ namespace CuteIssac.Enemy
             _bulwarkGuardCooldownRemaining = 0f;
             _bulwarkGuardRemaining = 0f;
             _bulwarkFeedbackCooldownRemaining = 0f;
+            _mutationTriggered = false;
+            _mutationApplied = false;
+            _mutationFreezeRemaining = 0f;
+            _championMoveSpeedMultiplier = 1f;
+            _championHealthMultiplier = 1f;
+            _championContactDamageMultiplier = 1f;
+            _championColorBlend = 0f;
+            _championVisualScaleMultiplier = 1f;
             enemyMovement?.SetBaseMoveSpeed(_baselineMoveSpeed);
             enemyMovement?.SetExternalSpeedMultiplier(1f);
             enemyHealth?.SetMaxHealth(_baselineBaseMaxHealth);
@@ -176,6 +223,27 @@ namespace CuteIssac.Enemy
             }
 
             return Mathf.Max(0f, reducedDamage);
+        }
+
+        private void HandleEnemyDamaged()
+        {
+            if (_mutationTriggered || _mutationApplied || !IsChampion || enemyHealth == null || enemyHealth.IsDead)
+            {
+                return;
+            }
+
+            if (enemyHealth.MaxHealth <= 0f || enemyHealth.CurrentHealth <= 0f)
+            {
+                return;
+            }
+
+            float normalizedHealth = enemyHealth.CurrentHealth / enemyHealth.MaxHealth;
+            if (normalizedHealth > Mathf.Clamp01(mutationHealthThreshold))
+            {
+                return;
+            }
+
+            BeginMutationPhase();
         }
 
         private void CaptureBaselineState()
@@ -226,6 +294,8 @@ namespace CuteIssac.Enemy
                 return;
             }
 
+            enemyHealth.Damaged -= HandleEnemyDamaged;
+            enemyHealth.Damaged += HandleEnemyDamaged;
             enemyHealth.Died -= HandleEnemyDied;
             enemyHealth.Died += HandleEnemyDied;
         }
@@ -237,7 +307,102 @@ namespace CuteIssac.Enemy
                 return;
             }
 
+            enemyHealth.Damaged -= HandleEnemyDamaged;
             enemyHealth.Died -= HandleEnemyDied;
+        }
+
+        private void BeginMutationPhase()
+        {
+            _mutationTriggered = true;
+            _mutationFreezeRemaining = Mathf.Max(0.05f, mutationFreezeDuration);
+
+            if (enemyController != null)
+            {
+                enemyController.ApplyFreeze(_mutationFreezeRemaining);
+            }
+
+            GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
+                transform.position + (Vector3.up * 1.05f),
+                "MUTATE",
+                Color.Lerp(mutationFeedbackColor, VariantAccentColor, 0.54f),
+                0.46f,
+                0.58f,
+                Mathf.Max(0.7f, _mutationFreezeRemaining + 0.12f),
+                visualProfile: FloatingFeedbackVisualProfile.EventLabel));
+        }
+
+        private void UpdateMutation(float deltaTime)
+        {
+            if (!_mutationTriggered || _mutationApplied || enemyHealth == null || enemyHealth.IsDead)
+            {
+                return;
+            }
+
+            _mutationFreezeRemaining = Mathf.Max(0f, _mutationFreezeRemaining - deltaTime);
+            if (_mutationFreezeRemaining > 0f)
+            {
+                return;
+            }
+
+            ApplyMutationPhase();
+        }
+
+        private void ApplyMutationPhase()
+        {
+            if (_mutationApplied || !IsChampion || enemyHealth == null || enemyHealth.IsDead)
+            {
+                return;
+            }
+
+            _mutationApplied = true;
+
+            float previousMaxHealth = enemyHealth.MaxHealth;
+            _championMoveSpeedMultiplier *= mutationMoveSpeedMultiplier;
+            _championHealthMultiplier *= mutationHealthMultiplier;
+            _championContactDamageMultiplier *= mutationContactDamageMultiplier;
+            _championColorBlend = Mathf.Clamp01(_championColorBlend + mutationColorBlendBonus);
+            _championVisualScaleMultiplier *= mutationVisualScaleMultiplier;
+
+            ApplyChampionStats();
+
+            float newMaxHealth = enemyHealth.MaxHealth;
+            float gainedHealth = Mathf.Max(0f, newMaxHealth - previousMaxHealth);
+            if (gainedHealth > 0f)
+            {
+                enemyHealth.RestoreHealthSilently(gainedHealth * mutationHealthGainFraction);
+            }
+
+            GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
+                transform.position + (Vector3.up * 1.15f),
+                "EVOLVE",
+                Color.Lerp(mutationFeedbackColor, VariantAccentColor, 0.72f),
+                0.42f,
+                0.52f,
+                0.88f,
+                visualProfile: FloatingFeedbackVisualProfile.EventLabel));
+        }
+
+        private void ApplyChampionStats()
+        {
+            if (enemyMovement != null)
+            {
+                enemyMovement.SetBaseMoveSpeed(_baselineMoveSpeed * _championMoveSpeedMultiplier);
+            }
+
+            if (enemyHealth != null)
+            {
+                enemyHealth.SetMaxHealth(_baselineBaseMaxHealth * _championHealthMultiplier);
+            }
+
+            if (enemyController != null)
+            {
+                enemyController.SetContactDamage(_baselineContactDamage * _championContactDamageMultiplier);
+            }
+
+            if (enemyVisual != null)
+            {
+                enemyVisual.UpdateChampionPresentation(VariantId, VariantAccentColor, _championColorBlend, _championVisualScaleMultiplier);
+            }
         }
 
         private void HandleEnemyDied()

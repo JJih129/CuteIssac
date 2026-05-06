@@ -1,0 +1,210 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &710000100
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 710000101}
+  - component: {fileID: 710000102}
+  - component: {fileID: 710000103}
+  - component: {fileID: 710000104}
+  - component: {fileID: 710000105}
+  m_Layer: 0
+  m_Name: WebObstacle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &710000101
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 710000100}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!61 &710000102
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 710000100}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 0.5, y: 0.5}
+    newSize: {x: 1, y: 1}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1.35, y: 1.05}
+  m_EdgeRadius: 0
+--- !u!212 &710000103
+SpriteRenderer:
+  serializedVersion: 2
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 710000100}
+  m_Enabled: 0
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 8
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: 96b04b3bdb7b4c0f9678b7db7e6fc79b, type: 3}
+  m_Color: {r: 0.82, g: 0.94, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 1, y: 1}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+--- !u!114 &710000104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 710000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22273d13f4f248a7832d59a783650aeb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  obstacleType: 3
+  obstacleCollider: {fileID: 710000102}
+  projectileResponse: 0
+  projectileImpactType: 0
+  damagePlayerOnContact: 0
+  damageEnemiesOnContact: 0
+  contactDamage: 0
+  contactKnockback: 0
+  contactTickInterval: 0.5
+  slowPlayerOnContact: 1
+  slowEnemiesOnContact: 1
+  contactMoveSpeedMultiplier: 0.72
+  contactSlowLingerDuration: 0.5
+  obstacleVisual: {fileID: 710000105}
+--- !u!114 &710000105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 710000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3a4d9e5e3ef4029aeddd1ad4b2a9d06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bodyRenderer: {fileID: 710000103}
+  accentRenderer: {fileID: 0}
+  useProceduralVisual: 1
+  proceduralVisualRoot: {fileID: 0}
+  proceduralSortingOrder: 18
+  idleColor: {r: 1, g: 1, b: 1, a: 1}
+  projectileHitColor: {r: 1, g: 0.92, b: 0.6, a: 1}
+  hazardActiveColor: {r: 0.45, g: 0.85, b: 1, a: 1}
+  flashDuration: 0.08
+  rockBodyColor: {r: 0.76, g: 0.66, b: 0.74, a: 1}
+  rockCapColor: {r: 0.98, g: 0.92, b: 0.96, a: 1}
+  rockDetailColor: {r: 0.56, g: 0.42, b: 0.52, a: 1}
+  rockShadowColor: {r: 0.2, g: 0.14, b: 0.22, a: 0.42}
+  pitRimColor: {r: 0.62, g: 0.48, b: 0.62, a: 1}
+  pitLipColor: {r: 0.88, g: 0.76, b: 0.9, a: 1}
+  pitVoidColor: {r: 0.08, g: 0.06, b: 0.1, a: 0.96}
+  pitGlowColor: {r: 0.34, g: 0.28, b: 0.44, a: 0.38}
+  spikeBaseColor: {r: 0.54, g: 0.4, b: 0.48, a: 1}
+  spikeTeethColor: {r: 0.96, g: 0.93, b: 0.98, a: 1}
+  spikeCoreColor: {r: 0.82, g: 0.54, b: 0.6, a: 1}
+  spikeShadowColor: {r: 0.18, g: 0.12, b: 0.18, a: 0.42}
+  webShadowColor: {r: 0.11, g: 0.15, b: 0.2, a: 0.38}
+  webOuterColor: {r: 0.94, g: 0.98, b: 1, a: 0.88}
+  webInnerColor: {r: 0.7, g: 0.9, b: 1, a: 0.8}
+  webKnotColor: {r: 1, g: 1, b: 1, a: 1}
+  fountainShadowColor: {r: 0.1, g: 0.15, b: 0.22, a: 0.38}
+  fountainBasinColor: {r: 0.8, g: 0.92, b: 1, a: 1}
+  fountainWaterColor: {r: 0.36, g: 0.9, b: 1, a: 1}
+  fountainFoamColor: {r: 0.96, g: 0.99, b: 1, a: 1}
+  fountainAccentColor: {r: 0.6, g: 0.82, b: 1, a: 1}

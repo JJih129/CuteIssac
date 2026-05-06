@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CuteIssac.Common.Combat;
 using CuteIssac.Player;
 using UnityEngine;
@@ -32,8 +33,12 @@ namespace CuteIssac.Enemy
         private float _retargetTimer;
         private float _spawnAggroDelayRemaining;
         private float _freezeRemaining;
+        private bool _combatDormant;
         private float _formationContactDamageMultiplier = 1f;
         private float _runtimePressureContactDamageMultiplier = 1f;
+        private float _runtimePressureSpeedMultiplier = 1f;
+        private float _runtimeWebSpeedMultiplier = 1f;
+        private readonly List<RuntimeMultiplierSource> _runtimeWebSpeedSources = new();
 
         public EnemyMovement EnemyMovement => enemyMovement;
         public EnemyHealth EnemyHealth => enemyHealth;
@@ -45,6 +50,7 @@ namespace CuteIssac.Enemy
         public Vector2 TargetPosition => _target != null ? (Vector2)_target.position : Position;
         public bool HasTarget => _target != null;
         public bool IsFrozen => _freezeRemaining > 0f;
+        public bool IsCombatDormant => _combatDormant;
 
         private void Awake()
         {
@@ -81,6 +87,13 @@ namespace CuteIssac.Enemy
         {
             if (enemyHealth.IsDead)
             {
+                return;
+            }
+
+            if (_combatDormant)
+            {
+                enemyMovement?.SuspendMotion();
+                enemyVisual?.SetMoveDirection(Vector2.zero);
                 return;
             }
 
@@ -138,7 +151,7 @@ namespace CuteIssac.Enemy
         {
             float effectiveContactDamage = contactDamage * _formationContactDamageMultiplier * _runtimePressureContactDamageMultiplier;
 
-            if (enemyHealth.IsDead || effectiveContactDamage <= 0f || _target == null || _spawnAggroDelayRemaining > 0f)
+            if (enemyHealth.IsDead || effectiveContactDamage <= 0f || _target == null || _combatDormant || _spawnAggroDelayRemaining > 0f)
             {
                 return;
             }
@@ -242,14 +255,20 @@ namespace CuteIssac.Enemy
         public void ResetForSpawn()
         {
             enemyHealth.ResetForSpawn();
-            enemyMovement.Stop();
+            enemyMovement?.ResumeMotion();
+            enemyMovement?.Stop();
             enemyBrain.ResetBrainState();
             enemyVisual?.ResetPresentation();
             _spawnAggroDelayRemaining = 0f;
             _freezeRemaining = 0f;
+            _combatDormant = false;
             _formationContactDamageMultiplier = 1f;
             _runtimePressureContactDamageMultiplier = 1f;
+            _runtimePressureSpeedMultiplier = 1f;
+            _runtimeWebSpeedMultiplier = 1f;
+            _runtimeWebSpeedSources.Clear();
             enemyMovement?.SetFormationSpeedMultiplier(1f);
+            ApplyRuntimePressureSpeedMultiplier();
             _retargetTimer = 0f;
             ResolveTarget();
         }
@@ -308,7 +327,72 @@ namespace CuteIssac.Enemy
 
         public void SetRuntimePressureSpeedMultiplier(float multiplier)
         {
-            enemyMovement.SetRuntimePressureSpeedMultiplier(multiplier);
+            _runtimePressureSpeedMultiplier = Mathf.Max(0f, multiplier);
+            ApplyRuntimePressureSpeedMultiplier();
+        }
+
+        public void SetRuntimeWebSpeedMultiplier(int sourceKey, float multiplier)
+        {
+            float resolvedMultiplier = Mathf.Max(0.05f, multiplier);
+
+            for (int i = 0; i < _runtimeWebSpeedSources.Count; i++)
+            {
+                RuntimeMultiplierSource source = _runtimeWebSpeedSources[i];
+
+                if (source.SourceKey != sourceKey)
+                {
+                    continue;
+                }
+
+                if (Mathf.Approximately(source.Multiplier, resolvedMultiplier))
+                {
+                    return;
+                }
+
+                source.Multiplier = resolvedMultiplier;
+                _runtimeWebSpeedSources[i] = source;
+                RebuildRuntimeWebSpeedMultiplier();
+                ApplyRuntimePressureSpeedMultiplier();
+                return;
+            }
+
+            _runtimeWebSpeedSources.Add(new RuntimeMultiplierSource(sourceKey, resolvedMultiplier));
+            RebuildRuntimeWebSpeedMultiplier();
+            ApplyRuntimePressureSpeedMultiplier();
+        }
+
+        public void ClearRuntimeWebSpeedMultiplier(int sourceKey)
+        {
+            for (int i = 0; i < _runtimeWebSpeedSources.Count; i++)
+            {
+                if (_runtimeWebSpeedSources[i].SourceKey != sourceKey)
+                {
+                    continue;
+                }
+
+                int lastIndex = _runtimeWebSpeedSources.Count - 1;
+                if (i != lastIndex)
+                {
+                    _runtimeWebSpeedSources[i] = _runtimeWebSpeedSources[lastIndex];
+                }
+
+                _runtimeWebSpeedSources.RemoveAt(lastIndex);
+                RebuildRuntimeWebSpeedMultiplier();
+                ApplyRuntimePressureSpeedMultiplier();
+                return;
+            }
+        }
+
+        public void ClearRuntimeWebSpeedMultipliers()
+        {
+            if (_runtimeWebSpeedSources.Count == 0)
+            {
+                return;
+            }
+
+            _runtimeWebSpeedSources.Clear();
+            _runtimeWebSpeedMultiplier = 1f;
+            ApplyRuntimePressureSpeedMultiplier();
         }
 
         public void ScaleSpawnAggroDelay(float multiplier)
@@ -320,6 +404,28 @@ namespace CuteIssac.Enemy
         {
             _freezeRemaining = Mathf.Max(_freezeRemaining, Mathf.Max(0f, durationSeconds));
             StopMovement();
+        }
+
+        public void SetCombatDormant(bool dormant)
+        {
+            if (_combatDormant == dormant)
+            {
+                return;
+            }
+
+            _combatDormant = dormant;
+
+            if (_combatDormant)
+            {
+                enemyMovement?.SuspendMotion();
+                enemyVisual?.SetMoveDirection(Vector2.zero);
+                return;
+            }
+
+            _spawnAggroDelayRemaining = 0f;
+            _freezeRemaining = 0f;
+            enemyMovement?.ResumeMotion();
+            ResolveTarget();
         }
 
         private void Reset()
@@ -351,6 +457,40 @@ namespace CuteIssac.Enemy
             {
                 enemyBrain = GetComponent<EnemyBrain>();
             }
+        }
+
+        private void ApplyRuntimePressureSpeedMultiplier()
+        {
+            if (enemyMovement == null)
+            {
+                return;
+            }
+
+            enemyMovement.SetRuntimePressureSpeedMultiplier(_runtimePressureSpeedMultiplier * _runtimeWebSpeedMultiplier);
+        }
+
+        private void RebuildRuntimeWebSpeedMultiplier()
+        {
+            float multiplier = 1f;
+
+            for (int i = 0; i < _runtimeWebSpeedSources.Count; i++)
+            {
+                multiplier *= _runtimeWebSpeedSources[i].Multiplier;
+            }
+
+            _runtimeWebSpeedMultiplier = multiplier;
+        }
+
+        private struct RuntimeMultiplierSource
+        {
+            public RuntimeMultiplierSource(int sourceKey, float multiplier)
+            {
+                SourceKey = sourceKey;
+                Multiplier = multiplier;
+            }
+
+            public int SourceKey;
+            public float Multiplier;
         }
 
         private static string SanitizeEnemyId(string rawName)

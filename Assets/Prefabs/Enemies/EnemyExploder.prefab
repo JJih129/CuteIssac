@@ -240,6 +240,7 @@ MonoBehaviour:
   configurator: {fileID: 930000109}
   damageArea: {fileID: 930000110}
   ownerCollider: {fileID: 930000103}
+  stickyRabbitController: {fileID: 0}
 --- !u!114 &930000109
 MonoBehaviour:
   m_ObjectHideFlags: 0

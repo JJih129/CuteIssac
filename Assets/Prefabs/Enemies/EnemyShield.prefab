@@ -181,7 +181,7 @@ MonoBehaviour:
   attackEffectAnchor: {fileID: 930000141}
   hitEffectAnchor: {fileID: 0}
   deathEffectAnchor: {fileID: 930000151}
-  facingMode: 2
+  facingMode: 0
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
   damagedColor: {r: 1, g: 0.48, b: 0.48, a: 1}
@@ -750,5 +750,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   configurator: {fileID: 930000109}
+  enemyController: {fileID: 0}
   enemyVisual: {fileID: 930000107}
   feedbackAnchor: {fileID: 930000191}

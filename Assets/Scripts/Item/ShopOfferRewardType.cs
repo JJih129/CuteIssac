@@ -9,6 +9,7 @@ namespace CuteIssac.Item
         Health = 1,
         Coins = 2,
         Keys = 3,
-        Bombs = 4
+        Bombs = 4,
+        Ammo = 5
     }
 }

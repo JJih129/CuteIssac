@@ -11,6 +11,17 @@ namespace CuteIssac.Core.Audio
         DoorTraversed = 6,
         ShopEntered = 7,
         ShopPurchased = 8,
-        BossAppeared = 9
+        BossAppeared = 9,
+        PistolFired = 10,
+        ShotgunFired = 11,
+        AssaultRifleFired = 12,
+        SmgFired = 13,
+        SniperFired = 14,
+        MinigunFired = 15,
+        RocketLauncherFired = 16,
+        WeaponReloadStarted = 17,
+        WeaponDryFired = 18,
+        PlayerDamaged = 19,
+        RocketWallImpact = 20
     }
 }

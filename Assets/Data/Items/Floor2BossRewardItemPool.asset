@@ -30,6 +30,11 @@ MonoBehaviour:
   - rarity: 3
     weightMultiplier: 0.45
   entries:
+  - itemData: {fileID: 11400000, guid: 2c7cb021a53641d7ac85219bd88e43aa, type: 2}
+    weight: 1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
   - itemData: {fileID: 11400000, guid: ac617a7d20d54417905ca2ee11eaa189, type: 2}
     weight: 0.72
     minimumFloor: 2
@@ -42,6 +47,11 @@ MonoBehaviour:
     allowedRoomTypes: []
   - itemData: {fileID: 11400000, guid: 1d781df08c654d1fa08aced65f87ef7b, type: 2}
     weight: 0.36
+    minimumFloor: 2
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: b9dffd700c384c6dae5df4f0aa36baab, type: 2}
+    weight: 0.3
     minimumFloor: 2
     maximumFloor: 0
     allowedRoomTypes: []

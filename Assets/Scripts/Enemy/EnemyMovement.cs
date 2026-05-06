@@ -20,6 +20,7 @@ namespace CuteIssac.Enemy
         private float _externalSpeedMultiplier = 1f;
         private float _runtimePressureSpeedMultiplier = 1f;
         private Vector2 _externalVelocity;
+        private bool _motionSuspended;
 
         private const float KnockbackDamping = 12f;
 
@@ -35,6 +36,16 @@ namespace CuteIssac.Enemy
 
         private void FixedUpdate()
         {
+            if (_motionSuspended)
+            {
+                if (_rigidbody2D != null)
+                {
+                    _rigidbody2D.linearVelocity = Vector2.zero;
+                }
+
+                return;
+            }
+
             _rigidbody2D.linearVelocity = (_moveDirection * (moveSpeed * _speedMultiplier * _formationSpeedMultiplier * _externalSpeedMultiplier * _runtimePressureSpeedMultiplier)) + _externalVelocity;
             _externalVelocity = Vector2.Lerp(_externalVelocity, Vector2.zero, KnockbackDamping * Time.fixedDeltaTime);
         }
@@ -50,6 +61,7 @@ namespace CuteIssac.Enemy
             _formationSpeedMultiplier = 1f;
             _externalSpeedMultiplier = 1f;
             _runtimePressureSpeedMultiplier = 1f;
+            _motionSuspended = false;
         }
 
         /// <summary>
@@ -75,6 +87,30 @@ namespace CuteIssac.Enemy
             if (_rigidbody2D != null)
             {
                 _rigidbody2D.linearVelocity = Vector2.zero;
+            }
+        }
+
+        public void SuspendMotion()
+        {
+            _motionSuspended = true;
+            _moveDirection = Vector2.zero;
+
+            if (_rigidbody2D != null)
+            {
+                _rigidbody2D.linearVelocity = Vector2.zero;
+                _rigidbody2D.simulated = false;
+            }
+
+            _externalVelocity = Vector2.zero;
+        }
+
+        public void ResumeMotion()
+        {
+            _motionSuspended = false;
+
+            if (_rigidbody2D != null)
+            {
+                _rigidbody2D.simulated = true;
             }
         }
 

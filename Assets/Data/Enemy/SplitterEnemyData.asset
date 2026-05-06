@@ -18,7 +18,7 @@ MonoBehaviour:
   contactDamage: 0.6
   visualSet: {fileID: 11400000, guid: e5f81c34fa067ec8ef35b1f8cf451505, type: 2}
   chaseSpeedMultiplier: 1.14
-  childEnemyPrefab: {fileID: 930000106, guid: c7f3af65372d46ee83fd98579e23720d, type: 3}
+  childEnemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
   childSpawnReusePolicy: 1
   splitChildCount: 2
   childSpawnRadius: 0.52

@@ -51,14 +51,44 @@ namespace CuteIssac.Data.Item
 
         public bool TrySelectRandomItem(ItemPoolSelectionContext selectionContext, out ItemData selectedItem)
         {
+            return TrySelectRandomItemInternal(selectionContext, out selectedItem, weaponOnly: false);
+        }
+
+        public bool TrySelectRandomWeaponItem(ItemPoolSelectionContext selectionContext, out ItemData selectedItem)
+        {
+            return TrySelectRandomItemInternal(selectionContext, out selectedItem, weaponOnly: true, nonWeaponOnly: false);
+        }
+
+        public bool TrySelectRandomNonWeaponItem(ItemPoolSelectionContext selectionContext, out ItemData selectedItem)
+        {
+            return TrySelectRandomItemInternal(selectionContext, out selectedItem, weaponOnly: false, nonWeaponOnly: true);
+        }
+
+        private bool TrySelectRandomItemInternal(
+            ItemPoolSelectionContext selectionContext,
+            out ItemData selectedItem,
+            bool weaponOnly = false,
+            bool nonWeaponOnly = false)
+        {
             _candidateBuffer.Clear();
             _candidateWeightBuffer.Clear();
 
             for (int i = 0; i < entries.Count; i++)
             {
                 ItemPoolEntry entry = entries[i];
+                ItemData itemData = entry.ItemData;
 
                 if (!entry.IsAvailableFor(selectionContext.RoomType, selectionContext.FloorIndex))
+                {
+                    continue;
+                }
+
+                if (weaponOnly && (itemData == null || !itemData.IsWeaponRelic))
+                {
+                    continue;
+                }
+
+                if (nonWeaponOnly && itemData != null && itemData.IsWeaponRelic)
                 {
                     continue;
                 }

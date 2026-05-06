@@ -14,15 +14,23 @@ namespace CuteIssac.Player
         [Header("References")]
         [SerializeField] private PlayerVisual playerVisual;
         [SerializeField] private PlayerCombat playerCombat;
+        [SerializeField] private PlayerMovement playerMovement;
         [SerializeField] private PlayerWeaponLoadout weaponLoadout;
+        [SerializeField] private CuteIssac.Combat.ProjectileSpawner projectileSpawner;
         [SerializeField] private Transform weaponVisualParent;
         [SerializeField] private Transform weaponVisualRoot;
+        [SerializeField] private Transform weaponMuzzleAnchor;
         [SerializeField] private SpriteRenderer weaponSpriteRenderer;
 
         [Header("Placement")]
+        [SerializeField] [Min(0.01f)] private float weaponOrbitRadius = 0.62f;
         [SerializeField] [Min(0f)] private float handBackOffset = 0.28f;
         [SerializeField] [Min(0f)] private float lateralOffset = 0.035f;
-        [SerializeField] [Min(0.1f)] private float worldScale = 0.55f;
+        [SerializeField] [Min(0.1f)] private float worldScale = 1.1f;
+        [SerializeField] [Min(0f)] private float muzzleTipPadding = 0.02f;
+        [SerializeField] private Vector2 muzzleLocalOffset;
+        [SerializeField] private bool driveProjectileSpawnFromWeaponMuzzle = true;
+        [SerializeField] [Min(0.01f)] private float recentAimDirectionHoldDuration = 0.18f;
         [SerializeField] private int frontSortingOffset = 1;
         [SerializeField] private int backSortingOffset = -1;
         [SerializeField] private Color spriteTint = Color.white;
@@ -84,16 +92,25 @@ namespace CuteIssac.Player
                 TryGetComponent(out playerCombat);
             }
 
+            if (playerMovement == null)
+            {
+                TryGetComponent(out playerMovement);
+            }
+
             if (weaponLoadout == null)
             {
                 TryGetComponent(out weaponLoadout);
             }
 
+            if (projectileSpawner == null)
+            {
+                TryGetComponent(out projectileSpawner);
+            }
+
             if (weaponVisualParent == null)
             {
-                weaponVisualParent = playerVisual != null && playerVisual.MuzzleAnchor != null
-                    ? playerVisual.MuzzleAnchor.parent
-                    : transform;
+                // Keep the weapon outside the player-facing visual root so body FlipX never double-flips the gun.
+                weaponVisualParent = transform;
             }
         }
 
@@ -116,6 +133,21 @@ namespace CuteIssac.Player
                     GameObject rootObject = new("HeldWeaponVisual");
                     weaponVisualRoot = rootObject.transform;
                     weaponVisualRoot.SetParent(weaponVisualParent, false);
+                }
+            }
+
+            if (weaponMuzzleAnchor == null)
+            {
+                Transform existingMuzzle = weaponVisualRoot.Find("HeldWeaponMuzzleAnchor");
+                if (existingMuzzle != null)
+                {
+                    weaponMuzzleAnchor = existingMuzzle;
+                }
+                else
+                {
+                    GameObject muzzleObject = new("HeldWeaponMuzzleAnchor");
+                    weaponMuzzleAnchor = muzzleObject.transform;
+                    weaponMuzzleAnchor.SetParent(weaponVisualRoot, false);
                 }
             }
 
@@ -193,6 +225,17 @@ namespace CuteIssac.Player
             _currentVisualKey = nextVisualKey;
             weaponSpriteRenderer.sprite = nextSprite;
             weaponSpriteRenderer.enabled = nextSprite != null;
+            RefreshMuzzleAnchorLocalPosition();
+        }
+
+        public void RefreshForAim(Vector2 aimDirection)
+        {
+            if (aimDirection.sqrMagnitude > 0.0001f)
+            {
+                _lastAimDirection = aimDirection.normalized;
+            }
+
+            RefreshTransform(forceSortOrderRefresh: true);
         }
 
         private void RefreshTransform(bool forceSortOrderRefresh)
@@ -206,10 +249,7 @@ namespace CuteIssac.Player
             bool aimChanged = Vector2.Dot(_lastAimDirection, aimDirection) < 0.9995f;
             _lastAimDirection = aimDirection;
 
-            Transform muzzleAnchor = playerVisual != null ? playerVisual.MuzzleAnchor : null;
-            Vector3 muzzlePosition = muzzleAnchor != null
-                ? muzzleAnchor.position
-                : transform.position + (Vector3)(aimDirection * 0.62f);
+            Vector3 muzzlePosition = transform.position + (Vector3)(aimDirection * weaponOrbitRadius);
 
             Vector2 lateralDirection = new(-aimDirection.y, aimDirection.x);
             Vector3 heldPosition = muzzlePosition
@@ -218,7 +258,11 @@ namespace CuteIssac.Player
 
             weaponVisualRoot.position = heldPosition;
             weaponVisualRoot.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg);
-            weaponVisualRoot.localScale = new Vector3(worldScale, worldScale, 1f);
+            float sourceFacingSign = IsCurrentWeaponSourceFacingLeft() ? -1f : 1f;
+            float verticalSign = aimDirection.x < -0.0001f ? -1f : 1f;
+            weaponVisualRoot.localScale = new Vector3(worldScale * sourceFacingSign, worldScale * verticalSign, 1f);
+            RefreshMuzzleAnchorLocalPosition();
+            ApplyWeaponMuzzleSpawnOrigin();
 
             if (forceSortOrderRefresh || aimChanged)
             {
@@ -228,9 +272,14 @@ namespace CuteIssac.Player
 
         private Vector2 ResolveAimDirection()
         {
-            if (playerCombat != null && playerCombat.LastAttackDirection.sqrMagnitude > 0.0001f)
+            if (playerCombat != null && playerCombat.TryGetRecentAimDirection(recentAimDirectionHoldDuration, out Vector2 recentAimDirection))
             {
-                return playerCombat.LastAttackDirection.normalized;
+                return recentAimDirection.normalized;
+            }
+
+            if (playerMovement != null && playerMovement.MoveInput.sqrMagnitude > 0.0001f)
+            {
+                return playerMovement.MoveInput.normalized;
             }
 
             return _lastAimDirection.sqrMagnitude > 0.0001f
@@ -250,6 +299,53 @@ namespace CuteIssac.Player
             }
 
             weaponSpriteRenderer.sortingOrder = aimDirection.y > 0.2f ? backSortingOffset : frontSortingOffset;
+        }
+
+        private void RefreshMuzzleAnchorLocalPosition()
+        {
+            if (weaponMuzzleAnchor == null || weaponSpriteRenderer == null || weaponSpriteRenderer.sprite == null)
+            {
+                return;
+            }
+
+            // Sprite bounds keep muzzle placement tied to the actual imported gun art instead of a hard-coded weapon length.
+            Bounds bounds = weaponSpriteRenderer.sprite.bounds;
+            bool sourceFacesLeft = IsCurrentWeaponSourceFacingLeft();
+            float muzzleX = sourceFacesLeft
+                ? bounds.min.x - muzzleTipPadding - muzzleLocalOffset.x
+                : bounds.max.x + muzzleTipPadding + muzzleLocalOffset.x;
+            weaponMuzzleAnchor.localPosition = new Vector3(
+                muzzleX,
+                muzzleLocalOffset.y,
+                0f);
+        }
+
+        private void ApplyWeaponMuzzleSpawnOrigin()
+        {
+            if (!driveProjectileSpawnFromWeaponMuzzle || projectileSpawner == null || weaponMuzzleAnchor == null)
+            {
+                return;
+            }
+
+            projectileSpawner.SetSpawnOrigin(weaponMuzzleAnchor, includesMuzzleOffset: true);
+        }
+
+        private bool IsCurrentWeaponSourceFacingLeft()
+        {
+            return IsSourceFacingLeft(_currentVisualKey);
+        }
+
+        private static bool IsSourceFacingLeft(string visualKey)
+        {
+            if (string.IsNullOrWhiteSpace(visualKey))
+            {
+                return false;
+            }
+
+            return visualKey == "weapon_patrol4a1"
+                || visualKey == "weapon_vectorbloom"
+                || visualKey == "weapon_minigun"
+                || visualKey == "weapon_machinegun";
         }
 
         private static Sprite LoadSprite(string visualKey)

@@ -14,6 +14,7 @@ namespace CuteIssac.Enemy
     public sealed class ShieldEnemyGuard : MonoBehaviour, IDamageable
     {
         [SerializeField] private ShieldEnemyConfigurator configurator;
+        [SerializeField] private EnemyController enemyController;
         [SerializeField] private EnemyVisual enemyVisual;
         [SerializeField] private Transform feedbackAnchor;
 
@@ -26,6 +27,11 @@ namespace CuteIssac.Enemy
 
         private void Update()
         {
+            if (enemyController != null && enemyController.IsCombatDormant)
+            {
+                return;
+            }
+
             _feedbackCooldownRemaining = Mathf.Max(0f, _feedbackCooldownRemaining - Time.deltaTime);
         }
 
@@ -60,6 +66,11 @@ namespace CuteIssac.Enemy
 
         private void ResolveReferences()
         {
+            if (enemyController == null)
+            {
+                enemyController = GetComponentInParent<EnemyController>();
+            }
+
             if (configurator == null)
             {
                 configurator = GetComponentInParent<ShieldEnemyConfigurator>();

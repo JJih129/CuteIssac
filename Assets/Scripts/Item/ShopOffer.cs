@@ -34,5 +34,29 @@ namespace CuteIssac.Item
 
             return offer;
         }
+
+        public static ShopOffer CreateHealthOffer(float healthAmount)
+        {
+            return new ShopOffer
+            {
+                rewardType = ShopOfferRewardType.Health,
+                passiveItem = null,
+                resourceAmount = 1,
+                healthAmount = Mathf.Max(0.5f, healthAmount),
+                pickupPrefabOverride = null
+            };
+        }
+
+        public static ShopOffer CreateAmmoOffer(int ammoAmount)
+        {
+            return new ShopOffer
+            {
+                rewardType = ShopOfferRewardType.Ammo,
+                passiveItem = null,
+                resourceAmount = Mathf.Max(1, ammoAmount),
+                healthAmount = 1f,
+                pickupPrefabOverride = null
+            };
+        }
     }
 }

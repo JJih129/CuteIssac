@@ -15,6 +15,11 @@ namespace CuteIssac.Item
     {
         [SerializeField] private ShopItem[] shopItems = System.Array.Empty<ShopItem>();
         [SerializeField] private RunItemPoolService runItemPoolService;
+        [SerializeField] [Min(0)] private int weaponOfferPrice = 30;
+        [SerializeField] [Min(0.5f)] private float healthOfferAmount = 2f;
+        [SerializeField] [Min(0)] private int healthOfferPrice = 5;
+        [SerializeField] [Min(1)] private int ammoOfferAmount = 8;
+        [SerializeField] [Min(0)] private int ammoOfferPrice = 5;
 
         private ShopItem _highlightedItem;
         private readonly HashSet<string> _selectedItemIds = new();
@@ -30,47 +35,20 @@ namespace CuteIssac.Item
             ResolveItemPoolService();
             _highlightedItem = null;
             CurrentHighlightedCanPurchase = false;
-            if (itemPool == null)
+            _selectedItemIds.Clear();
+
+            if (shopItems == null || shopItems.Length == 0)
             {
-                ClearConfiguredItems();
                 return;
             }
 
-            _selectedItemIds.Clear();
+            ConfigureWeaponSlot(itemPool, 0);
+            ConfigureHealthSlot(1);
+            ConfigureAmmoSlot(2);
 
-            for (int i = 0; i < shopItems.Length; i++)
+            for (int i = 3; i < shopItems.Length; i++)
             {
-                ShopItem shopItem = shopItems[i];
-
-                if (shopItem == null)
-                {
-                    continue;
-                }
-
-                ItemPoolSelectionContext selectionContext = runItemPoolService != null
-                    ? runItemPoolService.BuildSelectionContext(RoomType.Shop, _selectedItemIds)
-                    : new ItemPoolSelectionContext(RoomType.Shop, 1, _selectedItemIds, null, null, null, null, null);
-
-                if (!itemPool.TrySelectRandomItem(selectionContext, out ItemData selectedItem))
-                {
-                    shopItem.ConfigureShopItemData(null);
-                    shopItem.gameObject.SetActive(false);
-                    continue;
-                }
-
-                ShopItemData runtimeShopItemData = ShopItemData.CreateRuntimePassiveItemOffer(
-                    selectedItem,
-                    ResolveRuntimePrice(selectedItem),
-                    ShopCurrencyType.Coins);
-
-                shopItem.gameObject.SetActive(runtimeShopItemData != null);
-                shopItem.ConfigureShopItemData(runtimeShopItemData);
-
-                if (runtimeShopItemData != null)
-                {
-                    _selectedItemIds.Add(selectedItem.ItemId);
-                    runItemPoolService?.RegisterOffer(selectedItem);
-                }
+                ClearShopSlot(shopItems[i]);
             }
         }
 
@@ -221,42 +199,11 @@ namespace CuteIssac.Item
             ResolveItemPoolService();
         }
 
-        private static int ResolveRuntimePrice(ItemData itemData)
-        {
-            if (itemData == null)
-            {
-                return 5;
-            }
-
-            if (itemData.IsWeaponRelic)
-            {
-                return 30;
-            }
-
-            return itemData.Rarity switch
-            {
-                ItemRarity.Uncommon => 8,
-                ItemRarity.Rare => 12,
-                ItemRarity.Legendary => 16,
-                ItemRarity.Relic => 20,
-                ItemRarity.Boss => 24,
-                _ => 5
-            };
-        }
-
         private void ClearConfiguredItems()
         {
             for (int i = 0; i < shopItems.Length; i++)
             {
-                ShopItem shopItem = shopItems[i];
-
-                if (shopItem == null)
-                {
-                    continue;
-                }
-
-                shopItem.ConfigureShopItemData(null);
-                shopItem.gameObject.SetActive(false);
+                ClearShopSlot(shopItems[i]);
             }
         }
 
@@ -266,6 +213,106 @@ namespace CuteIssac.Item
             {
                 runItemPoolService = FindFirstObjectByType<RunItemPoolService>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private void ConfigureWeaponSlot(ItemPoolData itemPool, int slotIndex)
+        {
+            if (!TryGetShopItem(slotIndex, out ShopItem shopItem))
+            {
+                return;
+            }
+
+            if (itemPool == null || !TrySelectWeaponItem(itemPool, out ItemData selectedWeapon))
+            {
+                ClearShopSlot(shopItem);
+                return;
+            }
+
+            ShopItemData runtimeShopItemData = ShopItemData.CreateRuntimePassiveItemOffer(
+                selectedWeapon,
+                weaponOfferPrice,
+                ShopCurrencyType.Coins);
+
+            ApplyRuntimeShopItem(shopItem, runtimeShopItemData);
+
+            if (runtimeShopItemData != null)
+            {
+                _selectedItemIds.Add(selectedWeapon.ItemId);
+                runItemPoolService?.RegisterOffer(selectedWeapon);
+            }
+        }
+
+        private void ConfigureHealthSlot(int slotIndex)
+        {
+            if (!TryGetShopItem(slotIndex, out ShopItem shopItem))
+            {
+                return;
+            }
+
+            ShopItemData runtimeShopItemData = ShopItemData.CreateRuntimeHealthOffer(
+                healthOfferAmount,
+                healthOfferPrice,
+                ShopCurrencyType.Coins);
+
+            ApplyRuntimeShopItem(shopItem, runtimeShopItemData);
+        }
+
+        private void ConfigureAmmoSlot(int slotIndex)
+        {
+            if (!TryGetShopItem(slotIndex, out ShopItem shopItem))
+            {
+                return;
+            }
+
+            ShopItemData runtimeShopItemData = ShopItemData.CreateRuntimeAmmoOffer(
+                ammoOfferAmount,
+                ammoOfferPrice,
+                ShopCurrencyType.Coins);
+
+            ApplyRuntimeShopItem(shopItem, runtimeShopItemData);
+        }
+
+        private bool TrySelectWeaponItem(ItemPoolData itemPool, out ItemData selectedItem)
+        {
+            ItemPoolSelectionContext selectionContext = runItemPoolService != null
+                ? runItemPoolService.BuildSelectionContext(RoomType.Shop, _selectedItemIds)
+                : new ItemPoolSelectionContext(RoomType.Shop, 1, _selectedItemIds, null, null, null, null, null);
+
+            return itemPool.TrySelectRandomWeaponItem(selectionContext, out selectedItem);
+        }
+
+        private bool TryGetShopItem(int slotIndex, out ShopItem shopItem)
+        {
+            if (shopItems != null && slotIndex >= 0 && slotIndex < shopItems.Length)
+            {
+                shopItem = shopItems[slotIndex];
+                return shopItem != null;
+            }
+
+            shopItem = null;
+            return false;
+        }
+
+        private static void ApplyRuntimeShopItem(ShopItem shopItem, ShopItemData runtimeShopItemData)
+        {
+            if (shopItem == null)
+            {
+                return;
+            }
+
+            shopItem.gameObject.SetActive(runtimeShopItemData != null);
+            shopItem.ConfigureShopItemData(runtimeShopItemData);
+        }
+
+        private static void ClearShopSlot(ShopItem shopItem)
+        {
+            if (shopItem == null)
+            {
+                return;
+            }
+
+            shopItem.ConfigureShopItemData(null);
+            shopItem.gameObject.SetActive(false);
         }
 
         private float ResolvePreferredItemScore(ShopItem shopItem, string reasonTag)
@@ -289,6 +336,10 @@ namespace CuteIssac.Item
                     break;
                 case "RESTOCK BOMBS":
                     score += offer.RewardType == ShopOfferRewardType.Bombs ? 18f : 0f;
+                    break;
+                case "RESTOCK AMMO":
+                case "AMMO NOW":
+                    score += offer.RewardType == ShopOfferRewardType.Ammo ? 18f : 0f;
                     break;
                 case "CASH OUT":
                     score += offer.RewardType == ShopOfferRewardType.PassiveItem ? 12f : 4f;
@@ -316,6 +367,7 @@ namespace CuteIssac.Item
                     score += offer.RewardType switch
                     {
                         ShopOfferRewardType.Health => 10f,
+                        ShopOfferRewardType.Ammo => 10f,
                         ShopOfferRewardType.Keys => 9f,
                         ShopOfferRewardType.Bombs => 9f,
                         ShopOfferRewardType.Coins => 7f,

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using CuteIssac.Common.Stats;
 using CuteIssac.Data.Combat;
 using UnityEngine;
 
@@ -18,6 +20,7 @@ namespace CuteIssac.Data.Item
         [SerializeField] [Min(1)] private int shotsPerTrigger = 1;
         [SerializeField] [Range(0f, 45f)] private float spreadDegrees = 9f;
         [SerializeField] [Min(0.1f)] private float knockbackMultiplier = 1f;
+        [SerializeField] private List<ProjectileModifier> projectileModifiers = new();
 
         public string FirearmMotif => firearmMotif;
         public string HudLabel => hudLabel;
@@ -33,6 +36,7 @@ namespace CuteIssac.Data.Item
         public int ShotsPerTrigger => Mathf.Max(1, shotsPerTrigger);
         public float SpreadDegrees => Mathf.Clamp(spreadDegrees, 0f, 45f);
         public float KnockbackMultiplier => Mathf.Max(0.1f, knockbackMultiplier);
+        public IReadOnlyList<ProjectileModifier> ProjectileModifiers => projectileModifiers;
         public bool IsValid => attackDefinition != null
             && attackDefinition.IsValid
             && MagazineCapacity > 0

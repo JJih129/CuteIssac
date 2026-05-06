@@ -88,6 +88,14 @@ namespace CuteIssac.Room
                 roomDoors = GetComponentsInChildren<RoomDoor>(true);
             }
 
+            for (int i = 0; i < roomDoors.Length; i++)
+            {
+                if (roomDoors[i] != null)
+                {
+                    roomDoors[i].ValidateDirectionFromTransform(false);
+                }
+            }
+
             if (roomBoundsTrigger != null && !roomBoundsTrigger.isTrigger)
             {
                 Debug.LogWarning("RoomController works best with a trigger collider for room entry detection.", this);
@@ -331,7 +339,22 @@ namespace CuteIssac.Room
             }
 
             _hadCombatEncounter = true;
+            _combatStartedAt = Time.time;
+            _hasCombatStartTimestamp = true;
+            _lastCombatDuration = 0f;
             SetState(RoomState.Combat);
+
+            if (roomEnemySpawner != null)
+            {
+                roomEnemySpawner.HandleCombatStarted(this);
+            }
+
+            if (AliveEnemyCount <= 0)
+            {
+                ClearRoom();
+                return;
+            }
+
             SetDoorsLocked(true);
             CombatStarted?.Invoke(this);
         }

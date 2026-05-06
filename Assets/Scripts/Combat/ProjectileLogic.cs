@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CuteIssac.Common.Combat;
+using CuteIssac.Core.Audio;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Pooling;
@@ -406,12 +407,23 @@ namespace CuteIssac.Combat
 
             _isDespawning = true;
             _isInitialized = false;
+            TryPlayImpactAudio(impactType, effectPosition);
             TryApplyTraitImpact(impactType, effectPosition);
             TryApplyLaserCut(impactType, effectPosition);
             TrySpawnSplitProjectiles(impactType, effectPosition);
             projectileVisual?.HandleDespawn(impactType, effectPosition);
             RestoreIgnoredCollisions();
             PrefabPoolService.Return(gameObject);
+        }
+
+        private void TryPlayImpactAudio(ProjectileImpactType impactType, Vector3 effectPosition)
+        {
+            if (impactType != ProjectileImpactType.Solid || !_traits.IsExplosive)
+            {
+                return;
+            }
+
+            GameAudioEvents.Raise(GameAudioEventType.RocketWallImpact, effectPosition);
         }
 
         private void TryApplyTraitImpact(ProjectileImpactType impactType, Vector3 effectPosition)

@@ -94,7 +94,7 @@ namespace CuteIssac.Enemy
 
         private void Update()
         {
-            if (!_isApplied || _markerRoot == null)
+            if (!_isApplied || _markerRoot == null || (enemyController != null && enemyController.IsCombatDormant))
             {
                 return;
             }

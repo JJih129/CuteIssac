@@ -2,6 +2,7 @@ using CuteIssac.Combat;
 using CuteIssac.Common.Combat;
 using CuteIssac.Data.Visual;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace CuteIssac.Player
 {
@@ -12,6 +13,8 @@ namespace CuteIssac.Player
     [DisallowMultipleComponent]
     public sealed class PlayerVisual : MonoBehaviour
     {
+        private const string HitFlashShaderName = "CuteIssac/SpriteWhiteFlash";
+
         private enum FacingMode
         {
             None = 0,
@@ -54,6 +57,9 @@ namespace CuteIssac.Player
         [SerializeField] private bool useSpriteSequenceAnimation = true;
         [SerializeField] private Sprite idleBodySprite;
         [SerializeField] private Sprite[] walkLeftBodySprites;
+        [Tooltip("Optional sprite shown briefly when the player takes damage.")]
+        [SerializeField] private Sprite hitBodySprite;
+        [SerializeField, Min(0f)] private float hitSpriteDuration = 0.12f;
         [SerializeField] [Min(1f)] private float walkAnimationFramesPerSecond = 10f;
         [SerializeField] [Min(0f)] private float walkAnimationMoveThreshold = 0.08f;
         [SerializeField] private bool animateVerticalMovementWithWalkCycle = true;
@@ -76,7 +82,7 @@ namespace CuteIssac.Player
         [SerializeField] private Color baseColor = Color.white;
         [SerializeField] private Color hitFlashColor = new(1f, 1f, 1f, 1f);
         [SerializeField] private Color damagedColor = new(1f, 0.45f, 0.45f, 1f);
-        [SerializeField] [Min(0f)] private float damagedFlashDuration = 0.08f;
+        [SerializeField, FormerlySerializedAs("damagedFlashDuration"), Min(0f)] private float hitFlashBlinkInterval = 0.1f;
         [SerializeField] [Min(0f)] private float hitKnockbackImpulse = 4.75f;
         [SerializeField] [Min(0f)] private float hitVisualPunchDistance = 0.14f;
         [SerializeField] [Min(0f)] private float hitVisualRecoverSpeed = 1.4f;
@@ -101,8 +107,8 @@ namespace CuteIssac.Player
         public Animator BodyAnimator => bodyAnimator;
 
         private Vector2 _lastAimDirection = Vector2.right;
-        private float _damagedFlashRemaining;
-        private float _damagedFlashTotalDuration;
+        private float _hitFlashRemaining;
+        private float _hitFlashTotalDuration;
         private bool _warnedMissingBodyRenderer;
         private Vector3 _initialMuzzleLocalPosition;
         private bool _hasInitialMuzzleLocalPosition;
@@ -112,6 +118,12 @@ namespace CuteIssac.Player
         private Vector2 _lastMoveInput;
         private float _walkAnimationTime;
         private bool _wasWalkAnimationActive;
+        private float _hitSpriteRemaining;
+        private SpriteRenderer _hitPoseOverlayRenderer;
+        private SpriteRenderer _hitFlashOverlayRenderer;
+
+        private static Shader s_hitFlashShader;
+        private static Material s_hitFlashMaterial;
 
         private void Awake()
         {
@@ -133,9 +145,14 @@ namespace CuteIssac.Player
         {
             ResolveReferences();
             ApplyConfiguredVisualSet();
+            ApplyBodyColor(baseColor);
+            _hitSpriteRemaining = 0f;
+            _hitFlashRemaining = 0f;
+            ClearHitFlashOverlay();
 
             if (playerHealth != null)
             {
+                playerHealth.InvulnerabilityGranted += HandleInvulnerabilityGranted;
                 playerHealth.DamagedWithInfo += HandleDamaged;
                 playerHealth.Died += HandleDied;
             }
@@ -147,10 +164,15 @@ namespace CuteIssac.Player
         {
             if (playerHealth != null)
             {
+                playerHealth.InvulnerabilityGranted -= HandleInvulnerabilityGranted;
                 playerHealth.DamagedWithInfo -= HandleDamaged;
                 playerHealth.Died -= HandleDied;
             }
 
+            _hitSpriteRemaining = 0f;
+            _hitFlashRemaining = 0f;
+            ClearHitPoseOverlay();
+            ClearHitFlashOverlay();
             ResetHitFeedbackRootPosition();
         }
 
@@ -158,25 +180,8 @@ namespace CuteIssac.Player
         {
             UpdateSpriteSequenceAnimation();
             UpdateHitVisualOffset();
-
-            if (_damagedFlashRemaining <= 0f)
-            {
-                return;
-            }
-
-            _damagedFlashRemaining -= Time.deltaTime;
-
-            if (_damagedFlashRemaining <= 0f)
-            {
-                if (playerHealth != null && !playerHealth.IsDead)
-                {
-                    ApplyBodyColor(baseColor);
-                }
-
-                return;
-            }
-
-            UpdateHitFlashColor();
+            UpdateHitSpriteAnimation();
+            UpdateHitFlashBlink();
         }
 
         public void SetMoveInput(Vector2 moveInput)
@@ -220,9 +225,19 @@ namespace CuteIssac.Player
 
         public void HandleDamaged(DamageInfo damageInfo)
         {
-            _damagedFlashRemaining = damagedFlashDuration;
-            _damagedFlashTotalDuration = Mathf.Max(0.01f, damagedFlashDuration);
-            ApplyBodyColor(hitFlashColor);
+            bool canUseHitSprite = hitBodySprite != null && !HasAnimatorDrivenSpriteAnimation();
+            _hitSpriteRemaining = canUseHitSprite
+                ? Mathf.Max(_hitSpriteRemaining, hitSpriteDuration)
+                : 0f;
+            if (canUseHitSprite)
+            {
+                EnsureHitPoseOverlay();
+                SyncHitPoseOverlaySprite(hitBodySprite);
+                SetHitPoseOverlayVisible(true);
+                ApplyAnimatedBodySprite(hitBodySprite);
+            }
+
+            ApplyBodyColor(baseColor);
             SetAnimatorTrigger(damagedTriggerParameter);
 
             Vector2 hitDirection = ResolveHitDirection(damageInfo.HitDirection);
@@ -242,25 +257,66 @@ namespace CuteIssac.Player
 
         public void HandleDied()
         {
-            _damagedFlashRemaining = 0f;
+            _hitFlashRemaining = 0f;
+            _hitSpriteRemaining = 0f;
+            ClearHitPoseOverlay();
+            ClearHitFlashOverlay();
             ApplyBodyColor(deadColor);
             SetAnimatorBool(deadBoolParameter, true);
             _currentHitVisualOffset = Vector3.zero;
             ResetHitFeedbackRootPosition();
         }
 
-        private void UpdateHitFlashColor()
+        private void HandleInvulnerabilityGranted(float duration)
         {
-            if (_damagedFlashTotalDuration <= 0f || playerHealth == null || playerHealth.IsDead)
+            if (playerHealth == null || playerHealth.IsDead)
             {
                 return;
             }
 
-            float progress = 1f - Mathf.Clamp01(_damagedFlashRemaining / _damagedFlashTotalDuration);
-            Color nextColor = progress < 0.35f
-                ? Color.Lerp(hitFlashColor, damagedColor, progress / 0.35f)
-                : Color.Lerp(damagedColor, baseColor, (progress - 0.35f) / 0.65f);
-            ApplyBodyColor(nextColor);
+            _hitFlashTotalDuration = Mathf.Max(0f, duration);
+            _hitFlashRemaining = _hitFlashTotalDuration;
+            _hitSpriteRemaining = Mathf.Max(_hitSpriteRemaining, _hitFlashTotalDuration);
+
+            if (_hitFlashRemaining <= 0f)
+            {
+                ClearHitFlashOverlay();
+                return;
+            }
+
+            ApplyBodyColor(baseColor);
+            SyncHitFlashOverlaySprite();
+            SetHitFlashOverlayVisible(true);
+        }
+
+        private void UpdateHitFlashBlink()
+        {
+            if (_hitFlashRemaining <= 0f)
+            {
+                ClearHitFlashOverlay();
+                return;
+            }
+
+            if (playerHealth == null || playerHealth.IsDead || !playerHealth.IsInvulnerable)
+            {
+                _hitFlashRemaining = 0f;
+                ClearHitFlashOverlay();
+                return;
+            }
+
+            _hitFlashRemaining = Mathf.Max(0f, _hitFlashRemaining - Time.deltaTime);
+
+            if (_hitFlashRemaining <= 0f)
+            {
+                ClearHitFlashOverlay();
+                return;
+            }
+
+            SyncHitFlashOverlaySprite();
+
+            bool visible = hitFlashBlinkInterval <= 0f
+                || ((int)((_hitFlashTotalDuration - _hitFlashRemaining) / hitFlashBlinkInterval) & 1) == 0;
+            SetHitFlashOverlayVisible(visible);
         }
 
         private void ApplySpawnOrigin()
@@ -418,6 +474,11 @@ namespace CuteIssac.Player
             }
 
             baseColor = visualSet.BaseColor;
+            if (visualSet.HitSprite != null)
+            {
+                hitBodySprite = visualSet.HitSprite;
+            }
+
             hitFlashColor = visualSet.HitFlashColor;
             damagedColor = visualSet.DamagedColor;
             deadColor = visualSet.DeadColor;
@@ -543,8 +604,227 @@ namespace CuteIssac.Player
             bodySpriteRenderer.color = color;
         }
 
+        private void EnsureHitFlashOverlay()
+        {
+            if (_hitFlashOverlayRenderer != null || bodySpriteRenderer == null)
+            {
+                return;
+            }
+
+            Transform bodyTransform = bodySpriteRenderer.transform;
+            GameObject overlayObject = new GameObject("HitFlashOverlay");
+            overlayObject.transform.SetParent(bodyTransform.parent != null ? bodyTransform.parent : bodyTransform, false);
+            overlayObject.transform.localPosition = bodyTransform.parent != null ? bodyTransform.localPosition : Vector3.zero;
+            overlayObject.transform.localRotation = bodyTransform.parent != null ? bodyTransform.localRotation : Quaternion.identity;
+            overlayObject.transform.localScale = bodyTransform.parent != null ? bodyTransform.localScale : Vector3.one;
+
+            _hitFlashOverlayRenderer = overlayObject.AddComponent<SpriteRenderer>();
+            Material hitFlashMaterial = GetHitFlashMaterial();
+            if (hitFlashMaterial != null)
+            {
+                _hitFlashOverlayRenderer.sharedMaterial = hitFlashMaterial;
+            }
+
+            _hitFlashOverlayRenderer.sortingLayerID = bodySpriteRenderer.sortingLayerID;
+            _hitFlashOverlayRenderer.sortingOrder = bodySpriteRenderer.sortingOrder + 2;
+            _hitFlashOverlayRenderer.enabled = false;
+            _hitFlashOverlayRenderer.color = Color.white;
+            SyncHitFlashOverlaySprite();
+        }
+
+        private void EnsureHitPoseOverlay()
+        {
+            if (_hitPoseOverlayRenderer != null || bodySpriteRenderer == null || hitBodySprite == null)
+            {
+                return;
+            }
+
+            Transform bodyTransform = bodySpriteRenderer.transform;
+            GameObject overlayObject = new GameObject("HitPoseOverlay");
+            overlayObject.transform.SetParent(bodyTransform.parent != null ? bodyTransform.parent : bodyTransform, false);
+            overlayObject.transform.localPosition = bodyTransform.parent != null ? bodyTransform.localPosition : Vector3.zero;
+            overlayObject.transform.localRotation = bodyTransform.parent != null ? bodyTransform.localRotation : Quaternion.identity;
+            overlayObject.transform.localScale = bodyTransform.parent != null ? bodyTransform.localScale : Vector3.one;
+
+            _hitPoseOverlayRenderer = overlayObject.AddComponent<SpriteRenderer>();
+            _hitPoseOverlayRenderer.sortingLayerID = bodySpriteRenderer.sortingLayerID;
+            _hitPoseOverlayRenderer.sortingOrder = bodySpriteRenderer.sortingOrder + 1;
+            _hitPoseOverlayRenderer.enabled = false;
+            _hitPoseOverlayRenderer.color = Color.white;
+            SyncHitPoseOverlaySprite(hitBodySprite);
+        }
+
+        private static Material GetHitFlashMaterial()
+        {
+            if (s_hitFlashMaterial != null)
+            {
+                return s_hitFlashMaterial;
+            }
+
+            if (s_hitFlashShader == null)
+            {
+                s_hitFlashShader = Shader.Find(HitFlashShaderName);
+            }
+
+            if (s_hitFlashShader == null)
+            {
+                return null;
+            }
+
+            s_hitFlashMaterial = new Material(s_hitFlashShader)
+            {
+                name = "CuteIssac Sprite White Flash (Runtime)",
+                hideFlags = HideFlags.HideAndDontSave
+            };
+
+            return s_hitFlashMaterial;
+        }
+
+        private void SyncHitFlashOverlaySprite()
+        {
+            if (_hitFlashOverlayRenderer == null || bodySpriteRenderer == null)
+            {
+                return;
+            }
+
+            Transform bodyTransform = bodySpriteRenderer.transform;
+            Transform overlayTransform = _hitFlashOverlayRenderer.transform;
+            if (bodyTransform.parent != null)
+            {
+                overlayTransform.localPosition = bodyTransform.localPosition;
+                overlayTransform.localRotation = bodyTransform.localRotation;
+                overlayTransform.localScale = bodyTransform.localScale;
+            }
+            else
+            {
+                overlayTransform.localPosition = Vector3.zero;
+                overlayTransform.localRotation = Quaternion.identity;
+                overlayTransform.localScale = Vector3.one;
+            }
+
+            Sprite sprite = GetHitFlashSourceSprite();
+            if (sprite == null)
+            {
+                _hitFlashOverlayRenderer.sprite = null;
+                _hitFlashOverlayRenderer.enabled = false;
+                return;
+            }
+
+            if (_hitFlashOverlayRenderer.sprite != sprite)
+            {
+                _hitFlashOverlayRenderer.sprite = sprite;
+            }
+
+            _hitFlashOverlayRenderer.sortingLayerID = bodySpriteRenderer.sortingLayerID;
+            _hitFlashOverlayRenderer.sortingOrder = bodySpriteRenderer.sortingOrder + 2;
+            _hitFlashOverlayRenderer.flipX = bodySpriteRenderer.flipX;
+            _hitFlashOverlayRenderer.flipY = bodySpriteRenderer.flipY;
+            _hitFlashOverlayRenderer.maskInteraction = bodySpriteRenderer.maskInteraction;
+            _hitFlashOverlayRenderer.spriteSortPoint = bodySpriteRenderer.spriteSortPoint;
+            _hitFlashOverlayRenderer.color = Color.white;
+        }
+
+        private Sprite GetHitFlashSourceSprite()
+        {
+            if (_hitPoseOverlayRenderer != null && _hitPoseOverlayRenderer.enabled && _hitPoseOverlayRenderer.sprite != null)
+            {
+                return _hitPoseOverlayRenderer.sprite;
+            }
+
+            if (_hitSpriteRemaining > 0f && hitBodySprite != null)
+            {
+                return hitBodySprite;
+            }
+
+            return bodySpriteRenderer != null ? bodySpriteRenderer.sprite : null;
+        }
+
+        private void SyncHitPoseOverlaySprite(Sprite sprite)
+        {
+            if (_hitPoseOverlayRenderer == null || bodySpriteRenderer == null)
+            {
+                return;
+            }
+
+            Transform bodyTransform = bodySpriteRenderer.transform;
+            Transform overlayTransform = _hitPoseOverlayRenderer.transform;
+            if (bodyTransform.parent != null)
+            {
+                overlayTransform.localPosition = bodyTransform.localPosition;
+                overlayTransform.localRotation = bodyTransform.localRotation;
+                overlayTransform.localScale = bodyTransform.localScale;
+            }
+            else
+            {
+                overlayTransform.localPosition = Vector3.zero;
+                overlayTransform.localRotation = Quaternion.identity;
+                overlayTransform.localScale = Vector3.one;
+            }
+
+            if (_hitPoseOverlayRenderer.sprite != sprite)
+            {
+                _hitPoseOverlayRenderer.sprite = sprite;
+            }
+
+            _hitPoseOverlayRenderer.sortingLayerID = bodySpriteRenderer.sortingLayerID;
+            _hitPoseOverlayRenderer.sortingOrder = bodySpriteRenderer.sortingOrder + 1;
+            _hitPoseOverlayRenderer.flipX = bodySpriteRenderer.flipX;
+            _hitPoseOverlayRenderer.flipY = bodySpriteRenderer.flipY;
+            _hitPoseOverlayRenderer.maskInteraction = bodySpriteRenderer.maskInteraction;
+            _hitPoseOverlayRenderer.spriteSortPoint = bodySpriteRenderer.spriteSortPoint;
+            _hitPoseOverlayRenderer.color = Color.white;
+        }
+
+        private void SetHitPoseOverlayVisible(bool visible)
+        {
+            if (visible)
+            {
+                EnsureHitPoseOverlay();
+            }
+
+            if (_hitPoseOverlayRenderer != null)
+            {
+                _hitPoseOverlayRenderer.enabled = visible && _hitPoseOverlayRenderer.sprite != null;
+            }
+        }
+
+        private void ClearHitPoseOverlay()
+        {
+            if (_hitPoseOverlayRenderer != null)
+            {
+                _hitPoseOverlayRenderer.enabled = false;
+            }
+        }
+
+        private void SetHitFlashOverlayVisible(bool visible)
+        {
+            if (visible)
+            {
+                EnsureHitFlashOverlay();
+                SyncHitFlashOverlaySprite();
+            }
+
+            if (_hitFlashOverlayRenderer != null)
+            {
+                _hitFlashOverlayRenderer.enabled = visible && _hitFlashOverlayRenderer.sprite != null;
+            }
+        }
+
+        private void ClearHitFlashOverlay()
+        {
+            if (_hitFlashOverlayRenderer != null)
+            {
+                _hitFlashOverlayRenderer.enabled = false;
+            }
+        }
+
         private void UpdateSpriteSequenceAnimation()
         {
+            if (IsHitSpriteActive())
+            {
+                return;
+            }
+
             if (!ShouldUseSpriteSequenceAnimation())
             {
                 return;
@@ -567,8 +847,19 @@ namespace CuteIssac.Player
 
         private void RefreshSpriteSequenceFrame(bool resetAnimationTime)
         {
+            if (IsHitSpriteActive())
+            {
+                return;
+            }
+
+            if (HasAnimatorDrivenSpriteAnimation())
+            {
+                return;
+            }
+
             if (!ShouldUseSpriteSequenceAnimation())
             {
+                ApplyAnimatedBodySprite(ResolveRestoredBodySprite());
                 return;
             }
 
@@ -590,11 +881,16 @@ namespace CuteIssac.Player
 
         private bool ShouldUseSpriteSequenceAnimation()
         {
-            bool hasAnimatorController = bodyAnimator != null && bodyAnimator.runtimeAnimatorController != null;
+            bool hasAnimatorController = HasAnimatorDrivenSpriteAnimation();
             return useSpriteSequenceAnimation
                 && bodySpriteRenderer != null
                 && !hasAnimatorController
                 && (idleBodySprite != null || (walkLeftBodySprites != null && walkLeftBodySprites.Length > 0));
+        }
+
+        private bool HasAnimatorDrivenSpriteAnimation()
+        {
+            return bodyAnimator != null && bodyAnimator.runtimeAnimatorController != null;
         }
 
         private bool ShouldPlayWalkAnimation()
@@ -634,6 +930,16 @@ namespace CuteIssac.Player
             return null;
         }
 
+        private Sprite ResolveRestoredBodySprite()
+        {
+            if (visualSet != null && visualSet.BodySprite != null)
+            {
+                return visualSet.BodySprite;
+            }
+
+            return ResolveIdleSprite();
+        }
+
         private Sprite ResolveCurrentWalkSprite()
         {
             if (walkLeftBodySprites == null || walkLeftBodySprites.Length == 0)
@@ -656,6 +962,39 @@ namespace CuteIssac.Player
             }
 
             bodySpriteRenderer.sprite = sprite;
+            if (_hitFlashRemaining > 0f)
+            {
+                SyncHitFlashOverlaySprite();
+            }
+        }
+
+        private void UpdateHitSpriteAnimation()
+        {
+            if (_hitSpriteRemaining <= 0f)
+            {
+                ClearHitPoseOverlay();
+                return;
+            }
+
+            _hitSpriteRemaining = Mathf.Max(0f, _hitSpriteRemaining - Time.deltaTime);
+
+            if (hitBodySprite != null)
+            {
+                EnsureHitPoseOverlay();
+                SyncHitPoseOverlaySprite(hitBodySprite);
+                SetHitPoseOverlayVisible(true);
+            }
+
+            if (_hitSpriteRemaining <= 0f && (playerHealth == null || !playerHealth.IsDead))
+            {
+                ClearHitPoseOverlay();
+                RefreshSpriteSequenceFrame(resetAnimationTime: false);
+            }
+        }
+
+        private bool IsHitSpriteActive()
+        {
+            return _hitSpriteRemaining > 0f && hitBodySprite != null;
         }
 
         private void SetAnimatorFloat(string parameterName, float value)

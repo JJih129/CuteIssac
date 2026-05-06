@@ -55,6 +55,20 @@ namespace CuteIssac.Enemy
             _runtimeTelegraphDurationMultiplier = Mathf.Clamp(telegraphDurationMultiplier, 0.5f, 2f);
         }
 
+        public bool IsDashingWindup => _dashWindupRemaining > 0f;
+        public bool IsDashing => _dashRemaining > 0f;
+        public bool IsDashingRecovery => _dashRecoveryRemaining > 0f;
+        public Vector2 DashDirection => _dashDirection;
+        public float DashWindupProgressNormalized => dashWindupDuration > 0f
+            ? 1f - Mathf.Clamp01(_dashWindupRemaining / (dashWindupDuration * _runtimeTelegraphDurationMultiplier))
+            : 1f;
+        public float DashProgressNormalized => dashDuration > 0f
+            ? 1f - Mathf.Clamp01(_dashRemaining / dashDuration)
+            : 1f;
+        public float DashRecoveryProgressNormalized => dashRecoveryDuration > 0f
+            ? 1f - Mathf.Clamp01(_dashRecoveryRemaining / dashRecoveryDuration)
+            : 1f;
+
         public override void TickBrain(float fixedDeltaTime)
         {
             Vector2 toTarget = Controller.TargetPosition - Controller.Position;

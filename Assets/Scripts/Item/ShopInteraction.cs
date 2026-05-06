@@ -195,7 +195,7 @@ namespace CuteIssac.Item
 
             ShopSlotState slotState = highlightedItem.BuildSlotState(true, _currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth);
             SetPromptText(slotState.CanPurchase
-                ? $"구매 {slotState.DisplayName} · {slotState.PriceLabel}"
+                ? $"\uAD6C\uB9E4 {slotState.DisplayName} · {slotState.PriceLabel}"
                 : $"{slotState.StatusLabel} · {slotState.PriceLabel}");
         }
 
@@ -278,6 +278,14 @@ namespace CuteIssac.Item
             {
                 LocalizedUiFontProvider.Apply(promptText);
                 LocalizedUiFontProvider.Apply(promptTextMesh);
+                if (promptTextMesh != null)
+                {
+                    promptTextMesh.anchor = TextAnchor.MiddleCenter;
+                    promptTextMesh.alignment = TextAlignment.Center;
+                    promptTextMesh.richText = false;
+                    promptTextMesh.fontSize = 44;
+                    promptTextMesh.characterSize = 0.08f;
+                }
                 return;
             }
 
@@ -287,8 +295,9 @@ namespace CuteIssac.Item
             promptTextMesh = textObject.AddComponent<TextMesh>();
             promptTextMesh.anchor = TextAnchor.MiddleCenter;
             promptTextMesh.alignment = TextAlignment.Center;
-            promptTextMesh.fontSize = 92;
-            promptTextMesh.characterSize = 0.24f;
+            promptTextMesh.richText = false;
+            promptTextMesh.fontSize = 44;
+            promptTextMesh.characterSize = 0.08f;
             promptTextMesh.color = new Color(1f, 0.97f, 0.76f, 1f);
             LocalizedUiFontProvider.Apply(promptTextMesh);
         }
@@ -316,16 +325,16 @@ namespace CuteIssac.Item
             if (purchased)
             {
                 GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                    "구매 완료",
-                    $"{slotState.DisplayName}  {slotState.PriceLabel}",
+                    "\uAD6C\uB9E4 \uC644\uB8CC",
+                    $"{slotState.DisplayName} · {slotState.PriceLabel}",
                     purchaseSuccessColor,
                     1.2f));
                 return;
             }
 
             GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                "구매 불가",
-                $"{slotState.StatusLabel}  {slotState.DisplayName}",
+                "\uAD6C\uB9E4 \uC2E4\uD328",
+                $"{slotState.StatusLabel} · {slotState.DisplayName}",
                 purchaseFailureColor,
                 1f));
         }

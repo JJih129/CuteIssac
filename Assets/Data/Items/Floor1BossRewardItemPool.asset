@@ -30,6 +30,11 @@ MonoBehaviour:
   - rarity: 3
     weightMultiplier: 0.45
   entries:
+  - itemData: {fileID: 11400000, guid: 2c7cb021a53641d7ac85219bd88e43aa, type: 2}
+    weight: 1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
   - itemData: {fileID: 11400000, guid: 329da32fc035405e94f35c1ab74d4a1b, type: 2}
     weight: 0.7
     minimumFloor: 1

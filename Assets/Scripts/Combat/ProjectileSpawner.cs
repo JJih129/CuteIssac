@@ -13,6 +13,7 @@ namespace CuteIssac.Combat
     {
         [Header("Spawn Origin")]
         [SerializeField] private Transform spawnOrigin;
+        [SerializeField] private bool spawnOriginIncludesMuzzleOffset;
         [SerializeField] [Min(0)] private int prewarmCount = 24;
 
         private readonly HashSet<GameObject> _prewarmedPrefabs = new();
@@ -41,6 +42,11 @@ namespace CuteIssac.Combat
         public Vector2 GetSpawnPosition(Vector2 direction, Vector2 localOffset)
         {
             Transform origin = spawnOrigin != null ? spawnOrigin : transform;
+            if (spawnOriginIncludesMuzzleOffset)
+            {
+                return origin.position;
+            }
+
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
             Vector2 rotatedOffset = Quaternion.Euler(0f, 0f, angle) * localOffset;
             return (Vector2)origin.position + rotatedOffset;
@@ -49,9 +55,10 @@ namespace CuteIssac.Combat
         /// <summary>
         /// Lets presentation prefabs provide a muzzle anchor without hard-coding child names into combat logic.
         /// </summary>
-        public void SetSpawnOrigin(Transform origin)
+        public void SetSpawnOrigin(Transform origin, bool includesMuzzleOffset = false)
         {
             spawnOrigin = origin;
+            spawnOriginIncludesMuzzleOffset = includesMuzzleOffset;
         }
     }
 }

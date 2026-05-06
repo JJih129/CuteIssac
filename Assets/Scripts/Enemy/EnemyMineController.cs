@@ -10,6 +10,7 @@ namespace CuteIssac.Enemy
     public sealed class EnemyMineController : MonoBehaviour
     {
         [Header("References")]
+        [SerializeField] private EnemyController enemyController;
         [SerializeField] private BombVisual bombVisual;
         [SerializeField] private DamageArea damageArea;
 
@@ -44,7 +45,7 @@ namespace CuteIssac.Enemy
 
         private void Update()
         {
-            if (!_isInitialized || _hasExploded)
+            if (!_isInitialized || _hasExploded || (enemyController != null && enemyController.IsCombatDormant))
             {
                 return;
             }
@@ -150,6 +151,11 @@ namespace CuteIssac.Enemy
 
         private void ResolveReferences()
         {
+            if (enemyController == null)
+            {
+                enemyController = GetComponentInParent<EnemyController>();
+            }
+
             if (bombVisual == null)
             {
                 bombVisual = GetComponent<BombVisual>();

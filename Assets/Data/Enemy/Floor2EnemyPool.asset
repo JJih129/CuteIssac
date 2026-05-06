@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -15,9 +15,9 @@ MonoBehaviour:
   poolId: floor-2-enemy-pool
   normalEnemies:
   - enemyId: floor2_chaser
-    enemyPrefab: {fileID: 930000106, guid: c7f3af65372d46ee83fd98579e23720d, type: 3}
+    enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     encounterTier: 0
-    selectionWeight: 3
+    selectionWeight: 1
     difficultyCost: 1
     unlockFloor: 2
     unlockedByDefault: 1
@@ -25,15 +25,15 @@ MonoBehaviour:
   - enemyId: floor2_shooter
     enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
     encounterTier: 0
-    selectionWeight: 4
+    selectionWeight: 2
     difficultyCost: 2
     unlockFloor: 2
     unlockedByDefault: 1
     unlockKey: 
   - enemyId: floor2_dasher
-    enemyPrefab: {fileID: 930000106, guid: 4d1a46c92ce84e5dbfe67f5db3dd2bd3, type: 3}
+    enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     encounterTier: 0
-    selectionWeight: 2
+    selectionWeight: 1
     difficultyCost: 3
     unlockFloor: 2
     unlockedByDefault: 1
@@ -44,8 +44,8 @@ MonoBehaviour:
     selectionWeight: 2
     difficultyCost: 4
     unlockFloor: 2
-    unlockedByDefault: 0
-    unlockKey: unlock.enemy.spawner
+    unlockedByDefault: 1
+    unlockKey: 
   - enemyId: floor2_turret
     enemyPrefab: {fileID: 930000106, guid: 6e3a1826aa5b492c94f1bd574f6ad8a1, type: 3}
     encounterTier: 0
@@ -57,7 +57,7 @@ MonoBehaviour:
   - enemyId: floor2_exploder
     enemyPrefab: {fileID: 930000106, guid: 6164d8f90a01454085ee67522da78076, type: 3}
     encounterTier: 0
-    selectionWeight: 2
+    selectionWeight: 3
     difficultyCost: 2
     unlockFloor: 2
     unlockedByDefault: 1
@@ -81,7 +81,7 @@ MonoBehaviour:
   - enemyId: floor2_burst_shooter
     enemyPrefab: {fileID: 930000106, guid: 128f958fcf6f4743bbdc92522b42a92d, type: 3}
     encounterTier: 0
-    selectionWeight: 2
+    selectionWeight: 1
     difficultyCost: 3
     unlockFloor: 2
     unlockedByDefault: 1
@@ -89,56 +89,64 @@ MonoBehaviour:
   - enemyId: floor2_sniper
     enemyPrefab: {fileID: 930000106, guid: 12be3871a2c04c89bc466e46791ea602, type: 3}
     encounterTier: 0
-    selectionWeight: 1
+    selectionWeight: 0
     difficultyCost: 4
-    unlockFloor: 2
-    unlockedByDefault: 1
-    unlockKey: 
+    unlockFloor: 3
+    unlockedByDefault: 0
+    unlockKey: unlock.enemy.floor2_sniper
   - enemyId: floor2_mine_layer
     enemyPrefab: {fileID: 930000106, guid: 5ef42a442165472a96088ab22a16bf70, type: 3}
     encounterTier: 0
-    selectionWeight: 1
+    selectionWeight: 0
     difficultyCost: 4
-    unlockFloor: 2
-    unlockedByDefault: 1
-    unlockKey: 
+    unlockFloor: 3
+    unlockedByDefault: 0
+    unlockKey: unlock.enemy.floor2_mine_layer
   - enemyId: floor2_teleporter
     enemyPrefab: {fileID: 930000106, guid: 7139cc0ba61f4d70a74451af85dc0d6b, type: 3}
     encounterTier: 0
-    selectionWeight: 1
+    selectionWeight: 0
     difficultyCost: 4
-    unlockFloor: 2
-    unlockedByDefault: 1
-    unlockKey: 
+    unlockFloor: 3
+    unlockedByDefault: 0
+    unlockKey: unlock.enemy.floor2_teleporter
   - enemyId: floor2_puller
     enemyPrefab: {fileID: 930000106, guid: 6741b17e79a94f1cb74f51b6126d9d93, type: 3}
     encounterTier: 0
-    selectionWeight: 1
+    selectionWeight: 0
     difficultyCost: 4
-    unlockFloor: 2
-    unlockedByDefault: 1
-    unlockKey: 
+    unlockFloor: 3
+    unlockedByDefault: 0
+    unlockKey: unlock.enemy.floor2_puller
   - enemyId: floor2_splitter
     enemyPrefab: {fileID: 930000106, guid: d4e70b23e9f56db7df24a0e7be340404, type: 3}
     encounterTier: 0
-    selectionWeight: 1
+    selectionWeight: 0
     difficultyCost: 3
-    unlockFloor: 2
-    unlockedByDefault: 1
-    unlockKey: 
+    unlockFloor: 3
+    unlockedByDefault: 0
+    unlockKey: unlock.enemy.floor2_splitter
   - enemyId: floor2_support_healer
     enemyPrefab: {fileID: 930000106, guid: f7a6090ea34260d9e48bf0f7f6662606, type: 3}
     encounterTier: 0
-    selectionWeight: 1
+    selectionWeight: 0
     difficultyCost: 4
-    unlockFloor: 2
-    unlockedByDefault: 1
-    unlockKey: 
+    unlockFloor: 3
+    unlockedByDefault: 0
+    unlockKey: unlock.enemy.floor2_support_healer
   - enemyId: floor2_orbiter
     enemyPrefab: {fileID: 930000106, guid: fcfd566b10f69ab3f1f52e956b3fc606, type: 3}
     encounterTier: 0
     selectionWeight: 2
     difficultyCost: 3
+    unlockFloor: 2
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor2_candy_bat
+    enemyPrefab: {fileID: 930000106, guid: b2e98ca5c9bddad40a106bf68ae83496, type: 3}
+    encounterTier: 0
+    selectionWeight: 5
+    difficultyCost: 2
     unlockFloor: 2
     unlockedByDefault: 1
     unlockKey: 
@@ -152,7 +160,7 @@ MonoBehaviour:
     unlockedByDefault: 1
     unlockKey: 
   - enemyId: floor2_dasher_elite
-    enemyPrefab: {fileID: 930000106, guid: 4d1a46c92ce84e5dbfe67f5db3dd2bd3, type: 3}
+    enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     encounterTier: 1
     selectionWeight: 4
     difficultyCost: 4

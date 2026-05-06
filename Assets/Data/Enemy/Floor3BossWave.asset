@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -20,7 +20,7 @@ MonoBehaviour:
     count: 1
     difficultyCost: 9
   - enemyId: floor3_dasher_add
-    enemyPrefab: {fileID: 930000106, guid: 4d1a46c92ce84e5dbfe67f5db3dd2bd3, type: 3}
+    enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     count: 1
     difficultyCost: 3
   - enemyId: floor3_shooter_add

@@ -1,3 +1,4 @@
+using System.Collections;
 using CuteIssac.Data.Enemy;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Core.Audio;
@@ -58,7 +59,11 @@ namespace CuteIssac.Room
         [SerializeField] [Min(0f)] private float preferredSpawnSeparation = 2.2f;
         [SerializeField] [Min(1)] private int roomCandidateSamples = 8;
         [SerializeField] [Range(0f, 0.45f)] private float roomBoundsInsetRatio = 0.16f;
+        [SerializeField] [Min(0f)] private float doorSpawnClearanceDistance = 2.25f;
         [SerializeField] [Range(1f, 2f)] private float globalEnemyCountMultiplier = 1.45f;
+
+        [Header("Dormant Release")]
+        [SerializeField] [Min(0f)] private float combatDormantReleaseDelay = 0.5f;
 
         [Header("Spawn Telegraph")]
         [SerializeField] private bool enableSpawnTelegraph = true;
@@ -91,8 +96,11 @@ namespace CuteIssac.Room
         private EncounterPacingSettings _runtimeEncounterPacing;
         private RoomType? _runtimeRoomType;
         private bool _hasSpawnedEncounter;
+        private bool _hasPreSpawnedEncounter;
+        private Coroutine _combatReleaseRoutine;
         private readonly System.Collections.Generic.List<Vector3> _spawnedPositionBuffer = new();
         private readonly System.Collections.Generic.List<EnemyController> _spawnedEnemyBuffer = new();
+        private readonly System.Collections.Generic.List<EnemyHealth> _releasedEnemyBuffer = new();
         private ChampionEnemyProfile _runtimeChampionProfile;
         private EnemyWaveAssignment _challengeFollowupWaveAssignment;
         private int _currentEncounterWave;
@@ -211,10 +219,12 @@ namespace CuteIssac.Room
             _runtimeWaveAssignment = enemyWaveAssignment;
             _runtimeEncounterPacing = null;
             _hasSpawnedEncounter = false;
+            _hasPreSpawnedEncounter = false;
             _currentEncounterWave = 0;
             _plannedEncounterWaveCount = 1;
             _challengeFollowupWaveAssignment = null;
             PrewarmWaveIfNeeded(enemyWaveAssignment);
+            PreSpawnEncounterIfNeeded(enemyWaveAssignment);
         }
 
         /// <summary>
@@ -227,11 +237,13 @@ namespace CuteIssac.Room
             _runtimeWaveAssignment = enemyWaveAssignment;
             _runtimeEncounterPacing = encounterPacing;
             _hasSpawnedEncounter = false;
+            _hasPreSpawnedEncounter = false;
             _currentEncounterWave = 0;
             _plannedEncounterWaveCount = ResolvePlannedWaveCount(roomType, encounterPacing, enemyWaveAssignment);
             _challengeFollowupWaveAssignment = BuildChallengeFollowupWave(enemyWaveAssignment, encounterPacing, _plannedEncounterWaveCount);
             PrewarmWaveIfNeeded(enemyWaveAssignment);
             PrewarmWaveIfNeeded(_challengeFollowupWaveAssignment);
+            PreSpawnEncounterIfNeeded(enemyWaveAssignment);
         }
 
         /// <summary>
@@ -265,8 +277,17 @@ namespace CuteIssac.Room
                 return 0;
             }
 
+            if (_hasPreSpawnedEncounter)
+            {
+                _hasSpawnedEncounter = true;
+                _hasPreSpawnedEncounter = false;
+                _currentEncounterWave = 1;
+                ScheduleDormantRelease(targetRoom);
+                return targetRoom != null ? Mathf.Max(0, targetRoom.AliveEnemyCount) : 0;
+            }
+
             PrewarmWaveIfNeeded(enemyWaveAssignment);
-            int spawnedEnemyCount = SpawnWaveAssignment(targetRoom, enemyWaveAssignment, 0);
+            int spawnedEnemyCount = SpawnWaveAssignment(targetRoom, enemyWaveAssignment, 0, false);
 
             if (spawnedEnemyCount > 0)
             {
@@ -307,7 +328,7 @@ namespace CuteIssac.Room
             int guaranteedChampionCount = GetChallengeFollowupGuaranteedChampionCount(followupWave.TotalEnemyCount, _currentEncounterWave);
             float championChanceBonus = GetChallengeFollowupChampionChanceBonus(_currentEncounterWave);
 
-            int spawnedEnemyCount = SpawnWaveAssignment(targetRoom, followupWave, _currentEncounterWave);
+            int spawnedEnemyCount = SpawnWaveAssignment(targetRoom, followupWave, _currentEncounterWave, false);
 
             if (spawnedEnemyCount <= 0)
             {
@@ -329,6 +350,7 @@ namespace CuteIssac.Room
         public void RestoreEncounterResolvedState()
         {
             _hasSpawnedEncounter = true;
+            _hasPreSpawnedEncounter = false;
             _currentEncounterWave = _plannedEncounterWaveCount;
         }
 
@@ -382,7 +404,7 @@ namespace CuteIssac.Room
                 || roomType == RoomType.Boss;
         }
 
-        private int SpawnWaveAssignment(RoomController targetRoom, EnemyWaveAssignment enemyWaveAssignment, int waveIndex)
+        private int SpawnWaveAssignment(RoomController targetRoom, EnemyWaveAssignment enemyWaveAssignment, int waveIndex, bool dormantSpawn)
         {
             if (targetRoom == null || enemyWaveAssignment == null)
             {
@@ -409,7 +431,7 @@ namespace CuteIssac.Room
 
                 for (int countIndex = 0; countIndex < adjustedSpawnCount; countIndex++)
                 {
-                    if (SpawnEnemyInstance(targetRoom, spawnGroup, spawnIndex, waveIndex, totalSpawnCount, ref promotedChampionCount))
+                    if (SpawnEnemyInstance(targetRoom, spawnGroup, spawnIndex, waveIndex, totalSpawnCount, dormantSpawn, ref promotedChampionCount))
                     {
                         spawnedEnemyCount++;
                     }
@@ -418,11 +440,11 @@ namespace CuteIssac.Room
                 }
             }
 
-            ApplyEncounterSynergy(targetRoom, waveIndex);
+            ApplyEncounterSynergy(targetRoom, waveIndex, dormantSpawn);
             return spawnedEnemyCount;
         }
 
-        private bool SpawnEnemyInstance(RoomController targetRoom, EnemyWaveSpawnGroup spawnGroup, int spawnIndex, int waveIndex, int totalSpawnCount, ref int promotedChampionCount)
+        private bool SpawnEnemyInstance(RoomController targetRoom, EnemyWaveSpawnGroup spawnGroup, int spawnIndex, int waveIndex, int totalSpawnCount, bool dormantSpawn, ref int promotedChampionCount)
         {
             Transform parent = spawnedEnemyParent != null ? spawnedEnemyParent : targetRoom.transform;
             Vector3 spawnPosition = ResolveSpawnPosition(targetRoom, spawnIndex);
@@ -457,14 +479,22 @@ namespace CuteIssac.Room
             roomEnemyMember.AssignRoom(targetRoom);
             spawnedEnemy.GetComponent<EnemyFormationModifier>()?.PrepareForSpawn();
             spawnedEnemy.GetComponent<EncounterDeathPulseModifier>()?.PrepareForSpawn();
-            float aggroDelay = CalculateAggroDelay(spawnIndex, waveIndex);
-            spawnedEnemy.ApplySpawnAggroDelay(aggroDelay);
-            ApplySpawnTelegraph(spawnedEnemy, spawnIndex, waveIndex, aggroDelay);
             ApplyEncounterPacing(spawnedEnemy);
 
-            if (spawnIndex == 0)
+            if (dormantSpawn)
             {
-                RaiseWaveSpawnThreatFlash(waveIndex);
+                spawnedEnemy.SetCombatDormant(true);
+            }
+            else
+            {
+                float aggroDelay = CalculateAggroDelay(spawnIndex, waveIndex);
+                spawnedEnemy.ApplySpawnAggroDelay(aggroDelay);
+                ApplySpawnTelegraph(spawnedEnemy, spawnIndex, waveIndex, aggroDelay);
+
+                if (spawnIndex == 0)
+                {
+                    RaiseWaveSpawnThreatFlash(waveIndex);
+                }
             }
 
             if (TryApplyChampionPromotion(spawnedEnemy, targetRoom, spawnGroup, spawnIndex, waveIndex, totalSpawnCount, promotedChampionCount))
@@ -477,7 +507,55 @@ namespace CuteIssac.Room
             return true;
         }
 
-        private void ApplyEncounterSynergy(RoomController targetRoom, int waveIndex)
+        private void PreSpawnEncounterIfNeeded(EnemyWaveAssignment enemyWaveAssignment)
+        {
+            if (enemyWaveAssignment == null || enemyWaveAssignment.TotalEnemyCount <= 0)
+            {
+                return;
+            }
+
+            RoomController targetRoom = roomController;
+
+            if (targetRoom == null || !IsCombatRoomType(GetEffectiveRoomType()))
+            {
+                return;
+            }
+
+            int spawnedEnemyCount = SpawnWaveAssignment(targetRoom, enemyWaveAssignment, 0, true);
+
+            if (spawnedEnemyCount > 0)
+            {
+                _hasPreSpawnedEncounter = true;
+            }
+        }
+
+        private void ReleaseDormantEnemies(RoomController targetRoom)
+        {
+            if (targetRoom == null)
+            {
+                return;
+            }
+
+            _releasedEnemyBuffer.Clear();
+            targetRoom.CollectAliveEnemies(_releasedEnemyBuffer);
+
+            for (int i = 0; i < _releasedEnemyBuffer.Count; i++)
+            {
+                EnemyHealth enemyHealth = _releasedEnemyBuffer[i];
+                if (enemyHealth == null)
+                {
+                    continue;
+                }
+
+                EnemyController enemyController = enemyHealth.GetComponent<EnemyController>();
+                if (enemyController != null)
+                {
+                    enemyController.SetCombatDormant(false);
+                }
+            }
+        }
+
+        private void ApplyEncounterSynergy(RoomController targetRoom, int waveIndex, bool suppressFeedback)
         {
             if (!enableEncounterSynergy || targetRoom == null || _spawnedEnemyBuffer.Count < 2)
             {
@@ -558,18 +636,18 @@ namespace CuteIssac.Room
             switch (formation)
             {
                 case EncounterSynergyFormation.Escort:
-                    ApplyEscortFormation(targetRoom, waveIndex);
+                    ApplyEscortFormation(targetRoom, waveIndex, suppressFeedback);
                     break;
                 case EncounterSynergyFormation.Crossfire:
-                    ApplyCrossfireFormation(targetRoom, waveIndex);
+                    ApplyCrossfireFormation(targetRoom, waveIndex, suppressFeedback);
                     break;
                 case EncounterSynergyFormation.Siege:
-                    ApplySiegeFormation(targetRoom, waveIndex);
+                    ApplySiegeFormation(targetRoom, waveIndex, suppressFeedback);
                     break;
             }
         }
 
-        private void ApplyEscortFormation(RoomController targetRoom, int waveIndex)
+        private void ApplyEscortFormation(RoomController targetRoom, int waveIndex, bool suppressFeedback)
         {
             float speedMultiplier = escortFrontlineSpeedMultiplier + (waveIndex > 0 ? 0.04f : 0f);
             float contactMultiplier = escortFrontlineContactMultiplier + (waveIndex > 0 ? 0.05f : 0f);
@@ -599,10 +677,13 @@ namespace CuteIssac.Room
                 }
             }
 
-            RaiseEncounterSynergyFeedback(targetRoom, "ESCORT FORMATION", "Cut the marked healer before the screen closes.", accentColor);
+            if (!suppressFeedback)
+            {
+                RaiseEncounterSynergyFeedback(targetRoom, "ESCORT FORMATION", "Cut the marked healer before the screen closes.", accentColor);
+            }
         }
 
-        private void ApplyCrossfireFormation(RoomController targetRoom, int waveIndex)
+        private void ApplyCrossfireFormation(RoomController targetRoom, int waveIndex, bool suppressFeedback)
         {
             float aggroScale = Mathf.Clamp(crossfireAggroDelayScale - (waveIndex > 0 ? 0.06f : 0f), 0.45f, 1f);
             float controllerSpeedMultiplier = crossfireControllerSpeedMultiplier + (waveIndex > 0 ? 0.04f : 0f);
@@ -635,10 +716,13 @@ namespace CuteIssac.Room
                 }
             }
 
-            RaiseEncounterSynergyFeedback(targetRoom, "CROSSFIRE NET", "Break the marked controller to collapse the lane.", accentColor);
+            if (!suppressFeedback)
+            {
+                RaiseEncounterSynergyFeedback(targetRoom, "CROSSFIRE NET", "Break the marked controller to collapse the lane.", accentColor);
+            }
         }
 
-        private void ApplySiegeFormation(RoomController targetRoom, int waveIndex)
+        private void ApplySiegeFormation(RoomController targetRoom, int waveIndex, bool suppressFeedback)
         {
             float speedMultiplier = siegeUnitSpeedMultiplier + (waveIndex > 0 ? 0.04f : 0f);
             float deathPulseRadius = siegeDeathPulseRadius + (waveIndex > 0 ? 0.12f : 0f);
@@ -660,7 +744,10 @@ namespace CuteIssac.Room
                 ApplyPriorityHint(enemy, "siege", EnemyFormationPriorityLevel.Critical, criticalColor);
             }
 
-            RaiseEncounterSynergyFeedback(targetRoom, "SIEGE NEST", "Crush the marked nest before pressure snowballs.", accentColor);
+            if (!suppressFeedback)
+            {
+                RaiseEncounterSynergyFeedback(targetRoom, "SIEGE NEST", "Crush the marked nest before pressure snowballs.", accentColor);
+            }
         }
 
         private static void ApplyFormationModifier(EnemyController enemy, string formationId, EnemyFormationRole formationRole, Color accentColor, float speedMultiplier, float contactDamageMultiplier)
@@ -1133,10 +1220,10 @@ namespace CuteIssac.Room
                         continue;
                     }
 
-                    Vector3 candidate = ClampToSafeSpawnBounds(
-                        safeSpawnBounds,
-                        anchor.position + ComputeScatterOffset(spawnIndex + anchorIndex, anchorScatterRadius));
-                    float candidateScore = EvaluateSpawnCandidate(candidate);
+                      Vector3 candidate = ClampToSafeSpawnBounds(
+                          safeSpawnBounds,
+                          anchor.position + ComputeScatterOffset(spawnIndex + anchorIndex, anchorScatterRadius));
+                      float candidateScore = EvaluateSpawnCandidate(targetRoom, candidate);
 
                     if (candidateScore > bestScore)
                     {
@@ -1146,10 +1233,10 @@ namespace CuteIssac.Room
                 }
             }
 
-            for (int sampleIndex = 0; sampleIndex < GetRoomCandidateSamples(); sampleIndex++)
-            {
-                Vector3 candidate = ComputeRoomSamplePosition(safeSpawnBounds, spawnIndex, sampleIndex);
-                float candidateScore = EvaluateSpawnCandidate(candidate);
+             for (int sampleIndex = 0; sampleIndex < GetRoomCandidateSamples(); sampleIndex++)
+             {
+                 Vector3 candidate = ComputeRoomSamplePosition(safeSpawnBounds, spawnIndex, sampleIndex);
+                float candidateScore = EvaluateSpawnCandidate(targetRoom, candidate);
 
                 if (candidateScore > bestScore)
                 {
@@ -1248,11 +1335,23 @@ namespace CuteIssac.Room
             return clamped;
         }
 
-        private float EvaluateSpawnCandidate(Vector3 candidate)
+        private float EvaluateSpawnCandidate(RoomController targetRoom, Vector3 candidate)
         {
             float playerDistance = GetDistanceToPlayer(candidate);
             float nearestSpawnDistance = GetNearestSpawnDistance(candidate);
             float score = playerDistance + (nearestSpawnDistance * 0.85f);
+
+            float nearestDoorDistance = GetNearestDoorDistance(targetRoom, candidate);
+            if (nearestDoorDistance >= 0f)
+            {
+                score += nearestDoorDistance * 1.15f;
+
+                float doorClearanceDistance = GetDoorSpawnClearanceDistance();
+                if (doorClearanceDistance > 0f && nearestDoorDistance < doorClearanceDistance)
+                {
+                    score -= (doorClearanceDistance - nearestDoorDistance) * 12f;
+                }
+            }
 
             if (GetMinimumDistanceFromPlayer() > 0f && playerDistance < GetMinimumDistanceFromPlayer())
             {
@@ -1330,6 +1429,11 @@ namespace CuteIssac.Room
             return _runtimeEncounterPacing != null
                 ? _runtimeEncounterPacing.PreferredSpawnSeparation
                 : preferredSpawnSeparation;
+        }
+
+        private float GetDoorSpawnClearanceDistance()
+        {
+            return Mathf.Max(0f, doorSpawnClearanceDistance);
         }
 
         private int GetRoomCandidateSamples()
@@ -1603,10 +1707,88 @@ namespace CuteIssac.Room
             }
         }
 
+        private float GetNearestDoorDistance(RoomController targetRoom, Vector3 candidate)
+        {
+            if (targetRoom == null)
+            {
+                return -1f;
+            }
+
+            System.Collections.Generic.IReadOnlyList<RoomDoor> roomDoors = targetRoom.RoomDoors;
+            if (roomDoors == null || roomDoors.Count == 0)
+            {
+                return -1f;
+            }
+
+            float nearestDistance = float.MaxValue;
+            bool foundDoor = false;
+
+            for (int i = 0; i < roomDoors.Count; i++)
+            {
+                RoomDoor roomDoor = roomDoors[i];
+                if (roomDoor == null)
+                {
+                    continue;
+                }
+
+                float distance = Vector2.Distance(candidate, roomDoor.GetArrivalPosition());
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    foundDoor = true;
+                }
+            }
+
+            return foundDoor ? nearestDistance : -1f;
+        }
+
+        private void ScheduleDormantRelease(RoomController targetRoom)
+        {
+            if (_combatReleaseRoutine != null)
+            {
+                StopCoroutine(_combatReleaseRoutine);
+                _combatReleaseRoutine = null;
+            }
+
+            if (combatDormantReleaseDelay <= 0f)
+            {
+                ReleaseDormantEnemies(targetRoom);
+                return;
+            }
+
+            _combatReleaseRoutine = StartCoroutine(ReleaseDormantEnemiesRoutine(targetRoom, combatDormantReleaseDelay));
+        }
+
+        private IEnumerator ReleaseDormantEnemiesRoutine(RoomController targetRoom, float delaySeconds)
+        {
+            if (delaySeconds > 0f)
+            {
+                yield return new WaitForSecondsRealtime(delaySeconds);
+            }
+
+            if (targetRoom == null || targetRoom.State != RoomState.Combat)
+            {
+                _combatReleaseRoutine = null;
+                yield break;
+            }
+
+            _combatReleaseRoutine = null;
+            ReleaseDormantEnemies(targetRoom);
+        }
+
         private void Reset()
         {
             roomController = GetComponent<RoomController>();
             runManager = FindFirstObjectByType<RunManager>(FindObjectsInactive.Exclude);
+        }
+
+        private void OnDisable()
+        {
+            if (_combatReleaseRoutine != null)
+            {
+                StopCoroutine(_combatReleaseRoutine);
+                _combatReleaseRoutine = null;
+            }
         }
 
         private void OnValidate()

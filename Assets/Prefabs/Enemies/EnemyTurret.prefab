@@ -166,7 +166,7 @@ MonoBehaviour:
   hitFlashTarget: {fileID: 930000132}
   attackEffectAnchor: {fileID: 930000141}
   deathEffectAnchor: {fileID: 930000151}
-  facingMode: 2
+    facingMode: 0
   baseColor: {r: 1, g: 0.88, b: 0.62, a: 1}
   damagedColor: {r: 1, g: 0.48, b: 0.48, a: 1}
   damagedFlashDuration: 0.08

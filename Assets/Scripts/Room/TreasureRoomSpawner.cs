@@ -47,6 +47,8 @@ namespace CuteIssac.Room
         private readonly List<ItemData> _choiceItemBuffer = new();
         private RunItemPoolService _runItemPoolService;
 
+        public bool HasSpawnedTreasure => _hasSpawnedTreasure;
+
         private void Awake()
         {
             ResolveReferences();
@@ -96,6 +98,12 @@ namespace CuteIssac.Room
         public bool CanHandleRoomType(RoomType roomType)
         {
             return roomType == RoomType.Treasure;
+        }
+
+        public bool PreSpawnTreasureContent()
+        {
+            TrySpawnTreasureContent();
+            return _hasSpawnedTreasure;
         }
 
         public bool TryResolveTreasureFocusTarget(out Vector3 focusPosition, out float focusRadius)
@@ -231,7 +239,17 @@ namespace CuteIssac.Room
 
         private void HandleRoomEntered(RoomController enteredRoom)
         {
-            if (enteredRoom == null || enteredRoom != roomController || _hasSpawnedTreasure)
+            if (enteredRoom == null || enteredRoom != roomController)
+            {
+                return;
+            }
+
+            TrySpawnTreasureContent();
+        }
+
+        private void TrySpawnTreasureContent()
+        {
+            if (_hasSpawnedTreasure)
             {
                 return;
             }
@@ -303,8 +321,18 @@ namespace CuteIssac.Room
             _choiceItemBuffer.Clear();
             if (_runtimeRoomData != null && _runtimeRoomData.TreasureItemOverride != null)
             {
-                _choiceItemBuffer.Add(_runtimeRoomData.TreasureItemOverride);
-                _selectedItemIds.Add(_runtimeRoomData.TreasureItemOverride.ItemId);
+                // Treasure rooms are weapon rooms; ignore non-weapon overrides instead of spawning passive artifacts here.
+                if (_runtimeRoomData.TreasureItemOverride.IsWeaponRelic)
+                {
+                    _choiceItemBuffer.Add(_runtimeRoomData.TreasureItemOverride);
+                    _selectedItemIds.Add(_runtimeRoomData.TreasureItemOverride.ItemId);
+                }
+                else
+                {
+                    Debug.LogWarning(
+                        $"TreasureRoomSpawner ignored non-weapon treasure override '{_runtimeRoomData.TreasureItemOverride.DisplayName}'.",
+                        this);
+                }
             }
 
             while (_choiceItemBuffer.Count < Mathf.Clamp(choiceCount, 1, 3))
@@ -313,7 +341,7 @@ namespace CuteIssac.Room
                     ? _runItemPoolService.BuildSelectionContext(RoomType.Treasure, _selectedItemIds)
                     : new ItemPoolSelectionContext(RoomType.Treasure, 1, _selectedItemIds, null, null, null, null, null);
 
-                if (_runtimeItemPool == null || !_runtimeItemPool.TrySelectRandomItem(selectionContext, out ItemData selectedItem) || selectedItem == null)
+                if (_runtimeItemPool == null || !_runtimeItemPool.TrySelectRandomWeaponItem(selectionContext, out ItemData selectedItem) || selectedItem == null)
                 {
                     break;
                 }

@@ -257,6 +257,8 @@ MonoBehaviour:
   - {fileID: 3691505829983384436, guid: 5d79e8965c846114eb6aca4b099742d1, type: 3}
   - {fileID: -2314172788027130779, guid: 95cb6762e501cfd428aecb0b70f3eb04, type: 3}
   - {fileID: 7952475427389446626, guid: 390227437256301419d6a4cc1d99efce, type: 3}
+  hitBodySprite: {fileID: 4457663794195168306, guid: 080aae1badc49af499cdbe3c300ecc7e, type: 3}
+    hitSpriteDuration: 0.12
   walkAnimationFramesPerSecond: 10
   walkAnimationMoveThreshold: 0.08
   animateVerticalMovementWithWalkCycle: 1
@@ -271,7 +273,7 @@ MonoBehaviour:
   hitFeedbackRoot: {fileID: 910000121}
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   damagedColor: {r: 1, g: 0.45, b: 0.45, a: 1}
-  damagedFlashDuration: 0.08
+    hitFlashBlinkInterval: 0.1
   hitKnockbackImpulse: 4.75
   hitVisualPunchDistance: 0.14
   hitVisualRecoverSpeed: 1.4
@@ -383,12 +385,12 @@ MonoBehaviour:
   playerVisual: {fileID: 910000112}
   playerCombat: {fileID: 910000109}
   weaponLoadout: {fileID: 0}
-  weaponVisualParent: {fileID: 910000121}
+  weaponVisualParent: {fileID: 0}
   weaponVisualRoot: {fileID: 0}
   weaponSpriteRenderer: {fileID: 0}
   handBackOffset: 0.28
   lateralOffset: 0.035
-  worldScale: 0.55
+  worldScale: 1.1
   frontSortingOffset: 1
   backSortingOffset: -1
   spriteTint: {r: 1, g: 1, b: 1, a: 1}

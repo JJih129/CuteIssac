@@ -97,8 +97,13 @@ namespace CuteIssac.Room
 
             if (promptLabelText != null)
             {
-                promptLabelText.text = $"E키로 다음 층 이동\n{targetFloorIndex}층 포탈";
+                promptLabelText.anchor = TextAnchor.MiddleCenter;
+                promptLabelText.alignment = TextAlignment.Center;
+                promptLabelText.text = $"E\uD0A4\uB85C \uB2E4\uC74C \uCE35 \uC774\uB3D9\n{targetFloorIndex}\uCE35 \uD3EC\uD0C8";
                 promptLabelText.color = Color.white;
+                promptLabelText.richText = false;
+                promptLabelText.fontSize = 44;
+                promptLabelText.characterSize = 0.08f;
                 CuteIssac.UI.LocalizedUiFontProvider.Apply(promptLabelText);
                 promptLabelText.gameObject.SetActive(showWorldPromptLabel);
             }
@@ -193,8 +198,9 @@ namespace CuteIssac.Room
                 promptLabelText = promptTextObject.AddComponent<TextMesh>();
                 promptLabelText.anchor = TextAnchor.MiddleCenter;
                 promptLabelText.alignment = TextAlignment.Center;
-                promptLabelText.fontSize = 88;
-                promptLabelText.characterSize = 0.16f;
+                promptLabelText.richText = false;
+                promptLabelText.fontSize = 44;
+                promptLabelText.characterSize = 0.08f;
                 promptLabelText.color = new Color(1f, 0.98f, 0.9f, 1f);
                 CuteIssac.UI.LocalizedUiFontProvider.Apply(promptLabelText);
                 promptLabelText.gameObject.SetActive(true);

@@ -1,7 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using CuteIssac.Combat;
 using CuteIssac.Common.Input;
+using CuteIssac.Common.Stats;
+using CuteIssac.Core.Audio;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Data.Combat;
@@ -34,6 +37,7 @@ namespace CuteIssac.Player
                 int shotsPerTrigger,
                 float spreadDegrees,
                 float knockbackMultiplier,
+                ProjectileTraitState projectileTraits,
                 bool isStarter,
                 ItemRarity rarity)
             {
@@ -54,6 +58,7 @@ namespace CuteIssac.Player
                 ShotsPerTrigger = Mathf.Max(1, shotsPerTrigger);
                 SpreadDegrees = Mathf.Clamp(spreadDegrees, 0f, 45f);
                 KnockbackMultiplier = Mathf.Max(0.1f, knockbackMultiplier);
+                ProjectileTraits = projectileTraits;
                 IsStarter = isStarter;
                 Rarity = rarity;
             }
@@ -75,6 +80,7 @@ namespace CuteIssac.Player
             public int ShotsPerTrigger { get; }
             public float SpreadDegrees { get; }
             public float KnockbackMultiplier { get; }
+            public ProjectileTraitState ProjectileTraits { get; }
             public bool IsStarter { get; }
             public ItemRarity Rarity { get; }
 
@@ -200,6 +206,10 @@ namespace CuteIssac.Player
         public float CurrentKnockbackMultiplier => CurrentSlot != null
             ? CurrentSlot.KnockbackMultiplier
             : starterKnockbackMultiplier;
+        public ProjectileTraitState CurrentProjectileTraits => CurrentSlot != null
+            ? CurrentSlot.ProjectileTraits
+            : ProjectileTraitState.Default;
+        public GameAudioEventType CurrentFireAudioEventType => ResolveFireAudioEventType(CurrentSlot);
 
         private WeaponRuntimeSlot CurrentSlot => _equippedIndex >= 0 && _equippedIndex < _weaponSlots.Count
             ? _weaponSlots[_equippedIndex]
@@ -790,6 +800,7 @@ namespace CuteIssac.Player
             _reloadDuration = currentSlot.ReloadDuration;
             _reloadRemaining = currentSlot.ReloadDuration;
             _dryFireRemaining = 0f;
+            GameAudioEvents.Raise(GameAudioEventType.WeaponReloadStarted, transform.position);
             return true;
         }
 
@@ -820,6 +831,7 @@ namespace CuteIssac.Player
                 0.42f,
                 0.92f,
                 visualProfile: FloatingFeedbackVisualProfile.EventLabel));
+            GameAudioEvents.Raise(GameAudioEventType.WeaponDryFired, transform.position, false);
         }
 
         private WeaponRuntimeSlot CreateRuntimeSlot(ItemData itemData)
@@ -853,8 +865,27 @@ namespace CuteIssac.Player
                 profile.ShotsPerTrigger,
                 profile.SpreadDegrees,
                 profile.KnockbackMultiplier,
+                BuildWeaponProjectileTraits(profile),
                 false,
                 itemData.Rarity);
+        }
+
+        private static ProjectileTraitState BuildWeaponProjectileTraits(ItemWeaponProfile profile)
+        {
+            ProjectileTraitState traits = ProjectileTraitState.Default;
+            IReadOnlyList<ProjectileModifier> projectileModifiers = profile?.ProjectileModifiers;
+
+            if (projectileModifiers == null)
+            {
+                return traits;
+            }
+
+            for (int index = 0; index < projectileModifiers.Count; index++)
+            {
+                ProjectileTraitResolver.Apply(projectileModifiers[index], ref traits);
+            }
+
+            return traits;
         }
 
         private bool TryFindWeaponIndex(ItemData itemData, out int index)
@@ -1009,6 +1040,7 @@ namespace CuteIssac.Player
                 starterShotsPerTrigger,
                 starterSpreadDegrees,
                 starterKnockbackMultiplier,
+                ProjectileTraitState.Default,
                 true,
                 ItemRarity.Common));
             _equippedIndex = 0;
@@ -1171,6 +1203,67 @@ namespace CuteIssac.Player
             }
 
             return !slot.InfiniteReserveAmmo && slot.ReserveAmmo < slot.ReserveAmmoCapacity;
+        }
+
+        private static GameAudioEventType ResolveFireAudioEventType(WeaponRuntimeSlot slot)
+        {
+            if (slot == null || slot.IsStarter || slot.SourceItem == null)
+            {
+                return GameAudioEventType.PistolFired;
+            }
+
+            string itemId = slot.SourceItem.ItemId ?? string.Empty;
+            string displayName = slot.DisplayName ?? string.Empty;
+            string motif = slot.MotifLabel ?? string.Empty;
+            string key = $"{itemId} {displayName} {motif}".ToLowerInvariant();
+
+            if (key.Contains("gatebreach")
+                || key.Contains("shotgun")
+                || key.Contains("590")
+                || key.Contains("샷건"))
+            {
+                return GameAudioEventType.ShotgunFired;
+            }
+
+            if (key.Contains("longwatch")
+                || key.Contains("sniper")
+                || key.Contains("700")
+                || key.Contains("저격"))
+            {
+                return GameAudioEventType.SniperFired;
+            }
+
+            if (key.Contains("vector")
+                || key.Contains("smg")
+                || key.Contains("기관단총"))
+            {
+                return GameAudioEventType.SmgFired;
+            }
+
+            if (key.Contains("patrol")
+                || key.Contains("rifle")
+                || key.Contains("4a1")
+                || key.Contains("돌격소총"))
+            {
+                return GameAudioEventType.AssaultRifleFired;
+            }
+
+            if (key.Contains("minigun")
+                || key.Contains("mini gun")
+                || key.Contains("미니건"))
+            {
+                return GameAudioEventType.MinigunFired;
+            }
+
+            if (key.Contains("bazooka")
+                || key.Contains("rocket")
+                || key.Contains("launcher")
+                || key.Contains("바주카"))
+            {
+                return GameAudioEventType.RocketLauncherFired;
+            }
+
+            return GameAudioEventType.PistolFired;
         }
 
         private static bool TryAddAmmoToSlot(WeaponRuntimeSlot slot, ref int remainingAmmo)

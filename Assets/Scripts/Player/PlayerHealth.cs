@@ -18,18 +18,21 @@ namespace CuteIssac.Player
         [Header("Health")]
         [SerializeField] [Min(1f)] private float maxHealth = 6f;
         [SerializeField] [Min(0f)] private float startingHealth = -1f;
-        [SerializeField] [Min(0f)] private float invulnerabilityDuration = 0.2f;
+        [SerializeField] [Min(0f)] private float invulnerabilityDuration = 1f;
         [SerializeField] private bool enableDevelopmentHotkeys = true;
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private PlayerVisual playerVisual;
+        [SerializeField] private PlayerShieldState playerShieldState;
 
         public event Action<float, float> HealthChanged;
         public event Action Damaged;
         public event Action<DamageInfo> DamagedWithInfo;
+        public event Action<float> InvulnerabilityGranted;
         public event Action Died;
 
         public float BaseMaxHealth => maxHealth;
-        public float MaxHealth => maxHealth + _runtimeMaxHealthBonus;
+        public float MaxHealth => maxHealth + _runtimeMaxHealthBonus + _pickupMaxHealthBonus;
+        public float PickupMaxHealthBonus => _pickupMaxHealthBonus;
         public float CurrentHealth { get; private set; }
         public bool IsInvulnerable { get; private set; }
         public bool IsDead { get; private set; }
@@ -37,6 +40,7 @@ namespace CuteIssac.Player
 
         private float _invulnerabilityRemaining;
         private float _runtimeMaxHealthBonus;
+        private float _pickupMaxHealthBonus;
         private float _routeBreakthroughDamageMultiplier = 1f;
         private float _routeBreakthroughInvulnerabilityBonus;
 
@@ -173,7 +177,44 @@ namespace CuteIssac.Player
                 return false;
             }
 
-            return GrantInvulnerabilityInternal(duration);
+            bool granted = GrantInvulnerabilityInternal(duration);
+            if (granted)
+            {
+                InvulnerabilityGranted?.Invoke(Mathf.Max(0f, duration));
+            }
+
+            return granted;
+        }
+
+        /// <summary>
+        /// Adds pickup-owned max health without being overwritten by PlayerStats recalculation.
+        /// </summary>
+        public bool TryGrantPickupMaxHealthBonus(float amount, float maxAllowedBonus, bool healGrantedAmount)
+        {
+            if (IsDead)
+            {
+                return false;
+            }
+
+            float resolvedAmount = Mathf.Max(0f, amount);
+            float resolvedLimit = Mathf.Max(0f, maxAllowedBonus);
+            float remainingBonus = Mathf.Max(0f, resolvedLimit - _pickupMaxHealthBonus);
+            float appliedBonus = Mathf.Min(resolvedAmount, remainingBonus);
+
+            if (appliedBonus <= 0f)
+            {
+                return false;
+            }
+
+            _pickupMaxHealthBonus += appliedBonus;
+
+            if (healGrantedAmount)
+            {
+                CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + appliedBonus);
+            }
+
+            HealthChanged?.Invoke(CurrentHealth, MaxHealth);
+            return true;
         }
 
         public void SetRuntimeMaxHealthBonus(float bonus)
@@ -239,6 +280,11 @@ namespace CuteIssac.Player
             {
                 playerVisual = GetComponent<PlayerVisual>();
             }
+
+            if (playerShieldState == null)
+            {
+                playerShieldState = GetComponent<PlayerShieldState>();
+            }
         }
 
         private void HandleDevelopmentHotkeys()
@@ -274,6 +320,16 @@ namespace CuteIssac.Player
                 return;
             }
 
+            if (!ignoreInvulnerability && playerShieldState == null)
+            {
+                playerShieldState = GetComponent<PlayerShieldState>();
+            }
+
+            if (!ignoreInvulnerability && playerShieldState != null && playerShieldState.TryBlockDamage(in damageInfo))
+            {
+                return;
+            }
+
             float damageAmount = Mathf.Max(0f, damageInfo.Amount * _routeBreakthroughDamageMultiplier);
 
             if (damageAmount <= 0f)
@@ -283,6 +339,14 @@ namespace CuteIssac.Player
 
             DamageInfo resolvedDamageInfo = new(damageAmount, damageInfo.HitDirection, damageInfo.Source, damageInfo.KnockbackForce);
             CurrentHealth = Mathf.Max(0f, CurrentHealth - damageAmount);
+
+            float resolvedInvulnerabilityDuration = invulnerabilityDuration + _routeBreakthroughInvulnerabilityBonus;
+            if (grantInvulnerability && resolvedInvulnerabilityDuration > 0f)
+            {
+                GrantInvulnerabilityInternal(resolvedInvulnerabilityDuration);
+                InvulnerabilityGranted?.Invoke(resolvedInvulnerabilityDuration);
+            }
+
             DamagedWithInfo?.Invoke(resolvedDamageInfo);
             Damaged?.Invoke();
             GameplayRuntimeEvents.RaisePlayerDamaged(new PlayerDamagedSignal(this, resolvedDamageInfo, CurrentHealth, MaxHealth));
@@ -294,19 +358,13 @@ namespace CuteIssac.Player
                 0.72f,
                 1.24f,
                 visualProfile: FloatingFeedbackVisualProfile.PlayerDamage));
-            GameAudioEvents.Raise(GameAudioEventType.Hit, transform.position);
+            GameAudioEvents.Raise(GameAudioEventType.PlayerDamaged, transform.position, false);
             HealthChanged?.Invoke(CurrentHealth, MaxHealth);
 
             if (CurrentHealth <= 0f)
             {
                 Die();
                 return;
-            }
-
-            float resolvedInvulnerabilityDuration = invulnerabilityDuration + _routeBreakthroughInvulnerabilityBonus;
-            if (grantInvulnerability && resolvedInvulnerabilityDuration > 0f)
-            {
-                GrantInvulnerabilityInternal(resolvedInvulnerabilityDuration);
             }
         }
 

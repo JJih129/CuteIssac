@@ -15,6 +15,9 @@ MonoBehaviour:
   floorIndex: 2
   minNormalRoomCount: 8
   maxNormalRoomCount: 10
+  maxGenerationAttempts: 8
+  startRoomInitialBranchCount: 2
+  additionalBranchChance: 0.35
   minimumBossDistanceFromStart: 3
   treasureRoomCount: 1
   minimumTreasureDistanceFromStart: 2
@@ -22,6 +25,8 @@ MonoBehaviour:
   minimumChallengeDistanceFromStart: 2
   trapRoomCount: 1
   minimumTrapDistanceFromStart: 2
+  curseRoomCount: 0
+  minimumCurseDistanceFromStart: 2
   shopRoomCount: 1
   minimumShopDistanceFromStart: 2
   miniBossRoomCount: 1
@@ -86,21 +91,103 @@ MonoBehaviour:
   bossRoomEnemyBudget: 16
   normalRoomDistanceBudgetBonusPerStep: 1
   encounterBudgetMultiplier: 1.1
+  normalRoomWavePresets:
+  - presetId: f2_normal_candy_bat_3
+    waveData: {fileID: 11400000, guid: 5c00f5804bc05824691576626ad058b6, type: 2}
+    selectionWeight: 4
+  - presetId: f2_normal_exploder_2_chaser_2
+    waveData: {fileID: 11400000, guid: 8089e240d32a59d4b8c9354b273de5f6, type: 2}
+    selectionWeight: 3
+  - presetId: f2_normal_turret_1_candy_bat_2
+    waveData: {fileID: 11400000, guid: d0ce7759402f64c419efe8d4982a4715, type: 2}
+    selectionWeight: 3
+  - presetId: f2_normal_shield_1_shooter_2_candy_bat_1
+    waveData: {fileID: 11400000, guid: ec02c8c44795b184aa8b5affb87a2758, type: 2}
+    selectionWeight: 2
+  - presetId: f2_normal_orbiter_2_homing_1
+    waveData: {fileID: 11400000, guid: fc7ffeccbaa873443a06e68073812c69, type: 2}
+    selectionWeight: 2
+  - presetId: f2_normal_spawner_1_exploder_2
+    waveData: {fileID: 11400000, guid: 2741d863b71611149b1a825ab7fc8e48, type: 2}
+    selectionWeight: 1
+  eliteRoomWavePresets:
+  - presetId: f2_elite_fast_1_tank_1_shooter_2
+    waveData: {fileID: 11400000, guid: 8e299f58da2c4055a588e175793bc6d7, type: 2}
+    selectionWeight: 2
+  - presetId: f2_elite_fast_1_explosive_1_summoner_1
+    waveData: {fileID: 11400000, guid: 7e4c0c548c604d9cbb13c1cc01f7e966, type: 2}
+    selectionWeight: 1
+  bossRoomWavePresets:
+  - presetId: f2_boss_chaser
+    waveData: {fileID: 11400000, guid: 2b4eaa7a11c24f43a1e7d995fc540202, type: 2}
+    selectionWeight: 1
   encounterPacing:
     encounterStartAggroDelay: 0.75
     encounterStartAggroDelayJitter: 0.3
-    minimumDistanceFromPlayer: 2.7
-    preferredSpawnSeparation: 2.1
+    minimumDistanceFromPlayer: 2.8
+    preferredSpawnSeparation: 2.15
     roomCandidateSamples: 9
-    roomBoundsInsetRatio: 0.14
+    roomBoundsInsetRatio: 0.15
     firstAttackDelayBonus: 0.22
     telegraphDurationMultiplier: 1
+    challengeWaveCount: 2
+    challengeReinforcementMultiplier: 0.7
+    challengeFollowupAggroDelayMultiplier: 0.55
+    challengeFollowupChampionChanceBonus: 0.12
+    challengeFollowupChampionChanceBonusPerWave: 0.05
+    challengeFollowupChampionChanceBonusCap: 0.24
+    challengeFollowupGuaranteedChampionCount: 1
+    challengeFollowupGuaranteedChampionCountPerWave: 1
+    challengeFollowupGuaranteedChampionCountCap: 2
+  challengeRoomEncounterPacing:
+    encounterStartAggroDelay: 0.55
+    encounterStartAggroDelayJitter: 0.2
+    minimumDistanceFromPlayer: 3.15
+    preferredSpawnSeparation: 2.5
+    roomCandidateSamples: 11
+    roomBoundsInsetRatio: 0.12
+    firstAttackDelayBonus: 0.05
+    telegraphDurationMultiplier: 0.82
+    challengeWaveCount: 2
+    challengeReinforcementMultiplier: 0.72
+    challengeFollowupAggroDelayMultiplier: 0.45
+    challengeFollowupChampionChanceBonus: 0.18
+    challengeFollowupChampionChanceBonusPerWave: 0.07
+    challengeFollowupChampionChanceBonusCap: 0.32
+    challengeFollowupGuaranteedChampionCount: 1
+    challengeFollowupGuaranteedChampionCountPerWave: 1
+    challengeFollowupGuaranteedChampionCountCap: 2
+  challengeRewardSettings:
+    sRankTimeSeconds: 24
+    aRankTimeSeconds: 38
+    sRankBonusRewardSelections: 1
+    sRankBonusItemRolls: 1
+    aRankBonusRewardSelections: 1
+    aRankBonusItemRolls: 0
+    bRankBonusRewardSelections: 0
+    bRankBonusItemRolls: 0
+    reinforcedWaveThreshold: 2
+    reinforcedBonusRewardSelections: 0
+    reinforcedBonusItemRolls: 0
+    eliteBonusRewardSelections: 1
+    eliteBonusItemRolls: 0
+    deadlyBonusRewardSelections: 1
+    deadlyBonusItemRolls: 1
+  secretRoomRewardSettings:
+    bonusRewardSelections: 1
+    bonusItemRolls: 1
+    rareBonusChance: 0.18
+    rareBonusRewardSelections: 1
+    rareBonusItemRolls: 1
   normalRoomRewardPool: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c550202, type: 2}
   bossRoomRewardPool: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c560202, type: 2}
   treasureRoomRewardPool: {fileID: 0}
   shopRoomRewardPool: {fileID: 0}
   secretRoomRewardPool: {fileID: 11400000, guid: f6a0be0680db47e39b9f9a4cad0c8e6d, type: 2}
+  curseRoomRewardPool: {fileID: 0}
   treasureRoomItemPool: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100202, type: 2}
+  challengeRoomItemPool: {fileID: 0}
   shopRoomItemPool: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100502, type: 2}
   bossRewardItemPool: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100802, type: 2}
   secretRoomItemPool: {fileID: 11400000, guid: 6c4a8e51f6ee4f7ca3b70431a1a9c502, type: 2}
+  curseRoomItemPool: {fileID: 0}

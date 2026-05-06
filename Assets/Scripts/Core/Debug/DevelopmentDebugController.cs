@@ -3,6 +3,7 @@ using CuteIssac.Core.Run;
 using CuteIssac.Core.Spawning;
 using CuteIssac.Data.Balance;
 using CuteIssac.Data.Debug;
+using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
 using CuteIssac.Dungeon;
 using CuteIssac.Enemy;
@@ -26,6 +27,7 @@ namespace CuteIssac.Core.Debug
         [SerializeField] private bool enableInEditor = true;
         [SerializeField] private bool enableInDevelopmentBuild = true;
         [SerializeField] private Key toggleKey = Key.F9;
+        [SerializeField] private Key warpToBossRoomKey = Key.F11;
 
         [Header("References")]
         [SerializeField] private RunManager runManager;
@@ -88,6 +90,11 @@ namespace CuteIssac.Core.Debug
             if (Keyboard.current[toggleKey].wasPressedThisFrame)
             {
                 TogglePanel();
+            }
+
+            if (Keyboard.current[warpToBossRoomKey].wasPressedThisFrame)
+            {
+                WarpToCurrentFloorBossRoom();
             }
         }
 
@@ -196,6 +203,21 @@ namespace CuteIssac.Core.Debug
                 {
                     runManager.AdvanceFloor();
                 }
+            }
+
+            RefreshVisiblePanel();
+        }
+
+        private void WarpToCurrentFloorBossRoom()
+        {
+            if (roomNavigationController == null)
+            {
+                ResolveReferences();
+            }
+
+            if (roomNavigationController == null || !roomNavigationController.TryDebugWarpToRoomType(RoomType.Boss))
+            {
+                UnityEngine.Debug.LogWarning("DevelopmentDebugController could not warp to a boss room in the current generated floor.", this);
             }
 
             RefreshVisiblePanel();

@@ -23,8 +23,17 @@ namespace CuteIssac.Item
         [SerializeField] private bool destroyOnCollected = true;
         [SerializeField] [Min(0f)] private float destroyDelay = 0f;
 
+        [Header("Pickup Range Indicator")]
+        [SerializeField] [Min(12)] private int pickupRangeIndicatorSegments = 48;
+        [SerializeField] [Min(0.005f)] private float pickupRangeIndicatorWidth = 0.025f;
+        [SerializeField] [Min(0f)] private float pickupRangeIndicatorPadding = 0.03f;
+        [SerializeField] private int pickupRangeIndicatorSortingOrder = 9;
+        [SerializeField] private Color pickupRangeIndicatorColor = new(1f, 0.86f, 0.34f, 0.66f);
+
         private bool _isCollected;
         private Coroutine _releaseCoroutine;
+        private LineRenderer _pickupRangeIndicator;
+        private static Material s_RangeIndicatorMaterial;
 
         public event Action<BasePickupLogic> Collected;
 
@@ -36,6 +45,7 @@ namespace CuteIssac.Item
         {
             ResolveReferences();
             ConfigureTriggerCollider();
+            ConfigurePickupRangeIndicator();
         }
 
         protected virtual void OnEnable()
@@ -53,6 +63,7 @@ namespace CuteIssac.Item
                 pickupTrigger.enabled = true;
             }
 
+            RefreshPickupRangeIndicator();
             pickupVisual?.ResetPresentation();
         }
 
@@ -137,6 +148,8 @@ namespace CuteIssac.Item
                 pickupTrigger.enabled = false;
             }
 
+            SetPickupRangeIndicatorActive(false);
+
             if (destroyOnCollected)
             {
                 ReleasePickup(destroyDelay, playCollectedVisual: false);
@@ -155,6 +168,8 @@ namespace CuteIssac.Item
             {
                 pickupTrigger.enabled = false;
             }
+
+            SetPickupRangeIndicatorActive(false);
 
             if (playCollectedVisual)
             {
@@ -208,6 +223,36 @@ namespace CuteIssac.Item
             return new Color(0.48f, 1f, 0.72f, 1f);
         }
 
+        protected virtual bool ShouldShowPickupRangeIndicator()
+        {
+            return false;
+        }
+
+        protected virtual Color ResolvePickupRangeIndicatorColor()
+        {
+            return pickupRangeIndicatorColor;
+        }
+
+        protected void RefreshPickupRangeIndicator()
+        {
+            ConfigurePickupRangeIndicator();
+            if (_pickupRangeIndicator == null)
+            {
+                return;
+            }
+
+            bool shouldShow = ShouldShowPickupRangeIndicator() && pickupTrigger != null && pickupTrigger.enabled && !_isCollected;
+            _pickupRangeIndicator.gameObject.SetActive(shouldShow);
+            if (!shouldShow)
+            {
+                return;
+            }
+
+            Color indicatorColor = ResolvePickupRangeIndicatorColor();
+            _pickupRangeIndicator.startColor = indicatorColor;
+            _pickupRangeIndicator.endColor = indicatorColor;
+        }
+
         private void ResolveReferences()
         {
             if (pickupTrigger == null)
@@ -235,6 +280,98 @@ namespace CuteIssac.Item
             {
                 pickupTrigger.isTrigger = true;
             }
+        }
+
+        private void ConfigurePickupRangeIndicator()
+        {
+            if (!ShouldShowPickupRangeIndicator())
+            {
+                SetPickupRangeIndicatorActive(false);
+                return;
+            }
+
+            if (pickupTrigger == null)
+            {
+                return;
+            }
+
+            CircleCollider2D circleCollider = pickupTrigger as CircleCollider2D;
+            if (circleCollider == null)
+            {
+                SetPickupRangeIndicatorActive(false);
+                return;
+            }
+
+            if (_pickupRangeIndicator == null)
+            {
+                Transform existingIndicator = transform.Find("PickupRangeIndicator");
+                if (existingIndicator != null)
+                {
+                    _pickupRangeIndicator = existingIndicator.GetComponent<LineRenderer>();
+                }
+
+                if (_pickupRangeIndicator == null)
+                {
+                    GameObject indicatorObject = new("PickupRangeIndicator");
+                    indicatorObject.transform.SetParent(transform, false);
+                    indicatorObject.transform.localPosition = Vector3.zero;
+                    _pickupRangeIndicator = indicatorObject.AddComponent<LineRenderer>();
+                }
+            }
+
+            _pickupRangeIndicator.sharedMaterial = ResolveRangeIndicatorMaterial();
+            _pickupRangeIndicator.useWorldSpace = false;
+            _pickupRangeIndicator.loop = true;
+            _pickupRangeIndicator.textureMode = LineTextureMode.Stretch;
+            _pickupRangeIndicator.numCapVertices = 2;
+            _pickupRangeIndicator.numCornerVertices = 2;
+            _pickupRangeIndicator.widthMultiplier = pickupRangeIndicatorWidth;
+            _pickupRangeIndicator.sortingOrder = pickupRangeIndicatorSortingOrder;
+
+            int segmentCount = Mathf.Max(12, pickupRangeIndicatorSegments);
+            float radius = Mathf.Max(0.01f, circleCollider.radius + pickupRangeIndicatorPadding);
+            Vector2 offset = circleCollider.offset;
+            _pickupRangeIndicator.positionCount = segmentCount;
+
+            for (int index = 0; index < segmentCount; index++)
+            {
+                float angle = (index / (float)segmentCount) * Mathf.PI * 2f;
+                _pickupRangeIndicator.SetPosition(
+                    index,
+                    new Vector3(
+                        offset.x + Mathf.Cos(angle) * radius,
+                        offset.y + Mathf.Sin(angle) * radius,
+                        -0.01f));
+            }
+        }
+
+        private void SetPickupRangeIndicatorActive(bool active)
+        {
+            if (_pickupRangeIndicator != null)
+            {
+                _pickupRangeIndicator.gameObject.SetActive(active);
+            }
+        }
+
+        private static Material ResolveRangeIndicatorMaterial()
+        {
+            if (s_RangeIndicatorMaterial != null)
+            {
+                return s_RangeIndicatorMaterial;
+            }
+
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null)
+            {
+                shader = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default");
+            }
+
+            s_RangeIndicatorMaterial = new Material(shader)
+            {
+                name = "RuntimePickupRangeIndicatorMaterial",
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            return s_RangeIndicatorMaterial;
         }
 
         protected virtual void Reset()

@@ -72,10 +72,10 @@ BoxCollider2D:
   m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0, y: 0}
-    oldSize: {x: 0, y: 0}
-    newSize: {x: 0, y: 0}
-    adaptiveTilingThreshold: 0
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 0.5, y: 0.5}
+    newSize: {x: 1, y: 1}
+    adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
@@ -89,7 +89,7 @@ SpriteRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 730000100}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 0
   m_DynamicOccludee: 1
@@ -129,6 +129,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 8
+  m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 96b04b3bdb7b4c0f9678b7db7e6fc79b, type: 3}
   m_Color: {r: 0.82, g: 0.28, b: 0.28, a: 1}
   m_FlipX: 0
@@ -138,7 +139,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!114 &730000104
 MonoBehaviour:
@@ -161,6 +161,10 @@ MonoBehaviour:
   contactDamage: 1
   contactKnockback: 3
   contactTickInterval: 0.45
+  slowPlayerOnContact: 0
+  slowEnemiesOnContact: 0
+  contactMoveSpeedMultiplier: 0.72
+  contactSlowLingerDuration: 0.5
   obstacleVisual: {fileID: 730000105}
 --- !u!114 &730000105
 MonoBehaviour:
@@ -176,7 +180,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bodyRenderer: {fileID: 730000103}
   accentRenderer: {fileID: 0}
+  useProceduralVisual: 1
+  proceduralVisualRoot: {fileID: 0}
+  proceduralSortingOrder: 18
   idleColor: {r: 1, g: 1, b: 1, a: 1}
   projectileHitColor: {r: 1, g: 0.92, b: 0.6, a: 1}
   hazardActiveColor: {r: 1, g: 0.45, b: 0.45, a: 1}
   flashDuration: 0.08
+  rockBodyColor: {r: 0.76, g: 0.66, b: 0.74, a: 1}
+  rockCapColor: {r: 0.98, g: 0.92, b: 0.96, a: 1}
+  rockDetailColor: {r: 0.56, g: 0.42, b: 0.52, a: 1}
+  rockShadowColor: {r: 0.2, g: 0.14, b: 0.22, a: 0.42}
+  pitRimColor: {r: 0.62, g: 0.48, b: 0.62, a: 1}
+  pitLipColor: {r: 0.88, g: 0.76, b: 0.9, a: 1}
+  pitVoidColor: {r: 0.08, g: 0.06, b: 0.1, a: 0.96}
+  pitGlowColor: {r: 0.34, g: 0.28, b: 0.44, a: 0.38}
+  spikeBaseColor: {r: 0.54, g: 0.4, b: 0.48, a: 1}
+  spikeTeethColor: {r: 0.96, g: 0.93, b: 0.98, a: 1}
+  spikeCoreColor: {r: 0.82, g: 0.54, b: 0.6, a: 1}
+  spikeShadowColor: {r: 0.18, g: 0.12, b: 0.18, a: 0.42}
+  webShadowColor: {r: 0.11, g: 0.15, b: 0.2, a: 0.38}
+  webOuterColor: {r: 0.94, g: 0.98, b: 1, a: 0.88}
+  webInnerColor: {r: 0.7, g: 0.9, b: 1, a: 0.8}
+  webKnotColor: {r: 1, g: 1, b: 1, a: 1}
+  fountainShadowColor: {r: 0.1, g: 0.15, b: 0.22, a: 0.38}
+  fountainBasinColor: {r: 0.8, g: 0.92, b: 1, a: 1}
+  fountainWaterColor: {r: 0.36, g: 0.9, b: 1, a: 1}
+  fountainFoamColor: {r: 0.96, g: 0.99, b: 1, a: 1}
+  fountainAccentColor: {r: 0.6, g: 0.82, b: 1, a: 1}

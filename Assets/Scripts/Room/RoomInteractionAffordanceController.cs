@@ -1591,6 +1591,8 @@ namespace CuteIssac.Room
                 "FULL HEAL" or "CLUTCH HEAL" or "HEAL NOW" or "HP SPIKE" or "HP UP" or "FULL HP" => "RECOVERY ONLINE",
                 "KEY RELIEF" or "KEY UP" => "KEY WINDOW",
                 "BOMB RELIEF" or "BOMB UP" => "BOMB LINE",
+                "NO WEAPON" => "LOADOUT FIND",
+                "AMMO NOW" or "RESTOCK AMMO" or "AMMO FULL" => "CASH WINDOW",
                 "SHOP FUEL" => "CASH WINDOW",
                 "ACTIVE OPEN" or "TRINKET OPEN" or "ACTIVE SWAP" or "TRINKET SWAP" or "BUILD SHIFT" or "SHOT SHIFT" or "SUMMON TECH" or "ORBITAL" => "LOADOUT FIND",
                 "SPEED SPIKE" or "SPEED UP" => "SAFE UPGRADE",
@@ -1764,6 +1766,7 @@ namespace CuteIssac.Room
             string headline = shopItem.ShopItemData.Offer.RewardType switch
             {
                 ShopOfferRewardType.Health => "HEAL CONFIRMED",
+                ShopOfferRewardType.Ammo => "AMMO CONFIRMED",
                 ShopOfferRewardType.Coins or ShopOfferRewardType.Keys or ShopOfferRewardType.Bombs => "SUPPLY CONFIRMED",
                 ShopOfferRewardType.PassiveItem => "PURCHASE CONFIRMED",
                 _ => "PURCHASE CONFIRMED"
@@ -1954,8 +1957,11 @@ namespace CuteIssac.Room
             {
                 "KEY RELIEF" or "BOMB RELIEF" => 16f,
                 "CLUTCH HEAL" => 14f,
+                "NO WEAPON" => -8f,
+                "AMMO FULL" => 3f,
+                "AMMO NOW" or "RESTOCK AMMO" => 13f,
                 "KEY UP" or "BOMB UP" or "HEAL NOW" or "SHOP FUEL" => 11f,
-                _ when IsHealthCandidate(candidate) => 7f,
+                _ when IsHealthCandidate(candidate) || IsAmmoCandidate(candidate) => 7f,
                 _ => 0f
             };
         }
@@ -1971,6 +1977,18 @@ namespace CuteIssac.Room
             BasePickupLogic pickupLogic = ResolvePickupLogic(candidate);
             return pickupLogic is HeartPickupLogic
                 || pickupLogic is ConsumablePickupLogic consumablePickup && consumablePickup.ConsumableItemData != null && consumablePickup.ConsumableItemData.HealAmount > 0f;
+        }
+
+        private static bool IsAmmoCandidate(Transform candidate)
+        {
+            ShopItem shopItem = ResolveShopItem(candidate);
+            if (shopItem?.ShopItemData != null)
+            {
+                return shopItem.ShopItemData.Offer.RewardType == ShopOfferRewardType.Ammo;
+            }
+
+            BasePickupLogic pickupLogic = ResolvePickupLogic(candidate);
+            return pickupLogic is AmmoPickupLogic;
         }
 
         private static bool IsPowerCandidate(Transform candidate)
@@ -2239,6 +2257,7 @@ namespace CuteIssac.Room
             {
                 ShopOfferRewardType.PassiveItem when offer.PassiveItem != null => offer.PassiveItem.DisplayName.ToUpperInvariant(),
                 ShopOfferRewardType.Health => $"+{offer.HealthAmount:0.#} HP",
+                ShopOfferRewardType.Ammo => $"+{offer.ResourceAmount} AMMO",
                 ShopOfferRewardType.Coins => $"+{offer.ResourceAmount} COIN",
                 ShopOfferRewardType.Keys => $"+{offer.ResourceAmount} KEY",
                 ShopOfferRewardType.Bombs => $"+{offer.ResourceAmount} BOMB",
@@ -2262,6 +2281,8 @@ namespace CuteIssac.Room
                 "폭탄 부족" => "BOMB SHORT",
                 "이미 보유" => "ALREADY OWNED",
                 "체력 가득" => "HEALTH FULL",
+                "무기 없음" => "NO WEAPON",
+                "탄약 가득" => "AMMO FULL",
                 "판매 완료" => "SOLD OUT",
                 _ => "PURCHASE LOCKED"
             };
@@ -2324,6 +2345,7 @@ namespace CuteIssac.Room
             {
                 ShopOfferRewardType.PassiveItem when offer.PassiveItem != null => ResolveItemAccent(offer.PassiveItem.Rarity),
                 ShopOfferRewardType.Health => new Color(1f, 0.52f, 0.62f, 1f),
+                ShopOfferRewardType.Ammo => new Color(0.96f, 0.78f, 0.28f, 1f),
                 ShopOfferRewardType.Coins => new Color(0.96f, 0.84f, 0.28f, 1f),
                 ShopOfferRewardType.Keys => new Color(0.74f, 0.88f, 1f, 1f),
                 ShopOfferRewardType.Bombs => new Color(1f, 0.56f, 0.24f, 1f),

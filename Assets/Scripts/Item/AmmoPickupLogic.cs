@@ -33,7 +33,12 @@ namespace CuteIssac.Item
 
             if (restockEquippedWeapon)
             {
-                return weaponLoadout.TryRestockEquippedWeaponFromPickup();
+                if (weaponLoadout.TryRestockEquippedWeaponFromPickup())
+                {
+                    return true;
+                }
+
+                return weaponLoadout.TryAddAmmo(ammoAmount);
             }
 
             return weaponLoadout.TryAddAmmo(ammoAmount);

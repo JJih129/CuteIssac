@@ -12,11 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45fe17f9a00c49b4944ef15e48b1b591, type: 3}
   m_Name: Floor2RoomTheme
   m_EditorClassIdentifier: 
-  themeId: floor_2_theme
-  displayName: Rust Chapel
+  themeId: floor_2_witch_forest
+  displayName: Witch Forest
+  roomVisualPrefab: {fileID: 900000100, guid: 2a1d1c9f3fe14bc88cbfb03545967e28, type: 3}
+  hideFallbackGeometryWhenRoomVisualIsPresent: 1
   floorVisualPrefab: {fileID: 0}
   wallVisualPrefab: {fileID: 0}
-  doorVisualPrefab: {fileID: 0}
+  doorVisualPrefab: {fileID: 990001000, guid: 5b114f666d374c57a17d9ff467d5dc29, type: 3}
   decorationPrefabs: []
   floorColor: {r: 0.23, g: 0.2, b: 0.17, a: 0.22}
   wallColor: {r: 0.25, g: 0.18, b: 0.13, a: 0.95}

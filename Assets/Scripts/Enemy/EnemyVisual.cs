@@ -246,7 +246,6 @@ namespace CuteIssac.Enemy
 
         public void SetMoveDirection(Vector2 moveDirection)
         {
-            ApplyFacing(moveDirection);
             UpdateAnimatorMove(moveDirection);
         }
 
@@ -313,6 +312,19 @@ namespace CuteIssac.Enemy
             _championColorBlend = colorBlend;
             _championScaleMultiplier = scaleMultiplier;
             ApplyChampionPresentationInternal(true, accentColor);
+        }
+
+        public void UpdateChampionPresentation(string variantId, Color accentColor, float colorBlend, float scaleMultiplier)
+        {
+            if (!_championVisualActive && string.IsNullOrWhiteSpace(_championVariantId))
+            {
+                return;
+            }
+
+            _championVariantId = variantId ?? string.Empty;
+            _championColorBlend = colorBlend;
+            _championScaleMultiplier = scaleMultiplier;
+            ApplyChampionPresentationInternal(false, accentColor);
         }
 
         public void ResetChampionPresentation()
@@ -1368,34 +1380,8 @@ namespace CuteIssac.Enemy
 
         private void ApplyFacing(Vector2 moveDirection)
         {
-            if (moveDirection.sqrMagnitude <= 0.0001f)
-            {
-                return;
-            }
-
-            Transform target = facingRoot != null ? facingRoot : visualRoot;
-
-            if (target == null)
-            {
-                return;
-            }
-
-            switch (facingMode)
-            {
-                case FacingMode.FlipX:
-                    if (Mathf.Abs(moveDirection.x) > 0.0001f)
-                    {
-                        Vector3 localScale = target.localScale;
-                        localScale.x = Mathf.Abs(localScale.x) * Mathf.Sign(moveDirection.x);
-                        target.localScale = localScale;
-                    }
-
-                    break;
-                case FacingMode.RotateVisualRoot:
-                    float angle = Mathf.Atan2(moveDirection.y, moveDirection.x) * Mathf.Rad2Deg;
-                    target.localRotation = Quaternion.Euler(0f, 0f, angle);
-                    break;
-            }
+            // Enemy sprites stay upright. Directional presentation is handled by
+            // dedicated animation components when needed, not by mutating transforms here.
         }
 
         private void UpdateAnimatorMove(Vector2 moveDirection)

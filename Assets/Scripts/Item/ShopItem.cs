@@ -56,6 +56,7 @@ namespace CuteIssac.Item
                     && offer.PassiveItem != null
                     && !playerItemManager.OwnsItem(offer.PassiveItem),
                 ShopOfferRewardType.Health => playerHealth != null && playerHealth.CurrentHealth < playerHealth.MaxHealth,
+                ShopOfferRewardType.Ammo => CanReceiveAmmo(playerInventory, playerItemManager, playerHealth),
                 ShopOfferRewardType.Coins => true,
                 ShopOfferRewardType.Keys => true,
                 ShopOfferRewardType.Bombs => true,
@@ -179,6 +180,9 @@ namespace CuteIssac.Item
                         && playerItemManager.AcquirePassiveItem(offer.PassiveItem);
                 case ShopOfferRewardType.Health:
                     return playerHealth != null && playerHealth.RestoreHealth(offer.HealthAmount);
+                case ShopOfferRewardType.Ammo:
+                    PlayerWeaponLoadout ammoLoadout = ResolveWeaponLoadout(playerInventory, playerHealth, playerItemManager);
+                    return ammoLoadout != null && ammoLoadout.TryAddAmmo(offer.ResourceAmount);
                 case ShopOfferRewardType.Keys:
                     playerInventory.AddKeys(offer.ResourceAmount);
                     return true;
@@ -274,6 +278,8 @@ namespace CuteIssac.Item
             {
                 ShopOfferRewardType.PassiveItem when playerInventory != null && offer.PassiveItem != null && playerInventory.Contains(offer.PassiveItem) => "이미 보유",
                 ShopOfferRewardType.Health when playerHealth != null && playerHealth.CurrentHealth >= playerHealth.MaxHealth => "체력 가득",
+                ShopOfferRewardType.Ammo when ResolveWeaponLoadout(playerInventory, playerHealth, playerItemManager) == null => "무기 없음",
+                ShopOfferRewardType.Ammo when !CanReceiveAmmo(playerInventory, playerItemManager, playerHealth) => "탄약 가득",
                 _ => "구매 불가"
             };
         }
@@ -320,6 +326,32 @@ namespace CuteIssac.Item
             {
                 rewardSpawnAnchor = transform;
             }
+        }
+
+        private static bool CanReceiveAmmo(PlayerInventory playerInventory, PlayerItemManager playerItemManager, PlayerHealth playerHealth)
+        {
+            PlayerWeaponLoadout weaponLoadout = ResolveWeaponLoadout(playerInventory, playerHealth, playerItemManager);
+            return weaponLoadout != null && weaponLoadout.CanReceiveAmmoPickup();
+        }
+
+        private static PlayerWeaponLoadout ResolveWeaponLoadout(PlayerInventory playerInventory, PlayerHealth playerHealth, PlayerItemManager playerItemManager)
+        {
+            if (playerItemManager != null && playerItemManager.TryGetComponent(out PlayerWeaponLoadout itemManagerLoadout))
+            {
+                return itemManagerLoadout;
+            }
+
+            if (playerInventory != null && playerInventory.TryGetComponent(out PlayerWeaponLoadout inventoryLoadout))
+            {
+                return inventoryLoadout;
+            }
+
+            if (playerHealth != null && playerHealth.TryGetComponent(out PlayerWeaponLoadout healthLoadout))
+            {
+                return healthLoadout;
+            }
+
+            return null;
         }
     }
 }

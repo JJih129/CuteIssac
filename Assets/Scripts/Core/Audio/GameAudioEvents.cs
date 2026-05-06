@@ -10,6 +10,7 @@ namespace CuteIssac.Core.Audio
     public static class GameAudioEvents
     {
         public static event Action<AudioPlaybackRequest> Requested;
+        public static event Action<GameAudioEventType> StopRequested;
 
         public static void Raise(
             GameAudioEventType eventType,
@@ -24,6 +25,11 @@ namespace CuteIssac.Core.Audio
         public static void RaiseUi(GameAudioEventType eventType, float volumeScale = 1f, float pitchScale = 1f)
         {
             Requested?.Invoke(new AudioPlaybackRequest(eventType, Vector3.zero, false, volumeScale, pitchScale));
+        }
+
+        public static void Stop(GameAudioEventType eventType)
+        {
+            StopRequested?.Invoke(eventType);
         }
     }
 }

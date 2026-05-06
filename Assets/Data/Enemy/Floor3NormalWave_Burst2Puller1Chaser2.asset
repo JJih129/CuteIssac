@@ -1,0 +1,29 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 785d4f5d233da034496f8ad678d9b0d6, type: 3}
+  m_Name: Floor3NormalWave_Burst2Puller1Chaser2
+  m_EditorClassIdentifier: 
+  waveId: f3_normal_burst_2_puller_1_chaser_2
+  encounterTier: 0
+  entries:
+  - enemyId: floor3_burst_shooter
+    enemyPrefab: {fileID: 930000106, guid: 128f958fcf6f4743bbdc92522b42a92d, type: 3}
+    count: 2
+    difficultyCost: 2
+  - enemyId: floor3_puller
+    enemyPrefab: {fileID: 930000106, guid: 6741b17e79a94f1cb74f51b6126d9d93, type: 3}
+    count: 1
+    difficultyCost: 2
+  - enemyId: floor3_chaser
+    enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
+    count: 2
+    difficultyCost: 1

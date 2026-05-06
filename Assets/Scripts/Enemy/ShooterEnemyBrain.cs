@@ -38,6 +38,7 @@ namespace CuteIssac.Enemy
         private float _crossfireCueWindowRemaining;
         private Vector2 _crossfireCueAnchor = Vector2.right;
         private int _lastCrossfireCueSerial;
+        private IEnemyRangedAttackPresentation _attackPresentation;
 
         protected override void HandleInitialized()
         {
@@ -46,6 +47,7 @@ namespace CuteIssac.Enemy
                 enemyCombat = GetComponent<EnemyCombat>();
             }
 
+            _attackPresentation = GetComponent<IEnemyRangedAttackPresentation>();
             HandleResetState();
         }
 
@@ -71,6 +73,13 @@ namespace CuteIssac.Enemy
 
         public override void TickBrain(float fixedDeltaTime)
         {
+            if (_attackPresentation != null && _attackPresentation.IsAttackPresentationActive)
+            {
+                Controller.SetMoveSpeedMultiplier(0f);
+                Controller.StopMovement();
+                return;
+            }
+
             EnemyFormationTactics.TryPrimeCrossfireCue(
                 FormationModifier,
                 ref _lastCrossfireCueSerial,
@@ -198,8 +207,16 @@ namespace CuteIssac.Enemy
         private void FireBurstShot(Vector2 aimDirection)
         {
             Controller.EnemyVisual?.StopAttackTelegraph();
-            enemyCombat.Fire(aimDirection);
-            Controller.EnemyVisual?.HandleAttack();
+
+            bool presentationHandledFire = _attackPresentation != null
+                && _attackPresentation.TryPlayAttack(aimDirection, enemyCombat);
+
+            if (!presentationHandledFire)
+            {
+                enemyCombat.Fire(aimDirection);
+                Controller.EnemyVisual?.HandleAttack();
+            }
+
             _shotsRemainingInBurst--;
             _shotCooldown = _shotsRemainingInBurst > 0 ? burstSpacing : fireInterval + postBurstRecovery;
         }

@@ -57,8 +57,15 @@ namespace CuteIssac.Room
         [Header("Sprite States")]
         [Tooltip("Assigned image used while the room is sealed by enemies.")]
         [SerializeField] private Sprite closedDoorSprite;
+        [Tooltip("Optional second image for doors authored as left/right halves.")]
+        [SerializeField] private Sprite closedDoorSecondarySprite;
         [Tooltip("Assigned image used when the room is open / cleared.")]
         [SerializeField] private Sprite openDoorSprite;
+        [Tooltip("Optional second image for open doors authored as left/right halves.")]
+        [SerializeField] private Sprite openDoorSecondarySprite;
+        [SerializeField] private Vector2 closedSplitSpriteHalfOffset = new(0.48f, 0f);
+        [SerializeField] private Vector2 openSplitSpriteHalfOffset = new(0.48f, 0f);
+        [SerializeField] [Range(0.1f, 1f)] private float splitSpriteWidthMultiplier = 0.52f;
         [SerializeField] private Sprite closedDoorSpriteUp;
         [SerializeField] private Sprite closedDoorSpriteRight;
         [SerializeField] private Sprite closedDoorSpriteDown;
@@ -126,6 +133,8 @@ namespace CuteIssac.Room
             {
                 _roomDoor = GetComponentInParent<RoomDoor>();
             }
+
+            _roomDoor?.ValidateDirectionFromTransform(false);
         }
 
         private void BindToDoor()
@@ -147,8 +156,8 @@ namespace CuteIssac.Room
 
             if (preferSpriteStatesWhenAssigned && HasAnyAssignedSprite())
             {
-                BuildSpriteState(_lockedRoot.transform, "ClosedSprite", closedDoorSprite);
-                BuildSpriteState(_unlockedRoot.transform, "OpenSprite", openDoorSprite);
+                BuildSpriteState(_lockedRoot.transform, "ClosedSprite", closedDoorSprite, closedDoorSecondarySprite, closedSplitSpriteHalfOffset);
+                BuildSpriteState(_unlockedRoot.transform, "OpenSprite", openDoorSprite, openDoorSecondarySprite, openSplitSpriteHalfOffset);
                 DisableFallbackParts(_lockedRoot.transform);
                 DisableFallbackParts(_unlockedRoot.transform);
             }
@@ -203,10 +212,19 @@ namespace CuteIssac.Room
             CreateOrUpdatePart(root, "TopBadge", new Vector2(0f, visualSize.y * 0.48f), new Vector2(visualSize.x * 0.24f, visualSize.y * 0.18f), cookieBadgeColor, 2);
         }
 
-        private void BuildSpriteState(Transform root, string childName, Sprite sprite)
+        private void BuildSpriteState(Transform root, string childName, Sprite sprite, Sprite secondarySprite, Vector2 splitHalfOffset)
         {
             bool isOpenSprite = childName == "OpenSprite";
             Sprite resolvedSprite = ResolveDirectionalSprite(sprite, isOpenSprite);
+            Sprite resolvedSecondarySprite = ResolveDirectionalSecondarySprite(secondarySprite, isOpenSprite);
+            bool useSplitLayout = resolvedSecondarySprite != null;
+
+            BuildSpritePart(root, childName, resolvedSprite, isOpenSprite, useSplitLayout ? -splitHalfOffset : Vector2.zero, useSplitLayout);
+            BuildSpritePart(root, $"{childName}Secondary", resolvedSecondarySprite, isOpenSprite, useSplitLayout ? splitHalfOffset : Vector2.zero, useSplitLayout);
+        }
+
+        private void BuildSpritePart(Transform root, string childName, Sprite sprite, bool isOpenSprite, Vector2 additionalLocalOffset, bool useSplitLayout)
+        {
             Transform child = root.Find(childName);
             Transform shadowChild = root.Find($"{childName}Shadow");
 
@@ -225,13 +243,16 @@ namespace CuteIssac.Room
             }
 
             Vector2 spriteLocalOffset = ResolveSpriteLocalOffset(isOpenSprite);
-            child.localPosition = new Vector3(spriteLocalOffset.x, spriteLocalOffset.y, 0f);
+            child.localPosition = new Vector3(spriteLocalOffset.x + additionalLocalOffset.x, spriteLocalOffset.y + additionalLocalOffset.y, 0f);
             child.localRotation = Quaternion.identity;
-            Vector3 spriteScale = ResolveSpriteScale(resolvedSprite, isOpenSprite);
+            Vector3 spriteScale = ResolveSpriteScale(sprite, isOpenSprite, useSplitLayout);
             child.localScale = spriteScale;
 
             Vector2 shadowLocalOffset = ResolveShadowLocalOffset();
-            shadowChild.localPosition = new Vector3(spriteLocalOffset.x + shadowLocalOffset.x, spriteLocalOffset.y + shadowLocalOffset.y, 0f);
+            shadowChild.localPosition = new Vector3(
+                spriteLocalOffset.x + additionalLocalOffset.x + shadowLocalOffset.x,
+                spriteLocalOffset.y + additionalLocalOffset.y + shadowLocalOffset.y,
+                0f);
             shadowChild.localRotation = Quaternion.identity;
             shadowChild.localScale = spriteScale * shadowScaleMultiplier;
 
@@ -247,22 +268,22 @@ namespace CuteIssac.Room
                 shadowRenderer = shadowChild.gameObject.AddComponent<SpriteRenderer>();
             }
 
-            renderer.enabled = resolvedSprite != null;
-            renderer.sprite = resolvedSprite;
+            renderer.enabled = sprite != null;
+            renderer.sprite = sprite;
             renderer.color = Color.white;
             renderer.flipX = ResolveSpriteFlipX();
             renderer.flipY = ResolveSpriteFlipY(isOpenSprite);
             renderer.sortingOrder = Mathf.RoundToInt(visualSortingOrder) + 6 + ResolveDirectionSortingOffset();
 
-            shadowRenderer.enabled = resolvedSprite != null;
-            shadowRenderer.sprite = resolvedSprite;
+            shadowRenderer.enabled = sprite != null;
+            shadowRenderer.sprite = sprite;
             shadowRenderer.color = spriteShadowColor;
             shadowRenderer.flipX = renderer.flipX;
             shadowRenderer.flipY = renderer.flipY;
             shadowRenderer.sortingOrder = Mathf.RoundToInt(visualSortingOrder) + 5 + ResolveDirectionSortingOffset();
         }
 
-        private Vector3 ResolveSpriteScale(Sprite sprite, bool isOpenSprite)
+        private Vector3 ResolveSpriteScale(Sprite sprite, bool isOpenSprite, bool useSplitLayout)
         {
             if (sprite == null || sprite.bounds.size.x <= 0.0001f || sprite.bounds.size.y <= 0.0001f)
             {
@@ -272,6 +293,10 @@ namespace CuteIssac.Room
             Vector2 targetSize = _roomDoor != null && (_roomDoor.DoorDirection == RoomDirection.Left || _roomDoor.DoorDirection == RoomDirection.Right)
                 ? horizontalSpriteVisualSize
                 : verticalSpriteVisualSize;
+            if (useSplitLayout)
+            {
+                targetSize.x *= splitSpriteWidthMultiplier;
+            }
 
             float fitScale = Mathf.Min(
                 targetSize.x / sprite.bounds.size.x,
@@ -322,7 +347,8 @@ namespace CuteIssac.Room
 
         private bool HasAnyAssignedSprite()
         {
-            return closedDoorSprite != null || openDoorSprite != null ||
+            return closedDoorSprite != null || closedDoorSecondarySprite != null ||
+                   openDoorSprite != null || openDoorSecondarySprite != null ||
                    closedDoorSpriteUp != null || closedDoorSpriteRight != null || closedDoorSpriteDown != null || closedDoorSpriteLeft != null ||
                    openDoorSpriteUp != null || openDoorSpriteRight != null || openDoorSpriteDown != null || openDoorSpriteLeft != null;
         }
@@ -382,6 +408,12 @@ namespace CuteIssac.Room
             return directionalSprite != null ? directionalSprite : fallbackSprite;
         }
 
+        private Sprite ResolveDirectionalSecondarySprite(Sprite fallbackSprite, bool isOpenSprite)
+        {
+            // Directional secondary slots are intentionally not exposed yet; current art only needs paired halves.
+            return fallbackSprite;
+        }
+
         private float ResolveDirectionScaleMultiplier()
         {
             if (_roomDoor == null)
@@ -438,7 +470,10 @@ namespace CuteIssac.Room
             for (int i = 0; i < root.childCount; i++)
             {
                 Transform child = root.GetChild(i);
-                if (child.name == "ClosedSprite" || child.name == "OpenSprite")
+                if (child.name == "ClosedSprite" || child.name == "ClosedSpriteShadow" ||
+                    child.name == "ClosedSpriteSecondary" || child.name == "ClosedSpriteSecondaryShadow" ||
+                    child.name == "OpenSprite" || child.name == "OpenSpriteShadow" ||
+                    child.name == "OpenSpriteSecondary" || child.name == "OpenSpriteSecondaryShadow")
                 {
                     continue;
                 }

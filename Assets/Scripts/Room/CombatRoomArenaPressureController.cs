@@ -1589,7 +1589,9 @@ namespace CuteIssac.Room
         {
             if (roomType != RoomType.Boss)
             {
-                return Color.white;
+                Color visibleFallback = Color.Lerp(accentColor, new Color(0.42f, 0.92f, 1f, 1f), 0.68f);
+                visibleFallback.a = 1f;
+                return visibleFallback;
             }
 
             return _bossPressurePatternMode switch
@@ -1657,17 +1659,17 @@ namespace CuteIssac.Room
                     centerWeight = 0.2f;
                     break;
                 case RoomType.Challenge:
-                    initialBurstDelay = 1.7f;
-                    burstInterval = 4.1f;
-                    burstCount = 2;
-                    telegraphDuration = 0.96f;
-                    hazardRadius = 1.04f;
+                    initialBurstDelay = 2.4f;
+                    burstInterval = 5.6f;
+                    burstCount = 1;
+                    telegraphDuration = 1.15f;
+                    hazardRadius = 0.88f;
                     hazardDamage = 1f;
-                    hazardKnockback = 4.2f;
-                    targetBiasRadius = 0.74f;
-                    spreadRadius = 1.82f;
+                    hazardKnockback = 3.2f;
+                    targetBiasRadius = 0.56f;
+                    spreadRadius = 1.45f;
                     roomEdgeInset = 1.04f;
-                    centerWeight = 0.16f;
+                    centerWeight = 0.12f;
                     break;
                 default:
                     initialBurstDelay = 1.5f;
@@ -2132,8 +2134,8 @@ namespace CuteIssac.Room
 
         private static bool SupportsPressure(RoomType configuredRoomType)
         {
-            return configuredRoomType == RoomType.Boss
-                || configuredRoomType == RoomType.MiniBoss
+            // Boss fights now use only authored boss attacks; room-level pressure pulses made the boss read as having an extra explosion pattern.
+            return configuredRoomType == RoomType.MiniBoss
                 || configuredRoomType == RoomType.Challenge;
         }
     }

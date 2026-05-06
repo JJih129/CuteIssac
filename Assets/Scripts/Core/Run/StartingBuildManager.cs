@@ -25,7 +25,7 @@ namespace CuteIssac.Core.Run
         [Header("Catalog")]
         [SerializeField] private StartingBuildCatalog startingBuildCatalog;
         [SerializeField] private string resourcesCatalogPath = "StartingBuilds/DefaultStartingBuildCatalog";
-        [SerializeField] private bool requireSelectionOnStartup = true;
+        [SerializeField] private bool requireSelectionOnStartup;
 
         private readonly List<StatModifier> _buildStatModifierBuffer = new();
         private readonly List<ProjectileModifier> _buildProjectileModifierBuffer = new();

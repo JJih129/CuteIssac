@@ -7,12 +7,13 @@ using UnityEngine;
 namespace CuteIssac.Dungeon
 {
     /// <summary>
-    /// Assigns simple enemy wave plans to generated rooms.
-    /// Normal rooms auto-build from the normal pool, while miniboss rooms auto-build from the elite pool.
+    /// Assigns enemy wave plans to generated rooms.
+    /// Room-authored overrides win first, then floor-authored wave presets, then the weighted floor pool fallback.
     /// </summary>
     public sealed class DungeonEnemyWaveAssigner
     {
         private readonly List<EnemySpawnEntry> _candidateBuffer = new();
+        private readonly List<FloorConfig.EnemyWavePresetEntry> _wavePresetBuffer = new();
 
         public void Assign(DungeonMap dungeonMap)
         {
@@ -48,13 +49,48 @@ namespace CuteIssac.Dungeon
                 case RoomType.Curse:
                     return null;
                 case RoomType.Boss:
-                    return overrideWave != null
-                        ? overrideWave.BuildAssignment(roomNode.DistanceFromStart, floorConfig.GetEnemyBudget(EnemyEncounterTier.Boss))
-                        : null;
-                case RoomType.MiniBoss:
+                {
+                    int bossBudget = floorConfig.GetEnemyBudget(EnemyEncounterTier.Boss);
+
                     if (overrideWave != null)
                     {
-                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite));
+                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, bossBudget);
+                    }
+
+                    if (TryBuildPresetWave(
+                        floorConfig,
+                        roomNode,
+                        EnemyEncounterTier.Boss,
+                        bossBudget,
+                        out EnemyWaveAssignment bossPresetWave))
+                    {
+                        return bossPresetWave;
+                    }
+
+                    return BuildGeneratedEncounterWave(
+                        floorConfig,
+                        roomNode,
+                        EnemyEncounterTier.Boss,
+                        "generated-boss",
+                        bossBudget);
+                }
+                case RoomType.MiniBoss:
+                {
+                    int eliteBudget = floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite);
+
+                    if (overrideWave != null)
+                    {
+                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, eliteBudget);
+                    }
+
+                    if (TryBuildPresetWave(
+                        floorConfig,
+                        roomNode,
+                        EnemyEncounterTier.Elite,
+                        eliteBudget,
+                        out EnemyWaveAssignment elitePresetWave))
+                    {
+                        return elitePresetWave;
                     }
 
                     return BuildGeneratedEncounterWave(
@@ -62,11 +98,25 @@ namespace CuteIssac.Dungeon
                         roomNode,
                         EnemyEncounterTier.Elite,
                         "generated-miniboss",
-                        floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite));
+                        eliteBudget);
+                }
                 case RoomType.Challenge:
+                {
+                    int challengeBudget = floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite);
+
                     if (overrideWave != null)
                     {
-                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite));
+                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, challengeBudget);
+                    }
+
+                    if (TryBuildPresetWave(
+                        floorConfig,
+                        roomNode,
+                        EnemyEncounterTier.Elite,
+                        challengeBudget,
+                        out EnemyWaveAssignment challengePresetWave))
+                    {
+                        return challengePresetWave;
                     }
 
                     return BuildGeneratedEncounterWave(
@@ -74,11 +124,25 @@ namespace CuteIssac.Dungeon
                         roomNode,
                         EnemyEncounterTier.Elite,
                         "generated-challenge",
-                        floorConfig.GetEnemyBudget(EnemyEncounterTier.Elite));
+                        challengeBudget);
+                }
                 case RoomType.Normal:
+                {
+                    int normalBudget = ResolveNormalRoomBudget(floorConfig, roomNode);
+
                     if (overrideWave != null)
                     {
-                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, ResolveNormalRoomBudget(floorConfig, roomNode));
+                        return overrideWave.BuildAssignment(roomNode.DistanceFromStart, normalBudget);
+                    }
+
+                    if (TryBuildPresetWave(
+                        floorConfig,
+                        roomNode,
+                        EnemyEncounterTier.Normal,
+                        normalBudget,
+                        out EnemyWaveAssignment normalPresetWave))
+                    {
+                        return normalPresetWave;
                     }
 
                     return BuildGeneratedEncounterWave(
@@ -86,7 +150,8 @@ namespace CuteIssac.Dungeon
                         roomNode,
                         EnemyEncounterTier.Normal,
                         "generated-normal",
-                        ResolveNormalRoomBudget(floorConfig, roomNode));
+                        normalBudget);
+                }
                 default:
                     return null;
             }
@@ -214,6 +279,89 @@ namespace CuteIssac.Dungeon
             }
 
             return cheapestEntry;
+        }
+
+        private bool TryBuildPresetWave(
+            FloorConfig floorConfig,
+            DungeonRoomNode roomNode,
+            EnemyEncounterTier encounterTier,
+            int targetBudget,
+            out EnemyWaveAssignment waveAssignment)
+        {
+            waveAssignment = null;
+
+            if (floorConfig == null || roomNode == null)
+            {
+                return false;
+            }
+
+            _wavePresetBuffer.Clear();
+            floorConfig.CollectEnemyWavePresets(encounterTier, _wavePresetBuffer);
+
+            if (_wavePresetBuffer.Count == 0)
+            {
+                return false;
+            }
+
+            FloorConfig.EnemyWavePresetEntry selectedPreset = SelectWeightedWavePreset(_wavePresetBuffer);
+
+            if (selectedPreset?.WaveData == null)
+            {
+                return false;
+            }
+
+            waveAssignment = selectedPreset.WaveData.BuildAssignment(roomNode.DistanceFromStart, targetBudget);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log(
+                $"Selected enemy wave preset '{selectedPreset.PresetId}' for {encounterTier} room at {roomNode.GridPosition} (floor {floorConfig.FloorIndex}, budget {targetBudget}).",
+                floorConfig);
+#endif
+
+            return waveAssignment != null && waveAssignment.TotalEnemyCount > 0;
+        }
+
+        private static FloorConfig.EnemyWavePresetEntry SelectWeightedWavePreset(List<FloorConfig.EnemyWavePresetEntry> candidates)
+        {
+            int totalWeight = 0;
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                FloorConfig.EnemyWavePresetEntry entry = candidates[i];
+
+                if (entry?.WaveData == null)
+                {
+                    continue;
+                }
+
+                totalWeight += Mathf.Max(1, entry.SelectionWeight);
+            }
+
+            if (totalWeight <= 0)
+            {
+                return null;
+            }
+
+            int roll = Random.Range(0, totalWeight);
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                FloorConfig.EnemyWavePresetEntry entry = candidates[i];
+
+                if (entry?.WaveData == null)
+                {
+                    continue;
+                }
+
+                roll -= Mathf.Max(1, entry.SelectionWeight);
+
+                if (roll < 0)
+                {
+                    return entry;
+                }
+            }
+
+            return null;
         }
     }
 }
