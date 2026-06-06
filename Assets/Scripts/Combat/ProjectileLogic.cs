@@ -26,6 +26,10 @@ namespace CuteIssac.Combat
         [Tooltip("Optional visual bridge for sprite, trail, and effects. The projectile still works without it.")]
         [SerializeField] private ProjectileVisual projectileVisual;
 
+        [Header("Speed Tuning")]
+        [Tooltip("Global gameplay tuning applied after weapon/item projectile speed is resolved.")]
+        [SerializeField] [Range(0.1f, 1.6f)] private float projectileSpeedMultiplier = 1.25f;
+
         [Header("Homing")]
         [Tooltip("Baseline search radius used when a projectile has homing enabled.")]
         [SerializeField] [Min(0.5f)] private float homingSearchRadius = 6f;
@@ -267,8 +271,9 @@ namespace CuteIssac.Combat
             }
             else
             {
+                float tunedSpeed = Mathf.Max(0f, request.Speed) * Mathf.Clamp(projectileSpeedMultiplier, 0.1f, 1.6f);
                 _rigidbody2D.linearVelocity =
-                    (_travelDirection * Mathf.Max(0f, request.Speed)) +
+                    (_travelDirection * tunedSpeed) +
                     request.InheritedVelocity;
             }
 
@@ -1075,7 +1080,7 @@ namespace CuteIssac.Combat
                 case ProjectileDamageTarget.EnemyOnly:
                     return FindClosestEnemyTarget();
                 case ProjectileDamageTarget.PlayerOnly:
-                    PlayerHealth playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
+                    PlayerHealth playerHealth = PlayerRegistry.ActiveHealth;
                     return playerHealth != null ? playerHealth.transform : null;
                 default:
                     return null;
@@ -1084,14 +1089,13 @@ namespace CuteIssac.Combat
 
         private Transform FindClosestEnemyTarget()
         {
-            EnemyHealth[] candidates = FindObjectsByType<EnemyHealth>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             float searchRadiusSq = homingSearchRadius * homingSearchRadius;
             Transform closestTarget = null;
             float closestDistanceSq = searchRadiusSq;
 
-            for (int index = 0; index < candidates.Length; index++)
+            for (int index = 0; index < EnemyRegistry.Count; index++)
             {
-                EnemyHealth enemyHealth = candidates[index];
+                EnemyHealth enemyHealth = EnemyRegistry.GetAt(index);
 
                 if (enemyHealth == null || enemyHealth.IsDead || enemyHealth.transform == _instigator)
                 {

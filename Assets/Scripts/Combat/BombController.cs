@@ -1,3 +1,4 @@
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Combat
@@ -7,7 +8,7 @@ namespace CuteIssac.Combat
     /// Damage application and presentation are delegated to dedicated components.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class BombController : MonoBehaviour
+    public sealed class BombController : MonoBehaviour, IPooledObjectLifecycle
     {
         [Header("References")]
         [SerializeField] private BombVisual bombVisual;
@@ -21,7 +22,6 @@ namespace CuteIssac.Combat
         private Transform _instigator;
         private Collider2D _instigatorCollider;
         private float _remainingFuse;
-        private bool _isInitialized;
         private bool _hasExploded;
 
         public float ExplosionRadius => explosionRadius;
@@ -41,14 +41,7 @@ namespace CuteIssac.Combat
 
         private void OnEnable()
         {
-            if (_isInitialized)
-            {
-                return;
-            }
-
-            _remainingFuse = fuseSeconds;
-            bombVisual?.HandleArmed();
-            _isInitialized = true;
+            ResetFuseState();
         }
 
         private void Update()
@@ -91,7 +84,27 @@ namespace CuteIssac.Combat
                 _instigator);
             damageArea?.ApplyExplosion(in explosionInfo, _instigatorCollider);
             bombVisual?.HandleExploded(explosionRadius);
-            Destroy(gameObject);
+            PrefabPoolService.Return(gameObject);
+        }
+
+        public void OnPoolSpawned()
+        {
+            ResetFuseState();
+        }
+
+        public void OnPoolDespawned()
+        {
+            _instigator = null;
+            _instigatorCollider = null;
+            _remainingFuse = 0f;
+            _hasExploded = false;
+        }
+
+        private void ResetFuseState()
+        {
+            _remainingFuse = fuseSeconds;
+            _hasExploded = false;
+            bombVisual?.HandleArmed();
         }
 
         private void Reset()

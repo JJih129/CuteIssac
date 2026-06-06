@@ -36,6 +36,22 @@ namespace CuteIssac.Item
             _isSold = false;
         }
 
+        public void ConfigureRuntimeReferences(ShopItemView runtimeShopItemView, Transform runtimeRewardSpawnAnchor)
+        {
+            shopItemView = runtimeShopItemView;
+            rewardSpawnAnchor = runtimeRewardSpawnAnchor != null ? runtimeRewardSpawnAnchor : transform;
+        }
+
+        public void ConfigureWorldPriceOnly()
+        {
+            if (shopItemView == null)
+            {
+                shopItemView = GetComponent<ShopItemView>();
+            }
+
+            shopItemView?.ConfigureWorldPriceOnly();
+        }
+
         public bool CanPurchase(PlayerInventory playerInventory, PlayerItemManager playerItemManager, PlayerHealth playerHealth)
         {
             if (_isSold || shopItemData == null || playerInventory == null)
@@ -213,9 +229,7 @@ namespace CuteIssac.Item
 
             if (rewardSpawnReusePolicy == SpawnReusePolicy.Pooled)
             {
-                PrefabPoolService.Prewarm(
-                    pickupPrefab,
-                    Mathf.Max(1, 1 + rewardPrewarmBufferCount));
+                PrefabPoolService.Prewarm(pickupPrefab, Mathf.Max(1, 1 + rewardPrewarmBufferCount));
             }
 
             Vector3 spawnPosition = rewardSpawnAnchor != null ? rewardSpawnAnchor.position : transform.position;
@@ -231,12 +245,7 @@ namespace CuteIssac.Item
 
         private void Refund(PlayerInventory playerInventory, int price)
         {
-            if (playerInventory == null)
-            {
-                return;
-            }
-
-            if (price <= 0)
+            if (playerInventory == null || price <= 0)
             {
                 return;
             }

@@ -26,6 +26,8 @@ namespace CuteIssac.Enemy
         [Header("Boss Setup")]
         [SerializeField] private string bossDisplayName = "감시 코어";
         [SerializeField] [Range(0.05f, 0.95f)] private float enrageThreshold = 0.22f;
+        [SerializeField] private bool useHealthPhases;
+        [SerializeField] private bool useLowHealthEnrage;
 
         private bool _isEnraged;
         private BossPhaseType _currentPhase = BossPhaseType.PhaseOne;
@@ -177,7 +179,7 @@ namespace CuteIssac.Enemy
             }
 
             float normalizedHealth = enemyHealth.MaxHealth > 0f ? enemyHealth.CurrentHealth / enemyHealth.MaxHealth : 0f;
-            BossPhaseType nextPhase = _resolvedPhaseProfile != null
+            BossPhaseType nextPhase = useHealthPhases && _resolvedPhaseProfile != null
                 ? _resolvedPhaseProfile.EvaluatePhase(normalizedHealth)
                 : BossPhaseType.PhaseOne;
 
@@ -218,7 +220,7 @@ namespace CuteIssac.Enemy
             }
 
             float normalizedHealth = enemyHealth.MaxHealth > 0f ? enemyHealth.CurrentHealth / enemyHealth.MaxHealth : 0f;
-            bool shouldEnrage = normalizedHealth <= enrageThreshold && !enemyHealth.IsDead;
+            bool shouldEnrage = useLowHealthEnrage && normalizedHealth <= enrageThreshold && !enemyHealth.IsDead;
 
             if (_isEnraged == shouldEnrage)
             {

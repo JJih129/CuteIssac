@@ -53,6 +53,7 @@ namespace CuteIssac.Player
 
         private void OnEnable()
         {
+            PlayerRegistry.Register(this);
             ResolveDependencies();
 
             if (playerStats != null)
@@ -71,15 +72,24 @@ namespace CuteIssac.Player
 
         private void OnDisable()
         {
+            PlayerRegistry.Unregister(this);
+
             if (playerStats != null)
             {
                 playerStats.StatsRecalculated -= HandleStatsRecalculated;
             }
         }
 
+        private void OnDestroy()
+        {
+            PlayerRegistry.Unregister(this);
+        }
+
         private void Update()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             HandleDevelopmentHotkeys();
+#endif
 
             if (!IsInvulnerable)
             {
@@ -242,7 +252,11 @@ namespace CuteIssac.Player
 
         public void SetDebugInvulnerable(bool value)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             IsDebugInvulnerable = value;
+#else
+            IsDebugInvulnerable = false;
+#endif
         }
 
         public void SetRouteBreakthroughProtection(float damageMultiplier, float invulnerabilityBonus)
@@ -289,6 +303,7 @@ namespace CuteIssac.Player
 
         private void HandleDevelopmentHotkeys()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (!enableDevelopmentHotkeys)
             {
                 return;
@@ -306,14 +321,22 @@ namespace CuteIssac.Player
             {
                 RestoreToFull();
             }
+#endif
         }
 
         private void ApplyDamageInternal(in DamageInfo damageInfo, bool ignoreInvulnerability, bool grantInvulnerability)
         {
-            if (IsDead || IsDebugInvulnerable)
+            if (IsDead)
             {
                 return;
             }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (IsDebugInvulnerable)
+            {
+                return;
+            }
+#endif
 
             if (!ignoreInvulnerability && IsInvulnerable)
             {

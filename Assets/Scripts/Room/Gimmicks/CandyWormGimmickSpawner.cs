@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Room.Gimmicks
@@ -68,6 +69,7 @@ namespace CuteIssac.Room.Gimmicks
         {
             _isRunning = true;
             _spawnTimer = spawnImmediately ? 0f : spawnInterval;
+            PrewarmWorms();
         }
 
         public void StopSpawning()
@@ -86,7 +88,7 @@ namespace CuteIssac.Room.Gimmicks
             }
 
             Vector2 targetPosition = ResolveRandomTargetPosition();
-            CandyWormGimmickController worm = Instantiate(
+            CandyWormGimmickController worm = PrefabPoolService.Spawn(
                 wormPrefab,
                 new Vector3(targetPosition.x, targetPosition.y, wormPrefab.transform.position.z),
                 Quaternion.identity,
@@ -100,6 +102,16 @@ namespace CuteIssac.Room.Gimmicks
             worm.Completed += HandleWormCompleted;
             _activeWorms.Add(worm);
             worm.StartWarning(targetPosition);
+        }
+
+        private void PrewarmWorms()
+        {
+            if (wormPrefab == null || maxSimultaneousWorms <= 0)
+            {
+                return;
+            }
+
+            PrefabPoolService.Prewarm(wormPrefab.gameObject, maxSimultaneousWorms);
         }
 
         private Vector2 ResolveRandomTargetPosition()

@@ -49,14 +49,14 @@ namespace CuteIssac.Core.Debug
 
         private void Awake()
         {
-            ResolveReferences();
-            ResolveCatalog();
-
             if (!IsDebugPanelAllowed())
             {
                 enabled = false;
                 return;
             }
+
+            ResolveReferences();
+            ResolveCatalog();
         }
 
         private void OnEnable()

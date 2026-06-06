@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Room.Gimmicks
@@ -172,6 +173,11 @@ namespace CuteIssac.Room.Gimmicks
             SetGameplayEnabled(false);
             SetVisualVisible(false);
             Completed?.Invoke(this);
+
+            if (TryGetComponent(out PooledObject _))
+            {
+                PrefabPoolService.Return(gameObject);
+            }
         }
 
         private void ConfigureGameplayComponents()
@@ -232,7 +238,7 @@ namespace CuteIssac.Room.Gimmicks
             }
 
             Transform parent = warningEffectParent != null ? warningEffectParent : transform;
-            _warningEffectInstance = Instantiate(warningEffectPrefab, transform.position, Quaternion.identity, parent);
+            _warningEffectInstance = PrefabPoolService.Spawn(warningEffectPrefab, transform.position, Quaternion.identity, parent);
         }
 
         private void ClearWarningEffect()
@@ -242,7 +248,7 @@ namespace CuteIssac.Room.Gimmicks
                 return;
             }
 
-            Destroy(_warningEffectInstance);
+            PrefabPoolService.Return(_warningEffectInstance);
             _warningEffectInstance = null;
         }
 

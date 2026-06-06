@@ -64,6 +64,13 @@ namespace CuteIssac.UI
         [SerializeField] private bool suppressNonFeedbackWorldText = true;
         [SerializeField] [Min(4)] private int pickupFeedbackMaxCharacters = 18;
 
+        [Header("Pool Warmup")]
+        [SerializeField] [Min(0)] private int floatingFeedbackPrewarmCount = 32;
+        [SerializeField] [Min(0)] private int enemyDeathEffectPrewarmCount = 16;
+        [SerializeField] [Min(0)] private int bannerPrewarmCount = 3;
+        [SerializeField] [Min(0)] private int roomClearEffectPrewarmCount = 2;
+        [SerializeField] [Min(0)] private int threatFlashPrewarmCount = 2;
+
         private int _announcedBossSourceId = -1;
         private FloatingFeedbackView _runtimeFloatingFeedbackTemplate;
         private ScreenFeedbackBannerView _runtimeBannerTemplate;
@@ -75,6 +82,7 @@ namespace CuteIssac.UI
         private void Awake()
         {
             ResolveReferences();
+            PrewarmFeedbackPools();
         }
 
         private void OnEnable()
@@ -827,6 +835,32 @@ namespace CuteIssac.UI
             {
                 minimapPanelView = FindFirstObjectByType<MinimapPanelView>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private void PrewarmFeedbackPools()
+        {
+            PrewarmTemplate(ResolveFloatingFeedbackTemplate(), floatingFeedbackPrewarmCount);
+            PrewarmTemplate(ResolveEnemyDeathEffectTemplate(), enemyDeathEffectPrewarmCount);
+
+            RectTransform bannerRoot = EnsureBannerLayerRoot();
+            if (bannerRoot == null)
+            {
+                return;
+            }
+
+            PrewarmTemplate(ResolveBannerTemplate(bannerRoot), bannerPrewarmCount);
+            PrewarmTemplate(ResolveRoomClearEffectTemplate(bannerRoot), roomClearEffectPrewarmCount);
+            PrewarmTemplate(ResolveThreatFlashTemplate(bannerRoot), threatFlashPrewarmCount);
+        }
+
+        private static void PrewarmTemplate(Component template, int count)
+        {
+            if (template == null || count <= 0)
+            {
+                return;
+            }
+
+            PrefabPoolService.Prewarm(template.gameObject, count);
         }
 
         private Color ResolveSecretRewardAccentColor()

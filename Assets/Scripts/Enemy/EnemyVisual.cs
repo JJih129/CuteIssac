@@ -122,7 +122,6 @@ namespace CuteIssac.Enemy
         [SerializeField] private Color temporaryLowHealthDamagedColor = new(0.84f, 0.16f, 0.16f, 1f);
         [SerializeField] private Color temporaryLowHealthDeadColor = new(0.46f, 0.08f, 0.08f, 0.55f);
         [SerializeField] [Min(0.5f)] private float temporaryLowHealthScaleMultiplier = 0.92f;
-        [SerializeField] private Color temporaryLowHealthBandageColor = new(1f, 0.96f, 0.88f, 0.98f);
         [SerializeField] private Color temporaryLowHealthSlashColor = new(0.58f, 0.06f, 0.06f, 0.9f);
 
         public Transform AttackEffectAnchor => attackEffectAnchor != null ? attackEffectAnchor : transform;
@@ -167,9 +166,9 @@ namespace CuteIssac.Enemy
         private SpriteRenderer _championCoreRenderer;
         private SpriteRenderer _championGlyphRenderer;
         private Transform _temporaryLowHealthPreviewRoot;
-        private SpriteRenderer _temporaryLowHealthBandageRenderer;
         private SpriteRenderer _temporaryLowHealthSlashRendererA;
         private SpriteRenderer _temporaryLowHealthSlashRendererB;
+        private SpriteRenderer _temporaryLowHealthSlashRendererC;
         private Transform _bulwarkGuardRoot;
         private SpriteRenderer _bulwarkGuardAuraRenderer;
         private SpriteRenderer _bulwarkGuardCoreRenderer;
@@ -246,6 +245,7 @@ namespace CuteIssac.Enemy
 
         public void SetMoveDirection(Vector2 moveDirection)
         {
+            ApplyFacing(moveDirection);
             UpdateAnimatorMove(moveDirection);
         }
 
@@ -715,33 +715,33 @@ namespace CuteIssac.Enemy
             rootObject.layer = gameObject.layer;
 
             _temporaryLowHealthPreviewRoot = rootObject.transform;
-            _temporaryLowHealthBandageRenderer = CreateTemporaryLowHealthPreviewLayer(
-                "Bandage",
-                fallbackSprite,
-                new Vector3(-0.12f, 0.1f, 0f),
-                new Vector2(0.62f, 0.22f),
-                -24f,
-                temporaryLowHealthBandageColor,
-                31);
             _temporaryLowHealthSlashRendererA = CreateTemporaryLowHealthPreviewLayer(
                 "SlashA",
                 fallbackSprite,
-                new Vector3(0.1f, -0.02f, 0f),
-                new Vector2(0.12f, 0.68f),
-                34f,
+                new Vector3(-0.18f, 0.02f, 0f),
+                new Vector2(0.08f, 0.86f),
+                -18f,
                 temporaryLowHealthSlashColor,
-                32);
+                31);
             _temporaryLowHealthSlashRendererB = CreateTemporaryLowHealthPreviewLayer(
                 "SlashB",
                 fallbackSprite,
-                new Vector3(0.22f, 0.04f, 0f),
-                new Vector2(0.1f, 0.5f),
-                26f,
+                new Vector3(0f, 0.04f, 0f),
+                new Vector2(0.075f, 0.94f),
+                -18f,
+                temporaryLowHealthSlashColor,
+                32);
+            _temporaryLowHealthSlashRendererC = CreateTemporaryLowHealthPreviewLayer(
+                "SlashC",
+                fallbackSprite,
+                new Vector3(0.18f, 0.02f, 0f),
+                new Vector2(0.08f, 0.86f),
+                -18f,
                 new Color(
                     temporaryLowHealthSlashColor.r,
                     temporaryLowHealthSlashColor.g,
                     temporaryLowHealthSlashColor.b,
-                    temporaryLowHealthSlashColor.a * 0.72f),
+                    temporaryLowHealthSlashColor.a * 0.9f),
                 33);
             _temporaryLowHealthPreviewRoot.gameObject.SetActive(false);
         }
@@ -780,11 +780,6 @@ namespace CuteIssac.Enemy
 
             if (visible)
             {
-                if (_temporaryLowHealthBandageRenderer != null)
-                {
-                    _temporaryLowHealthBandageRenderer.color = temporaryLowHealthBandageColor;
-                }
-
                 if (_temporaryLowHealthSlashRendererA != null)
                 {
                     _temporaryLowHealthSlashRendererA.color = temporaryLowHealthSlashColor;
@@ -796,7 +791,16 @@ namespace CuteIssac.Enemy
                         temporaryLowHealthSlashColor.r,
                         temporaryLowHealthSlashColor.g,
                         temporaryLowHealthSlashColor.b,
-                        temporaryLowHealthSlashColor.a * 0.72f);
+                        temporaryLowHealthSlashColor.a);
+                }
+
+                if (_temporaryLowHealthSlashRendererC != null)
+                {
+                    _temporaryLowHealthSlashRendererC.color = new Color(
+                        temporaryLowHealthSlashColor.r,
+                        temporaryLowHealthSlashColor.g,
+                        temporaryLowHealthSlashColor.b,
+                        temporaryLowHealthSlashColor.a * 0.9f);
                 }
             }
 
@@ -1380,8 +1384,28 @@ namespace CuteIssac.Enemy
 
         private void ApplyFacing(Vector2 moveDirection)
         {
-            // Enemy sprites stay upright. Directional presentation is handled by
-            // dedicated animation components when needed, not by mutating transforms here.
+            if (moveDirection.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            switch (facingMode)
+            {
+                case FacingMode.FlipX:
+                    if (bodySpriteRenderer != null)
+                    {
+                        bodySpriteRenderer.flipX = moveDirection.x < -0.01f;
+                    }
+                    break;
+                case FacingMode.RotateVisualRoot:
+                    Transform targetRoot = facingRoot != null ? facingRoot : visualRoot;
+                    if (targetRoot != null)
+                    {
+                        float angle = Mathf.Atan2(moveDirection.y, moveDirection.x) * Mathf.Rad2Deg;
+                        targetRoot.localRotation = Quaternion.Euler(0f, 0f, angle);
+                    }
+                    break;
+            }
         }
 
         private void UpdateAnimatorMove(Vector2 moveDirection)

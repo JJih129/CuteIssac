@@ -18,7 +18,9 @@ namespace CuteIssac.Item
         [SerializeField] private SpriteRenderer currencyMarkerRenderer;
         [SerializeField] private TextMesh nameText;
         [SerializeField] private TextMesh priceText;
-        [SerializeField] private bool showWorldTextLabels;
+        [SerializeField] private bool showWorldTextLabels = true;
+        [SerializeField] private bool showWorldNameLabel;
+        [SerializeField] private bool showCurrencyMarker;
 
         [Header("Colors")]
         [SerializeField] private Color availableBodyColor = new(0.94f, 0.94f, 0.94f, 1f);
@@ -89,6 +91,7 @@ namespace CuteIssac.Item
 
             if (currencyMarkerRenderer != null)
             {
+                currencyMarkerRenderer.gameObject.SetActive(showCurrencyMarker && shopItemData != null && !isSold);
                 currencyMarkerRenderer.color = currencyType switch
                 {
                     ShopCurrencyType.Keys => keyMarkerColor,
@@ -99,7 +102,7 @@ namespace CuteIssac.Item
 
             if (nameText != null)
             {
-                nameText.gameObject.SetActive(showWorldTextLabels);
+                nameText.gameObject.SetActive(showWorldTextLabels && showWorldNameLabel);
                 nameText.text = shopItemData != null ? shopItemData.DisplayName : string.Empty;
                 nameText.color = isSold ? soldBodyColor : Color.white;
             }
@@ -108,7 +111,7 @@ namespace CuteIssac.Item
             {
                 priceText.gameObject.SetActive(showWorldTextLabels);
                 priceText.text = shopItemData != null
-                    ? $"{Mathf.Max(0, effectivePrice)}{GetCurrencySuffix(currencyType)}"
+                    ? Mathf.Max(0, effectivePrice).ToString()
                     : string.Empty;
                 priceText.color = isSold
                     ? soldBodyColor
@@ -158,6 +161,33 @@ namespace CuteIssac.Item
             }
         }
 
+        public void ConfigureRuntimeReferences(
+            SpriteRenderer body,
+            SpriteRenderer icon,
+            SpriteRenderer highlight,
+            SpriteRenderer soldOverlay,
+            SpriteRenderer currencyMarker,
+            bool showLabels)
+        {
+            bodyRenderer = body;
+            iconRenderer = icon;
+            highlightRenderer = highlight;
+            soldOverlayRenderer = soldOverlay;
+            currencyMarkerRenderer = currencyMarker;
+            showWorldTextLabels = showLabels;
+            _hasCapturedVisualScales = false;
+            CacheInitialScale();
+            EnsureWorldLabelsState();
+        }
+
+        public void ConfigureWorldPriceOnly()
+        {
+            showWorldTextLabels = true;
+            showWorldNameLabel = false;
+            showCurrencyMarker = false;
+            EnsureWorldLabelsState();
+        }
+
         private void EnsureRuntimeLabels()
         {
             CacheInitialScale();
@@ -169,7 +199,7 @@ namespace CuteIssac.Item
 
             if (priceText == null)
             {
-                priceText = CreateRuntimeText("PriceLabel", new Vector3(0f, -0.68f, 0f), 0.24f);
+                priceText = CreateRuntimeText("PriceLabel", new Vector3(0f, -0.88f, 0f), 0.3f);
             }
         }
 

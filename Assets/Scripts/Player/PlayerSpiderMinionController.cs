@@ -120,13 +120,12 @@ namespace CuteIssac.Player
 
         private EnemyHealth ResolveNearestEnemy()
         {
-            EnemyHealth[] enemies = FindObjectsByType<EnemyHealth>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             EnemyHealth best = null;
             float bestDistance = float.MaxValue;
 
-            for (int index = 0; index < enemies.Length; index++)
+            for (int index = 0; index < EnemyRegistry.Count; index++)
             {
-                EnemyHealth enemy = enemies[index];
+                EnemyHealth enemy = EnemyRegistry.GetAt(index);
 
                 if (enemy == null || enemy.IsDead)
                 {

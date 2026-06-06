@@ -1,5 +1,6 @@
 using System;
 using CuteIssac.Player;
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Room.Gimmicks
@@ -252,12 +253,15 @@ namespace CuteIssac.Room.Gimmicks
         private PlayerHealth FindTarget()
         {
             EnsureTargetBuffer();
-            int hitCount = Physics2D.OverlapCircleNonAlloc(transform.position, detectionRange, _targetBuffer, targetLayerMask);
+            ContactFilter2D targetFilter = new();
+            targetFilter.SetLayerMask(targetLayerMask);
+            targetFilter.useTriggers = true;
+            int hitCount = Physics2D.OverlapCircle(transform.position, detectionRange, targetFilter, _targetBuffer);
 
             while (hitCount >= _targetBuffer.Length)
             {
                 _targetBuffer = new Collider2D[_targetBuffer.Length * 2];
-                hitCount = Physics2D.OverlapCircleNonAlloc(transform.position, detectionRange, _targetBuffer, targetLayerMask);
+                hitCount = Physics2D.OverlapCircle(transform.position, detectionRange, targetFilter, _targetBuffer);
             }
 
             PlayerHealth bestTarget = null;
@@ -338,7 +342,7 @@ namespace CuteIssac.Room.Gimmicks
         {
             if (breakEffectPrefab != null)
             {
-                Instantiate(breakEffectPrefab, transform.position, Quaternion.identity);
+                PooledEffectSpawner.Spawn(breakEffectPrefab, transform.position, Quaternion.identity);
             }
         }
 

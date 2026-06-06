@@ -25,7 +25,7 @@ namespace CuteIssac.Enemy
         [SerializeField] [Min(0)] private int prewarmCount = 12;
         [SerializeField] [Range(0.1f, 2f)] private float runtimeProjectileSpeedMultiplier = 1f;
 
-        private readonly HashSet<GameObject> _prewarmedPrefabs = new();
+        private static readonly Dictionary<GameObject, int> PrewarmedProjectileCounts = new();
 
         public bool CanFire => projectileDefinition != null && projectileDefinition.IsValid;
 
@@ -37,6 +37,27 @@ namespace CuteIssac.Enemy
         private void Awake()
         {
             ResolveReferences();
+            PrewarmProjectiles(prewarmCount);
+        }
+
+        public void PrewarmProjectiles(int count)
+        {
+            if (!CanFire || count <= 0)
+            {
+                return;
+            }
+
+            GameObject projectilePrefab = projectileDefinition.ProjectilePrefab.gameObject;
+            int desiredCount = Mathf.Max(0, count);
+            PrewarmedProjectileCounts.TryGetValue(projectilePrefab, out int currentCount);
+
+            if (currentCount >= desiredCount)
+            {
+                return;
+            }
+
+            PrefabPoolService.Prewarm(projectilePrefab, desiredCount - currentCount);
+            PrewarmedProjectileCounts[projectilePrefab] = desiredCount;
         }
 
         public EnemyProjectileLogic Fire(Vector2 direction)
@@ -65,10 +86,7 @@ namespace CuteIssac.Enemy
                 InstigatorCollider = ownerCollider
             };
 
-            if (prewarmCount > 0 && _prewarmedPrefabs.Add(spawnRequest.ProjectilePrefab.gameObject))
-            {
-                PrefabPoolService.Prewarm(spawnRequest.ProjectilePrefab.gameObject, prewarmCount);
-            }
+            PrewarmProjectiles(prewarmCount);
 
             EnemyProjectileLogic projectileInstance = PrefabPoolService.Spawn(
                 spawnRequest.ProjectilePrefab,

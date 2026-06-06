@@ -59,6 +59,21 @@ namespace CuteIssac.Enemy
             ResetForSpawn();
         }
 
+        private void OnEnable()
+        {
+            EnemyRegistry.Register(this);
+        }
+
+        private void OnDisable()
+        {
+            EnemyRegistry.Unregister(this);
+        }
+
+        private void OnDestroy()
+        {
+            EnemyRegistry.Unregister(this);
+        }
+
         public void ApplyDamage(in DamageInfo damageInfo)
         {
             if (IsDead)

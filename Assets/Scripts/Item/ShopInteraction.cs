@@ -24,9 +24,13 @@ namespace CuteIssac.Item
         [SerializeField] private Text promptText;
         [SerializeField] private TextMesh promptTextMesh;
         [SerializeField] private bool showWorldPromptText;
+        [SerializeField] private bool showShopPanel;
 
         [Header("Behavior")]
         [SerializeField] [Min(0.25f)] private float purchaseDistance = 2.2f;
+        [SerializeField] private bool autoPurchaseOnContact = true;
+        [SerializeField] [Min(0.05f)] private float autoPurchaseDistance = 0.72f;
+        [SerializeField] [Min(0.05f)] private float autoPurchaseCooldown = 0.35f;
         [SerializeField] private Color purchaseSuccessColor = new(0.48f, 1f, 0.72f, 1f);
         [SerializeField] private Color purchaseFailureColor = new(1f, 0.62f, 0.48f, 1f);
 
@@ -35,6 +39,7 @@ namespace CuteIssac.Item
         private PlayerItemManager _currentPlayerItemManager;
         private PlayerHealth _currentPlayerHealth;
         private Transform _currentPlayerTransform;
+        private float _nextAutoPurchaseTime;
 
         private void Awake()
         {
@@ -68,23 +73,19 @@ namespace CuteIssac.Item
             SetPromptVisible(highlightedItem != null);
             PresentPanel();
 
-            if (highlightedItem == null || _inputReader == null)
+            if (highlightedItem == null)
             {
                 return;
             }
 
-            if (_inputReader.ReadState().ActiveItemPressed)
+            if (TryAutoPurchaseOnContact(highlightedItem))
             {
-                ShopSlotState highlightedSlotState = highlightedItem.BuildSlotState(true, _currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth);
-                bool purchased = shopInventory.TryPurchaseHighlighted(_currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth);
+                return;
+            }
 
-                if (purchased)
-                {
-                    highlightedItem.PlayPurchaseSuccessFeedback();
-                }
-
-                PresentPurchaseFeedback(highlightedSlotState, purchased);
-                PresentPanel();
+            if (_inputReader != null && _inputReader.ReadState().ActiveItemPressed)
+            {
+                TryPurchaseHighlighted(highlightedItem);
             }
         }
 
@@ -195,13 +196,14 @@ namespace CuteIssac.Item
 
             ShopSlotState slotState = highlightedItem.BuildSlotState(true, _currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth);
             SetPromptText(slotState.CanPurchase
-                ? $"\uAD6C\uB9E4 {slotState.DisplayName} · {slotState.PriceLabel}"
+                ? $"구매 {slotState.DisplayName} · {slotState.PriceLabel}"
                 : $"{slotState.StatusLabel} · {slotState.PriceLabel}");
         }
 
         private void PresentPanel()
         {
             bool shouldShowPanel = shopPanelView != null
+                && showShopPanel
                 && _currentPlayerInventory != null
                 && shopInventory != null;
 
@@ -286,6 +288,7 @@ namespace CuteIssac.Item
                     promptTextMesh.fontSize = 44;
                     promptTextMesh.characterSize = 0.08f;
                 }
+
                 return;
             }
 
@@ -315,6 +318,49 @@ namespace CuteIssac.Item
             }
         }
 
+        private bool TryAutoPurchaseOnContact(ShopItem highlightedItem)
+        {
+            if (!autoPurchaseOnContact || highlightedItem == null || _currentPlayerTransform == null)
+            {
+                return false;
+            }
+
+            float now = Time.unscaledTime;
+            if (now < _nextAutoPurchaseTime)
+            {
+                return false;
+            }
+
+            float autoPurchaseDistanceSqr = autoPurchaseDistance * autoPurchaseDistance;
+            if ((highlightedItem.transform.position - _currentPlayerTransform.position).sqrMagnitude > autoPurchaseDistanceSqr)
+            {
+                return false;
+            }
+
+            if (!highlightedItem.CanPurchase(_currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth))
+            {
+                return false;
+            }
+
+            _nextAutoPurchaseTime = now + autoPurchaseCooldown;
+            TryPurchaseHighlighted(highlightedItem);
+            return true;
+        }
+
+        private void TryPurchaseHighlighted(ShopItem highlightedItem)
+        {
+            ShopSlotState highlightedSlotState = highlightedItem.BuildSlotState(true, _currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth);
+            bool purchased = shopInventory.TryPurchaseHighlighted(_currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth);
+
+            if (purchased)
+            {
+                highlightedItem.PlayPurchaseSuccessFeedback();
+            }
+
+            PresentPurchaseFeedback(highlightedSlotState, purchased);
+            PresentPanel();
+        }
+
         private void PresentPurchaseFeedback(ShopSlotState slotState, bool purchased)
         {
             if (!slotState.IsVisible)
@@ -325,7 +371,7 @@ namespace CuteIssac.Item
             if (purchased)
             {
                 GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                    "\uAD6C\uB9E4 \uC644\uB8CC",
+                    "구매 완료",
                     $"{slotState.DisplayName} · {slotState.PriceLabel}",
                     purchaseSuccessColor,
                     1.2f));
@@ -333,7 +379,7 @@ namespace CuteIssac.Item
             }
 
             GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                "\uAD6C\uB9E4 \uC2E4\uD328",
+                "구매 실패",
                 $"{slotState.StatusLabel} · {slotState.DisplayName}",
                 purchaseFailureColor,
                 1f));

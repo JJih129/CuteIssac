@@ -217,8 +217,8 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            // Search by player controller first so the prototype works even before tags are configured.
-            PlayerController playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            // Search by cached player controller first so retargeting stays cheap during combat.
+            PlayerController playerController = PlayerRegistry.ActiveController;
 
             if (playerController != null)
             {

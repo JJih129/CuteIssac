@@ -1,5 +1,6 @@
 using CuteIssac.Combat;
 using CuteIssac.Common.Input;
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Player
@@ -17,6 +18,7 @@ namespace CuteIssac.Player
         [SerializeField] private MonoBehaviour inputReaderSource;
         [SerializeField] private BombController bombPrefab;
         [SerializeField] private Transform bombSpawnAnchor;
+        [SerializeField] [Min(0)] private int bombPrewarmCount = 4;
 
         [Header("Placement")]
         [SerializeField] [Min(0f)] private float placementOffset;
@@ -30,7 +32,10 @@ namespace CuteIssac.Player
             if (!ResolveDependencies())
             {
                 enabled = false;
+                return;
             }
+
+            PrewarmBombs(bombPrewarmCount);
         }
 
         private void Update()
@@ -61,8 +66,7 @@ namespace CuteIssac.Player
             }
 
             Vector3 spawnPosition = ResolveSpawnPosition();
-            BombController spawnedBomb = Instantiate(bombPrefab, spawnPosition, Quaternion.identity);
-            spawnedBomb.Initialize(transform, ownerCollider);
+            SpawnBomb(spawnPosition);
             _placementCooldownRemaining = placementCooldown;
             return true;
         }
@@ -76,6 +80,7 @@ namespace CuteIssac.Player
 
             Vector3 center = ResolveSpawnPosition();
             float radius = Mathf.Max(0f, spawnRadius);
+            PrewarmBombs(bombCount);
 
             for (int index = 0; index < bombCount; index++)
             {
@@ -84,12 +89,28 @@ namespace CuteIssac.Player
                 Vector3 offset = radius <= 0f
                     ? Vector3.zero
                     : new Vector3(Mathf.Cos(radians), Mathf.Sin(radians), 0f) * radius;
-                BombController spawnedBomb = Instantiate(bombPrefab, center + offset, Quaternion.identity);
-                spawnedBomb.Initialize(transform, ownerCollider);
+                SpawnBomb(center + offset);
             }
 
             _placementCooldownRemaining = Mathf.Max(_placementCooldownRemaining, placementCooldown);
             return true;
+        }
+
+        private BombController SpawnBomb(Vector3 spawnPosition)
+        {
+            BombController spawnedBomb = PrefabPoolService.Spawn(bombPrefab, spawnPosition, Quaternion.identity);
+            spawnedBomb?.Initialize(transform, ownerCollider);
+            return spawnedBomb;
+        }
+
+        private void PrewarmBombs(int count)
+        {
+            if (bombPrefab == null || count <= 0)
+            {
+                return;
+            }
+
+            PrefabPoolService.Prewarm(bombPrefab.gameObject, count);
         }
 
         private Vector3 ResolveSpawnPosition()

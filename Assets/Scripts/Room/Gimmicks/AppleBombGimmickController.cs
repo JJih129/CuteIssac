@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using CuteIssac.Common.Combat;
+using CuteIssac.Core.Pooling;
 using CuteIssac.Player;
 using UnityEngine;
 
@@ -254,7 +255,7 @@ namespace CuteIssac.Room.Gimmicks
         {
             if (explosionEffectPrefab != null)
             {
-                Instantiate(explosionEffectPrefab, transform.position, Quaternion.identity);
+                PooledEffectSpawner.Spawn(explosionEffectPrefab, transform.position, Quaternion.identity);
             }
         }
 
@@ -265,11 +266,17 @@ namespace CuteIssac.Room.Gimmicks
 
             if (completionMode == CompletionMode.Deactivate)
             {
+                if (TryGetComponent(out PooledObject _))
+                {
+                    PrefabPoolService.Return(gameObject);
+                    return;
+                }
+
                 gameObject.SetActive(false);
                 return;
             }
 
-            Destroy(gameObject);
+            PrefabPoolService.Return(gameObject);
         }
 
         private void UpdateArmedVisual(float elapsed)

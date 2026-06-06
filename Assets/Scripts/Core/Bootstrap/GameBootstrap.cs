@@ -4,6 +4,7 @@ using CuteIssac.Core.Save;
 using CuteIssac.Core.Settings;
 using CuteIssac.Core.Debug;
 using CuteIssac.Data.Run;
+using CuteIssac.Item;
 using UnityEngine;
 
 namespace CuteIssac.Core.Bootstrap
@@ -23,6 +24,9 @@ namespace CuteIssac.Core.Bootstrap
         [SerializeField] private bool bootstrapOnAwake = true;
         [SerializeField] private bool autoStartRunOnAwake = true;
         [SerializeField] private bool preferStartupBuildSelectionBeforeRunRestore = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private bool enableDevelopmentDebugController = true;
+#endif
 
         private bool _hasBootstrapped;
 
@@ -52,12 +56,21 @@ namespace CuteIssac.Core.Bootstrap
 
             _hasBootstrapped = true;
             EnsureFloorTransitionController();
+            RuntimePickupFactory.PrewarmDefaultPickups();
             runManager.Bootstrap(startupRunConfiguration);
 
             if (autoStartRunOnAwake)
             {
                 RunRestoreController runRestoreController = GetComponent<RunRestoreController>();
                 StartingBuildManager startingBuildManager = GetComponent<StartingBuildManager>();
+
+                if (RunLaunchRequest.ConsumeNewRunFromFirstFloorRequest())
+                {
+                    // Title "new game" must not resume a stale run snapshot from a later floor.
+                    GetComponent<RunSaveSystem>()?.DeleteRunSave();
+                    runManager.StartNewRunAtFloor(1);
+                    return;
+                }
 
                 if (preferStartupBuildSelectionBeforeRunRestore
                     && startingBuildManager != null
@@ -135,10 +148,12 @@ namespace CuteIssac.Core.Bootstrap
                 gameObject.AddComponent<StartingBuildManager>();
             }
 
-            if (GetComponent<DevelopmentDebugController>() == null)
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (enableDevelopmentDebugController && GetComponent<DevelopmentDebugController>() == null)
             {
                 gameObject.AddComponent<DevelopmentDebugController>();
             }
+#endif
 
             if (GetComponent<RunRestoreController>() == null)
             {

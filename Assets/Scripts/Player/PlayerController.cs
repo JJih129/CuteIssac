@@ -43,9 +43,20 @@ namespace CuteIssac.Player
             playerVisual?.SetMoveInput(inputState.Move);
         }
 
+        private void OnEnable()
+        {
+            PlayerRegistry.Register(this);
+        }
+
         private void OnDisable()
         {
+            PlayerRegistry.Unregister(this);
             playerMovement?.Stop();
+        }
+
+        private void OnDestroy()
+        {
+            PlayerRegistry.Unregister(this);
         }
 
         private bool TryResolvePlayerMovement()

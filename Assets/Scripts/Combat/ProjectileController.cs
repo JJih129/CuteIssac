@@ -1,4 +1,5 @@
 using CuteIssac.Common.Combat;
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Combat
@@ -10,8 +11,12 @@ namespace CuteIssac.Combat
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Collider2D))]
-    public sealed class ProjectileController : MonoBehaviour
+    public sealed class ProjectileController : MonoBehaviour, IPooledObjectLifecycle
     {
+        [Header("Speed Tuning")]
+        [Tooltip("Global gameplay tuning applied after projectile speed data is resolved.")]
+        [SerializeField] [Range(0.1f, 1f)] private float projectileSpeedMultiplier = 0.72f;
+
         private Rigidbody2D _rigidbody2D;
         private Collider2D _collider2D;
         private Collider2D _instigatorCollider;
@@ -75,6 +80,7 @@ namespace CuteIssac.Combat
 
         public void Initialize(in ProjectileSpawnRequest request)
         {
+            RestoreIgnoredCollision();
             _instigator = request.Instigator;
             _instigatorCollider = request.InstigatorCollider;
             _damage = request.Damage;
@@ -85,7 +91,8 @@ namespace CuteIssac.Combat
 
             transform.position = request.Position;
             transform.rotation = Quaternion.FromToRotation(Vector3.right, _travelDirection);
-            _rigidbody2D.linearVelocity = _travelDirection * Mathf.Max(0f, request.Speed);
+            float tunedSpeed = Mathf.Max(0f, request.Speed) * Mathf.Clamp(projectileSpeedMultiplier, 0.1f, 1f);
+            _rigidbody2D.linearVelocity = _travelDirection * tunedSpeed;
 
             if (_instigatorCollider != null)
             {
@@ -117,7 +124,32 @@ namespace CuteIssac.Combat
         private void Despawn()
         {
             _isInitialized = false;
-            Destroy(gameObject);
+            RestoreIgnoredCollision();
+            PrefabPoolService.Return(gameObject);
+        }
+
+        public void OnPoolSpawned()
+        {
+            _isInitialized = false;
+        }
+
+        public void OnPoolDespawned()
+        {
+            RestoreIgnoredCollision();
+            _instigator = null;
+            _instigatorCollider = null;
+            _damage = 0f;
+            _remainingLifetime = 0f;
+            _travelDirection = Vector2.right;
+            _isInitialized = false;
+        }
+
+        private void RestoreIgnoredCollision()
+        {
+            if (_collider2D != null && _instigatorCollider != null)
+            {
+                Physics2D.IgnoreCollision(_collider2D, _instigatorCollider, false);
+            }
         }
     }
 }

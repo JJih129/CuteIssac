@@ -12,6 +12,8 @@ namespace CuteIssac.Item
         [SerializeField] [Min(0.05f)] private float duration = 10f;
         [SerializeField] [Min(0.05f)] private float moveSpeedMultiplier = 1.2f;
         [SerializeField] private PlayerSpeedBuffState.DuplicateBuffPolicy duplicatePolicy = PlayerSpeedBuffState.DuplicateBuffPolicy.RefreshDuration;
+        [SerializeField] private Sprite statusIcon;
+        [SerializeField] private string statusDisplayName = "스피드 사탕";
         [SerializeField] private bool addMissingStateComponent = true;
         [SerializeField] private bool logDebugMessages;
 
@@ -26,7 +28,12 @@ namespace CuteIssac.Item
                 return false;
             }
 
-            bool applied = speedBuffState.TryApplyBuff(duration, moveSpeedMultiplier, duplicatePolicy);
+            bool applied = speedBuffState.TryApplyBuff(
+                duration,
+                moveSpeedMultiplier,
+                duplicatePolicy,
+                ResolveStatusIcon(),
+                statusDisplayName);
 
             if (!applied && logDebugMessages)
             {
@@ -62,6 +69,20 @@ namespace CuteIssac.Item
 
             speedBuffState = health.gameObject.AddComponent<PlayerSpeedBuffState>();
             return speedBuffState != null;
+        }
+
+        private Sprite ResolveStatusIcon()
+        {
+            return statusIcon != null ? statusIcon : RuntimeShopIconFactory.GetSpeedCandySprite();
+        }
+
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            PickupVisual?.ApplyRuntimeVisual(
+                ResolveStatusIcon(),
+                new Color(0.42f, 0.82f, 1f, 1f),
+                new Color(0.9f, 1f, 1f, 0.24f));
         }
 
         protected override void OnValidate()

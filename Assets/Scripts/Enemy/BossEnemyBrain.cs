@@ -5,8 +5,8 @@ using UnityEngine;
 namespace CuteIssac.Enemy
 {
     /// <summary>
-    /// Dedicated boss brain with two clearly different patterns:
-    /// radial burst fire and telegraphed charge.
+    /// Dedicated boss brain for the first-stage boss.
+    /// The authored default keeps the pattern set small: telegraphed chase charge and occasional fan shots.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class BossEnemyBrain : EnemyBrain
@@ -124,9 +124,9 @@ namespace CuteIssac.Enemy
         [SerializeField] [Range(0.2f, 1f)] private float globalChargeSpeedMultiplier = 0.58f;
 
         [Header("Authored Boss Pattern Set")]
-        [Tooltip("Keep disabled for authored sprite bosses. Enable only when intentionally testing legacy bullet-hell prototype patterns.")]
+        [Tooltip("Enable only when intentionally testing the broader legacy bullet-hell prototype pattern table.")]
         [SerializeField] private bool usePrototypeProjectilePatterns;
-        [SerializeField] private BossPatternType[] authoredPatternCycle = { BossPatternType.Charge };
+        [SerializeField] private BossPatternType[] authoredPatternCycle = { BossPatternType.Charge, BossPatternType.Fan };
 
         private BossBrainState _state;
         private float _stateTimer;
@@ -634,6 +634,7 @@ namespace CuteIssac.Enemy
             _stateTimer = GetFanTelegraphDuration();
             _fanShotsRemaining = Mathf.Max(2, Mathf.RoundToInt(fanWaveCount * GetFanCountMultiplier()));
             _fanCurrentAngle = Vector2.SignedAngle(Vector2.right, _cachedAimDirection);
+            PrewarmBossProjectiles(_fanShotsRemaining * Mathf.Max(3, fanProjectilesPerWave));
             Controller.SetMoveSpeedMultiplier(1f);
             Controller.StopMovement();
             SetTelegraph(BossPatternType.Fan);
@@ -645,6 +646,7 @@ namespace CuteIssac.Enemy
             _stateTimer = GetShockwaveTelegraphDuration();
             _shockwaveShotsRemaining = Mathf.Max(2, Mathf.RoundToInt(shockwavePulseCount * GetShockwaveCountMultiplier()));
             _shockwaveCurrentAngle = 0f;
+            PrewarmBossProjectiles(_shockwaveShotsRemaining * Mathf.Max(4, shockwaveProjectilesPerPulse));
             Controller.SetMoveSpeedMultiplier(1f);
             Controller.StopMovement();
             SetTelegraph(BossPatternType.Shockwave);
@@ -656,9 +658,15 @@ namespace CuteIssac.Enemy
             _stateTimer = GetCrossfireTelegraphDuration();
             _crossfireShotsRemaining = Mathf.Max(2, Mathf.RoundToInt(crossfireBurstCount * GetCrossfireCountMultiplier()));
             _crossfireCurrentAngle = Vector2.SignedAngle(Vector2.right, _cachedAimDirection);
+            PrewarmBossProjectiles(_crossfireShotsRemaining * 2);
             Controller.SetMoveSpeedMultiplier(1f);
             Controller.StopMovement();
             SetTelegraph(BossPatternType.Crossfire);
+        }
+
+        private void PrewarmBossProjectiles(int projectileCount)
+        {
+            enemyCombat?.PrewarmProjectiles(projectileCount);
         }
 
         private void TickSweepTelegraph(float fixedDeltaTime)
@@ -1115,9 +1123,9 @@ namespace CuteIssac.Enemy
                 return true;
             }
 
-            // Current authored boss art only supports direct attack poses.
-            // Legacy projectile patterns stay compiled but are removed from gameplay selection.
-            return pattern == BossPatternType.Charge;
+            // First-stage authored boss gameplay intentionally stays readable.
+            // Keep only close-range chase pressure plus one simple Isaac-style fan shot.
+            return pattern == BossPatternType.Charge || pattern == BossPatternType.Fan;
         }
 
         private void AdvancePatternCycle()

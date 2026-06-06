@@ -17,6 +17,7 @@ namespace CuteIssac.Enemy
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
         private bool _crossfireCueRaisedForCurrentTelegraph;
+        private Collider2D[] _teleportOverlapBuffer;
 
         protected override void HandleInitialized()
         {
@@ -179,18 +180,34 @@ namespace CuteIssac.Enemy
                 return false;
             }
 
-            Collider2D[] overlaps = Physics2D.OverlapCircleAll(candidate, checkRadius);
-
-            for (int index = 0; index < overlaps.Length; index++)
+            EnsureTeleportOverlapBuffer();
+            ContactFilter2D contactFilter = new()
             {
-                Collider2D overlap = overlaps[index];
+                useTriggers = true
+            };
+            int overlapCount = Physics2D.OverlapCircle(candidate, checkRadius, contactFilter, _teleportOverlapBuffer);
+
+            while (overlapCount >= _teleportOverlapBuffer.Length)
+            {
+                _teleportOverlapBuffer = new Collider2D[_teleportOverlapBuffer.Length * 2];
+                overlapCount = Physics2D.OverlapCircle(candidate, checkRadius, contactFilter, _teleportOverlapBuffer);
+            }
+
+            Transform playerTransform = PlayerRegistry.ActiveController != null
+                ? PlayerRegistry.ActiveController.transform
+                : null;
+
+            for (int index = 0; index < overlapCount; index++)
+            {
+                Collider2D overlap = _teleportOverlapBuffer[index];
+                _teleportOverlapBuffer[index] = null;
 
                 if (overlap == null || overlap == ownerCollider || overlap.transform == transform || overlap.transform.IsChildOf(transform))
                 {
                     continue;
                 }
 
-                if (overlap.GetComponentInParent<PlayerController>() != null)
+                if (playerTransform != null && (overlap.transform == playerTransform || overlap.transform.IsChildOf(playerTransform)))
                 {
                     continue;
                 }
@@ -204,6 +221,14 @@ namespace CuteIssac.Enemy
             }
 
             return false;
+        }
+
+        private void EnsureTeleportOverlapBuffer()
+        {
+            if (_teleportOverlapBuffer == null)
+            {
+                _teleportOverlapBuffer = new Collider2D[8];
+            }
         }
 
         private void ResolveReferences()

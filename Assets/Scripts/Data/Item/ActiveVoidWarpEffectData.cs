@@ -13,6 +13,8 @@ namespace CuteIssac.Data.Item
         [SerializeField] [Range(0f, 0.45f)] private float roomBoundsInsetRatio = 0.12f;
         [SerializeField] [Min(6)] private int sampleCount = 20;
 
+        private Collider2D[] _overlapBuffer;
+
         public override bool TryApply(PlayerActiveItemController controller)
         {
             if (controller == null)
@@ -81,11 +83,23 @@ namespace CuteIssac.Data.Item
 
         private bool IsBlocked(Vector3 candidate, Collider2D[] ignoredColliders)
         {
-            Collider2D[] overlaps = Physics2D.OverlapCircleAll(candidate, collisionCheckRadius);
-
-            for (int index = 0; index < overlaps.Length; index++)
+            EnsureOverlapBuffer();
+            ContactFilter2D contactFilter = new()
             {
-                Collider2D overlap = overlaps[index];
+                useTriggers = true
+            };
+            int overlapCount = Physics2D.OverlapCircle(candidate, collisionCheckRadius, contactFilter, _overlapBuffer);
+
+            while (overlapCount >= _overlapBuffer.Length)
+            {
+                _overlapBuffer = new Collider2D[_overlapBuffer.Length * 2];
+                overlapCount = Physics2D.OverlapCircle(candidate, collisionCheckRadius, contactFilter, _overlapBuffer);
+            }
+
+            for (int index = 0; index < overlapCount; index++)
+            {
+                Collider2D overlap = _overlapBuffer[index];
+                _overlapBuffer[index] = null;
 
                 if (overlap == null || overlap.isTrigger)
                 {
@@ -117,14 +131,22 @@ namespace CuteIssac.Data.Item
             return false;
         }
 
+        private void EnsureOverlapBuffer()
+        {
+            int capacity = Mathf.Max(8, sampleCount);
+            if (_overlapBuffer == null || _overlapBuffer.Length < capacity)
+            {
+                _overlapBuffer = new Collider2D[capacity];
+            }
+        }
+
         private static float ScoreCandidate(Vector3 candidate)
         {
-            EnemyHealth[] enemies = Object.FindObjectsByType<EnemyHealth>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             float nearestEnemyDistance = float.MaxValue;
 
-            for (int index = 0; index < enemies.Length; index++)
+            for (int index = 0; index < EnemyRegistry.Count; index++)
             {
-                EnemyHealth enemy = enemies[index];
+                EnemyHealth enemy = EnemyRegistry.GetAt(index);
 
                 if (enemy == null || enemy.IsDead)
                 {

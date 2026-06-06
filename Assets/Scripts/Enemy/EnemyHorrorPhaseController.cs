@@ -1,4 +1,5 @@
 using System;
+using CuteIssac.Core.Pooling;
 using CuteIssac.Data.Enemy;
 using UnityEngine;
 
@@ -181,7 +182,7 @@ namespace CuteIssac.Enemy
 
             if (spawnEffect && transitionEffectPrefab != null)
             {
-                Instantiate(transitionEffectPrefab, transform.position, Quaternion.identity);
+                PooledEffectSpawner.Spawn(transitionEffectPrefab, transform.position, Quaternion.identity);
             }
         }
 

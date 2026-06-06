@@ -1,3 +1,4 @@
+using CuteIssac.Core.Pooling;
 using CuteIssac.Player;
 using UnityEngine;
 
@@ -171,6 +172,17 @@ namespace CuteIssac.Item
         private static Sprite _ammoClipSprite;
         private static Sprite _coinSprite;
         private static Sprite _bombSprite;
+        private static Transform _templateRoot;
+        private static GameObject _coinPickupTemplate;
+        private static GameObject _bombPickupTemplate;
+        private static GameObject _ammoPickupTemplate;
+
+        public static void PrewarmDefaultPickups(int coinCount = 24, int bombCount = 4, int ammoCount = 4)
+        {
+            PrewarmTemplate(GetOrCreateCoinPickupTemplate(), coinCount);
+            PrewarmTemplate(GetOrCreateBombPickupTemplate(), bombCount);
+            PrewarmTemplate(GetOrCreateAmmoPickupTemplate(), ammoCount);
+        }
 
         public static GameObject SpawnCoinPickup(
             Vector3 position,
@@ -182,18 +194,22 @@ namespace CuteIssac.Item
             Color collectedColor,
             string objectName = "CandyCoinPickup")
         {
-            return SpawnResourcePickup(
+            GameObject pickupObject = SpawnPickupObject(
+                GetOrCreateCoinPickupTemplate(),
                 position,
                 parent,
                 pickupScale,
+                objectName);
+            ConfigureResourcePickup(
+                pickupObject,
                 pickupColliderRadius,
                 pickupSortingOrder,
                 baseColor,
                 collectedColor,
-                objectName,
                 ResourcePickupType.Coin,
                 1,
                 ResolveCoinSprite());
+            return pickupObject;
         }
 
         public static GameObject SpawnBombPickup(
@@ -206,18 +222,22 @@ namespace CuteIssac.Item
             Color collectedColor,
             string objectName = "BombPickup")
         {
-            return SpawnResourcePickup(
+            GameObject pickupObject = SpawnPickupObject(
+                GetOrCreateBombPickupTemplate(),
                 position,
                 parent,
                 pickupScale,
+                objectName);
+            ConfigureResourcePickup(
+                pickupObject,
                 pickupColliderRadius,
                 pickupSortingOrder,
                 baseColor,
                 collectedColor,
-                objectName,
                 ResourcePickupType.Bomb,
                 1,
                 ResolveBombSprite());
+            return pickupObject;
         }
 
         public static GameObject SpawnAmmoPickup(
@@ -232,69 +252,231 @@ namespace CuteIssac.Item
             bool restockEquipped = true,
             string objectName = "AmmoPickup")
         {
-            GameObject pickupObject = CreatePickupObject(position, parent, pickupScale, objectName);
-
-            SpriteRenderer spriteRenderer = pickupObject.AddComponent<SpriteRenderer>();
-            spriteRenderer.sortingOrder = pickupSortingOrder;
-            spriteRenderer.sprite = ResolveAmmoClipSprite();
-            spriteRenderer.color = baseColor;
-
-            PickupVisual pickupVisual = pickupObject.AddComponent<PickupVisual>();
-            CircleCollider2D triggerCollider = pickupObject.AddComponent<CircleCollider2D>();
-            triggerCollider.isTrigger = true;
-            triggerCollider.radius = Mathf.Max(0.1f, pickupColliderRadius);
-
-            AmmoPickupLogic pickupLogic = pickupObject.AddComponent<AmmoPickupLogic>();
-            pickupLogic.Configure(Mathf.Max(1, amount), restockEquipped);
-
-            pickupVisual.ApplyRuntimeVisual(spriteRenderer.sprite, baseColor, collectedColor);
+            GameObject pickupObject = SpawnPickupObject(
+                GetOrCreateAmmoPickupTemplate(),
+                position,
+                parent,
+                pickupScale,
+                objectName);
+            ConfigureAmmoPickup(
+                pickupObject,
+                pickupColliderRadius,
+                pickupSortingOrder,
+                baseColor,
+                collectedColor,
+                Mathf.Max(1, amount),
+                restockEquipped,
+                ResolveAmmoClipSprite());
             return pickupObject;
         }
 
-        private static GameObject SpawnResourcePickup(
-            Vector3 position,
-            Transform parent,
-            float pickupScale,
+        private static void ConfigureResourcePickup(
+            GameObject pickupObject,
             float pickupColliderRadius,
             int pickupSortingOrder,
             Color baseColor,
             Color collectedColor,
-            string objectName,
             ResourcePickupType resourceType,
             int amount,
             Sprite sprite)
         {
-            GameObject pickupObject = CreatePickupObject(position, parent, pickupScale, objectName);
+            if (pickupObject == null)
+            {
+                return;
+            }
 
-            SpriteRenderer spriteRenderer = pickupObject.AddComponent<SpriteRenderer>();
-            spriteRenderer.sortingOrder = pickupSortingOrder;
-            spriteRenderer.sprite = sprite;
-            spriteRenderer.color = baseColor;
+            SpriteRenderer spriteRenderer = pickupObject.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sortingOrder = pickupSortingOrder;
+                spriteRenderer.sprite = sprite;
+                spriteRenderer.color = baseColor;
+            }
 
-            PickupVisual pickupVisual = pickupObject.AddComponent<PickupVisual>();
-            CircleCollider2D triggerCollider = pickupObject.AddComponent<CircleCollider2D>();
-            triggerCollider.isTrigger = true;
-            triggerCollider.radius = Mathf.Max(0.1f, pickupColliderRadius);
+            CircleCollider2D triggerCollider = pickupObject.GetComponent<CircleCollider2D>();
+            if (triggerCollider != null)
+            {
+                triggerCollider.isTrigger = true;
+                triggerCollider.radius = Mathf.Max(0.1f, pickupColliderRadius);
+            }
 
-            ResourcePickupLogic pickupLogic = pickupObject.AddComponent<ResourcePickupLogic>();
-            pickupLogic.Configure(resourceType, Mathf.Max(1, amount));
+            if (pickupObject.TryGetComponent(out ResourcePickupLogic pickupLogic))
+            {
+                pickupLogic.Configure(resourceType, Mathf.Max(1, amount));
+            }
 
-            pickupVisual.ApplyRuntimeVisual(spriteRenderer.sprite, baseColor, collectedColor);
+            if (pickupObject.TryGetComponent(out PickupVisual pickupVisual))
+            {
+                pickupVisual.ApplyRuntimeVisual(sprite, baseColor, collectedColor);
+            }
+        }
+
+        private static void ConfigureAmmoPickup(
+            GameObject pickupObject,
+            float pickupColliderRadius,
+            int pickupSortingOrder,
+            Color baseColor,
+            Color collectedColor,
+            int amount,
+            bool restockEquipped,
+            Sprite sprite)
+        {
+            if (pickupObject == null)
+            {
+                return;
+            }
+
+            SpriteRenderer spriteRenderer = pickupObject.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sortingOrder = pickupSortingOrder;
+                spriteRenderer.sprite = sprite;
+                spriteRenderer.color = baseColor;
+            }
+
+            CircleCollider2D triggerCollider = pickupObject.GetComponent<CircleCollider2D>();
+            if (triggerCollider != null)
+            {
+                triggerCollider.isTrigger = true;
+                triggerCollider.radius = Mathf.Max(0.1f, pickupColliderRadius);
+            }
+
+            if (pickupObject.TryGetComponent(out AmmoPickupLogic pickupLogic))
+            {
+                pickupLogic.Configure(amount, restockEquipped);
+            }
+
+            if (pickupObject.TryGetComponent(out PickupVisual pickupVisual))
+            {
+                pickupVisual.ApplyRuntimeVisual(sprite, baseColor, collectedColor);
+            }
+        }
+
+        private static GameObject SpawnPickupObject(GameObject template, Vector3 position, Transform parent, float pickupScale, string objectName)
+        {
+            GameObject pickupObject = PrefabPoolService.Spawn(template, position, Quaternion.identity, parent);
+            if (pickupObject == null)
+            {
+                return null;
+            }
+
+            pickupObject.name = objectName;
+            pickupObject.transform.localScale = Vector3.one * Mathf.Max(0.2f, pickupScale);
             return pickupObject;
         }
 
-        private static GameObject CreatePickupObject(Vector3 position, Transform parent, float pickupScale, string objectName)
+        private static GameObject GetOrCreateCoinPickupTemplate()
         {
-            GameObject pickupObject = new(objectName);
-            pickupObject.transform.position = position;
-
-            if (parent != null)
+            if (_coinPickupTemplate != null)
             {
-                pickupObject.transform.SetParent(parent, true);
+                return _coinPickupTemplate;
             }
 
-            pickupObject.transform.localScale = Vector3.one * Mathf.Max(0.2f, pickupScale);
-            return pickupObject;
+            _coinPickupTemplate = CreateResourcePickupTemplate(
+                "RuntimeCandyCoinPickupTemplate",
+                ResourcePickupType.Coin,
+                ResolveCoinSprite(),
+                DefaultCoinPickupBaseColor,
+                DefaultCoinPickupCollectedColor);
+            return _coinPickupTemplate;
+        }
+
+        private static GameObject GetOrCreateBombPickupTemplate()
+        {
+            if (_bombPickupTemplate != null)
+            {
+                return _bombPickupTemplate;
+            }
+
+            _bombPickupTemplate = CreateResourcePickupTemplate(
+                "RuntimeBombPickupTemplate",
+                ResourcePickupType.Bomb,
+                ResolveBombSprite(),
+                DefaultBombPickupBaseColor,
+                DefaultBombPickupCollectedColor);
+            return _bombPickupTemplate;
+        }
+
+        private static GameObject GetOrCreateAmmoPickupTemplate()
+        {
+            if (_ammoPickupTemplate != null)
+            {
+                return _ammoPickupTemplate;
+            }
+
+            GameObject template = CreateBasePickupTemplate(
+                "RuntimeAmmoPickupTemplate",
+                ResolveAmmoClipSprite(),
+                DefaultAmmoPickupBaseColor,
+                DefaultAmmoPickupCollectedColor);
+            AmmoPickupLogic pickupLogic = template.AddComponent<AmmoPickupLogic>();
+            pickupLogic.Configure(1, true);
+            _ammoPickupTemplate = template;
+            return _ammoPickupTemplate;
+        }
+
+        private static GameObject CreateResourcePickupTemplate(
+            string templateName,
+            ResourcePickupType resourceType,
+            Sprite sprite,
+            Color baseColor,
+            Color collectedColor)
+        {
+            GameObject template = CreateBasePickupTemplate(templateName, sprite, baseColor, collectedColor);
+            ResourcePickupLogic pickupLogic = template.AddComponent<ResourcePickupLogic>();
+            pickupLogic.Configure(resourceType, 1);
+            return template;
+        }
+
+        private static GameObject CreateBasePickupTemplate(string templateName, Sprite sprite, Color baseColor, Color collectedColor)
+        {
+            GameObject template = new(templateName)
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            template.SetActive(false);
+            template.transform.SetParent(EnsureTemplateRoot(), false);
+            template.transform.localScale = Vector3.one * DefaultPickupScale;
+
+            SpriteRenderer spriteRenderer = template.AddComponent<SpriteRenderer>();
+            spriteRenderer.sortingOrder = DefaultPickupSortingOrder;
+            spriteRenderer.sprite = sprite;
+            spriteRenderer.color = baseColor;
+
+            PickupVisual pickupVisual = template.AddComponent<PickupVisual>();
+            CircleCollider2D triggerCollider = template.AddComponent<CircleCollider2D>();
+            triggerCollider.isTrigger = true;
+            triggerCollider.radius = DefaultPickupColliderRadius;
+
+            pickupVisual.ApplyRuntimeVisual(spriteRenderer.sprite, baseColor, collectedColor);
+            template.AddComponent<PooledObject>();
+            return template;
+        }
+
+        private static Transform EnsureTemplateRoot()
+        {
+            if (_templateRoot != null)
+            {
+                return _templateRoot;
+            }
+
+            GameObject rootObject = new("RuntimePickupTemplates")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            Object.DontDestroyOnLoad(rootObject);
+            _templateRoot = rootObject.transform;
+            return _templateRoot;
+        }
+
+        private static void PrewarmTemplate(GameObject template, int count)
+        {
+            if (template == null || count <= 0)
+            {
+                return;
+            }
+
+            PrefabPoolService.Prewarm(template, count);
         }
 
         private static Sprite ResolveAmmoClipSprite()
@@ -340,23 +522,7 @@ namespace CuteIssac.Item
                 return _coinSprite;
             }
 
-            _coinSprite = CreateSpriteFromPattern(
-                "RuntimeCoinPickup",
-                new[]
-                {
-                    "....XXXX....",
-                    "..XXXXXXXX..",
-                    ".XXXXXXXXXX.",
-                    ".XXX....XXX.",
-                    "XXX......XXX",
-                    "XXX......XXX",
-                    "XXX......XXX",
-                    "XXX......XXX",
-                    ".XXX....XXX.",
-                    ".XXXXXXXXXX.",
-                    "..XXXXXXXX..",
-                    "....XXXX...."
-                });
+            _coinSprite = RuntimeShopIconFactory.GetCandyCoinSprite();
             return _coinSprite;
         }
 
@@ -367,23 +533,7 @@ namespace CuteIssac.Item
                 return _bombSprite;
             }
 
-            _bombSprite = CreateSpriteFromPattern(
-                "RuntimeBombPickup",
-                new[]
-                {
-                    ".....XX.....",
-                    "....XXXX....",
-                    "....XX......",
-                    "...XXXX.....",
-                    "..XXXXXX....",
-                    ".XXXXXXXX...",
-                    ".XXXXXXXX...",
-                    ".XXXXXXXX...",
-                    "..XXXXXX....",
-                    "..XXXXXX....",
-                    "...XXXX.....",
-                    "....XX......"
-                });
+            _bombSprite = RuntimeShopIconFactory.GetAppleBombSprite();
             return _bombSprite;
         }
 

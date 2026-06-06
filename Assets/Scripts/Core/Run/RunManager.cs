@@ -46,7 +46,9 @@ namespace CuteIssac.Core.Run
 
         private void Update()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             HandleDevelopmentFloorHotkeys();
+#endif
         }
 
         [ContextMenu("Start New Run")]
@@ -220,6 +222,7 @@ namespace CuteIssac.Core.Run
 
         private void HandleDevelopmentFloorHotkeys()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (!enableDevelopmentFloorHotkeys)
             {
                 return;
@@ -244,6 +247,7 @@ namespace CuteIssac.Core.Run
             {
                 StartNewRunAtFloor(3);
             }
+#endif
         }
 
         public bool TryGetFloorConfig(int floorIndex, out FloorConfig floorConfig)

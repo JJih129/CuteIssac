@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Room.Gimmicks
@@ -67,6 +68,7 @@ namespace CuteIssac.Room.Gimmicks
         {
             _isRunning = true;
             _spawnTimer = spawnImmediately ? 0f : spawnInterval;
+            PrewarmBombs();
         }
 
         public void StopSpawning()
@@ -85,7 +87,7 @@ namespace CuteIssac.Room.Gimmicks
             }
 
             Vector2 targetPosition = ResolveRandomTargetPosition();
-            AppleBombGimmickController bomb = Instantiate(
+            AppleBombGimmickController bomb = PrefabPoolService.Spawn(
                 appleBombPrefab,
                 new Vector3(targetPosition.x, targetPosition.y, appleBombPrefab.transform.position.z),
                 Quaternion.identity,
@@ -99,6 +101,16 @@ namespace CuteIssac.Room.Gimmicks
             bomb.Completed += HandleBombCompleted;
             _activeBombs.Add(bomb);
             bomb.StartDrop(targetPosition);
+        }
+
+        private void PrewarmBombs()
+        {
+            if (appleBombPrefab == null || maxSimultaneousBombs <= 0)
+            {
+                return;
+            }
+
+            PrefabPoolService.Prewarm(appleBombPrefab.gameObject, maxSimultaneousBombs);
         }
 
         private Vector2 ResolveRandomTargetPosition()

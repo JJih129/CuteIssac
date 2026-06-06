@@ -1,4 +1,5 @@
 using System;
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Room.Gimmicks
@@ -218,7 +219,7 @@ namespace CuteIssac.Room.Gimmicks
         {
             if (breakEffectPrefab != null)
             {
-                Instantiate(breakEffectPrefab, transform.position, Quaternion.identity);
+                PooledEffectSpawner.Spawn(breakEffectPrefab, transform.position, Quaternion.identity);
             }
         }
 

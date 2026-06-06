@@ -85,6 +85,7 @@ namespace CuteIssac.Core.Pooling
             }
 
             pooledObject.MarkSpawned();
+            pooledObject.NotifySpawned();
             pooledObject.gameObject.SetActive(true);
             return pooledObject.gameObject;
         }
@@ -153,6 +154,7 @@ namespace CuteIssac.Core.Pooling
             }
 
             pooledObject.MarkReturned();
+            pooledObject.NotifyDespawned();
             pooledObject.transform.SetParent(pool.Root, false);
             pooledObject.gameObject.SetActive(false);
             pool.Available.Enqueue(pooledObject);

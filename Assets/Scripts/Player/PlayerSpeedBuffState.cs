@@ -24,10 +24,16 @@ namespace CuteIssac.Player
         [SerializeField] private bool logDebugMessages;
 
         private float _remainingDuration;
+        private float _activeDuration;
+        private string _activeDisplayName = "스피드 사탕";
+        private Sprite _activeIcon;
         private int _speedBuffSourceKey;
 
         public bool IsActive => _remainingDuration > 0f;
         public float RemainingDuration => Mathf.Max(0f, _remainingDuration);
+        public float NormalizedRemaining => _activeDuration > 0f ? Mathf.Clamp01(_remainingDuration / _activeDuration) : 0f;
+        public string ActiveDisplayName => _activeDisplayName;
+        public Sprite ActiveIcon => _activeIcon;
         public float DefaultDuration => defaultDuration;
         public float DefaultMoveSpeedMultiplier => defaultMoveSpeedMultiplier;
         public DuplicateBuffPolicy DefaultDuplicatePolicy => defaultDuplicatePolicy;
@@ -60,6 +66,11 @@ namespace CuteIssac.Player
 
         public bool TryApplyBuff(float duration, float moveSpeedMultiplier, DuplicateBuffPolicy duplicatePolicy)
         {
+            return TryApplyBuff(duration, moveSpeedMultiplier, duplicatePolicy, null, "스피드 사탕");
+        }
+
+        public bool TryApplyBuff(float duration, float moveSpeedMultiplier, DuplicateBuffPolicy duplicatePolicy, Sprite statusIcon, string displayName)
+        {
             ResolveReferences();
 
             if (playerStats == null)
@@ -81,6 +92,9 @@ namespace CuteIssac.Player
             }
 
             _remainingDuration = resolvedDuration;
+            _activeDuration = resolvedDuration;
+            _activeIcon = statusIcon;
+            _activeDisplayName = string.IsNullOrWhiteSpace(displayName) ? "스피드 사탕" : displayName;
             playerStats.SetRuntimeObstacleMoveSpeedMultiplier(ResolveSourceKey(), resolvedMultiplier);
 
             if (logDebugMessages)
@@ -104,6 +118,8 @@ namespace CuteIssac.Player
             }
 
             _remainingDuration = 0f;
+            _activeDuration = 0f;
+            _activeIcon = null;
         }
 
         private int ResolveSourceKey()

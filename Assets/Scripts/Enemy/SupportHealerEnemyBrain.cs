@@ -173,7 +173,6 @@ namespace CuteIssac.Enemy
 
         private EnemyHealth FindHealTarget(float healRange)
         {
-            EnemyHealth[] candidates = FindObjectsByType<EnemyHealth>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             RoomController assignedRoom = roomEnemyMember != null ? roomEnemyMember.AssignedRoom : null;
             Vector2 position = Controller.Position;
             EnemyHealth bestTarget = null;
@@ -181,9 +180,9 @@ namespace CuteIssac.Enemy
             float bestDistanceSq = float.MaxValue;
             float maxDistanceSq = healRange * healRange;
 
-            for (int i = 0; i < candidates.Length; i++)
+            for (int i = 0; i < EnemyRegistry.Count; i++)
             {
-                EnemyHealth candidate = candidates[i];
+                EnemyHealth candidate = EnemyRegistry.GetAt(i);
 
                 if (!IsValidHealTarget(candidate, healRange))
                 {

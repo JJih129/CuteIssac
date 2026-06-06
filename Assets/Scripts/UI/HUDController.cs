@@ -37,6 +37,8 @@ namespace CuteIssac.UI
         [SerializeField] private PlayerTrinketHolder playerTrinketHolder;
         [Tooltip("Optional. Assign the player's stat resolver here. If empty, the controller tries to find one in the scene.")]
         [SerializeField] private PlayerStats playerStats;
+        [Tooltip("Optional. Assign the player's speed buff state here. If empty, the controller tries to find one in the scene.")]
+        [SerializeField] private PlayerSpeedBuffState playerSpeedBuffState;
         [Tooltip("Optional. Assign the player's weapon loadout here. If empty, the controller tries to find one in the scene.")]
         [SerializeField] private PlayerWeaponLoadout playerWeaponLoadout;
         [Tooltip("Optional. Assign the player's combat momentum controller here. If empty, the controller tries to find one in the scene.")]
@@ -73,6 +75,8 @@ namespace CuteIssac.UI
         [SerializeField] private PauseMenuController pauseMenuController;
         [Tooltip("Optional pause menu view. If empty, PauseMenuController creates a fallback parchment menu at runtime.")]
         [SerializeField] private PauseMenuView pauseMenuView;
+        [Tooltip("Replaceable speed candy timed-buff status view. If empty, HUDController creates one at runtime.")]
+        [SerializeField] private SpeedBuffStatusPanelView speedBuffStatusPanelView;
 
         [Header("Fallback Weapon HUD Art")]
         [Tooltip("Optional authored ammo label/icon used by the runtime weapon HUD ammo plate.")]
@@ -233,6 +237,7 @@ namespace CuteIssac.UI
 
             TryTrimExpiredLoadoutHistoryEntries(now);
             RefreshLoadoutHistory(now);
+            RefreshSpeedBuffStatus();
 
             if (!ShouldRefreshChallengeStatusRealtime() || now < _nextChallengeStatusRefreshTime)
             {
@@ -415,6 +420,11 @@ namespace CuteIssac.UI
                     Debug.LogWarning("HUDController could not find a PlayerStats source. Combat stat HUD will stay in placeholder mode until one is assigned.", this);
                     _warnedMissingPlayerStats = true;
                 }
+            }
+
+            if (playerSpeedBuffState == null)
+            {
+                playerSpeedBuffState = FindFirstObjectByType<PlayerSpeedBuffState>(FindObjectsInactive.Exclude);
             }
 
             if (playerWeaponLoadout == null && playerStats != null)
@@ -1103,6 +1113,37 @@ namespace CuteIssac.UI
             }
 
             activeItemPanelView.HidePanel();
+        }
+
+        private void RefreshSpeedBuffStatus()
+        {
+            if (playerSpeedBuffState == null)
+            {
+                playerSpeedBuffState = FindFirstObjectByType<PlayerSpeedBuffState>(FindObjectsInactive.Exclude);
+            }
+
+            if (speedBuffStatusPanelView == null)
+            {
+                speedBuffStatusPanelView = FindLocalView<SpeedBuffStatusPanelView>();
+            }
+
+            if (speedBuffStatusPanelView == null)
+            {
+                Canvas canvas = GetComponentInParent<Canvas>();
+                Transform parent = canvas != null ? canvas.transform : transform;
+                speedBuffStatusPanelView = SpeedBuffStatusPanelView.CreateRuntime(parent);
+            }
+
+            if (playerSpeedBuffState == null || !playerSpeedBuffState.IsActive)
+            {
+                speedBuffStatusPanelView.Hide();
+                return;
+            }
+
+            speedBuffStatusPanelView.Present(
+                playerSpeedBuffState.ActiveDisplayName,
+                playerSpeedBuffState.ActiveIcon,
+                playerSpeedBuffState.NormalizedRemaining);
         }
 
         private void RefreshTrinketSlot()

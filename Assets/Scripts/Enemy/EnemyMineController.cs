@@ -70,7 +70,7 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            PlayerHealth playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
+            PlayerHealth playerHealth = PlayerRegistry.ActiveHealth;
 
             if (playerHealth == null || playerHealth.IsDead)
             {

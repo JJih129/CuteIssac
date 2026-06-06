@@ -23,6 +23,9 @@ namespace CuteIssac.Combat
         [Header("Homing")]
         [SerializeField] [Min(0.5f)] private float fallbackHomingSearchRadius = 5.5f;
         [SerializeField] [Min(0f)] private float fallbackHomingTurnRateDegrees = 135f;
+        [Header("Speed Tuning")]
+        [Tooltip("Global gameplay tuning applied after enemy projectile speed data is resolved.")]
+        [SerializeField] [Range(0.1f, 1f)] private float projectileSpeedMultiplier = 0.72f;
 
         private Rigidbody2D _rigidbody2D;
         private Collider2D _collider2D;
@@ -84,7 +87,7 @@ namespace CuteIssac.Combat
                 return;
             }
 
-            PlayerHealth playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
+            PlayerHealth playerHealth = PlayerRegistry.ActiveHealth;
 
             if (playerHealth == null || playerHealth.IsDead)
             {
@@ -183,7 +186,8 @@ namespace CuteIssac.Combat
 
             transform.position = request.Position;
             transform.rotation = Quaternion.FromToRotation(Vector3.right, _travelDirection);
-            _rigidbody2D.linearVelocity = _travelDirection * Mathf.Max(0f, request.Speed);
+            float tunedSpeed = Mathf.Max(0f, request.Speed) * Mathf.Clamp(projectileSpeedMultiplier, 0.1f, 1f);
+            _rigidbody2D.linearVelocity = _travelDirection * tunedSpeed;
 
             if (_instigatorCollider != null)
             {
