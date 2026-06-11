@@ -54,6 +54,7 @@ namespace CuteIssac.Data.Dungeon
         [SerializeField] private EncounterPacingSettings challengeRoomEncounterPacing = EncounterPacingSettings.CreateChallengeDefault();
         [SerializeField] private ChallengeRewardSettings challengeRewardSettings = ChallengeRewardSettings.CreateDefault();
         [SerializeField] private SecretRoomRewardSettings secretRoomRewardSettings = SecretRoomRewardSettings.CreateDefault();
+        [SerializeField] private FloorSpecialRoomRules specialRoomRules;
         [SerializeField] private RoomRewardTable normalRoomRewardPool;
         [SerializeField] private RoomRewardTable bossRoomRewardPool;
         [SerializeField] private RoomRewardTable treasureRoomRewardPool;
@@ -109,6 +110,7 @@ namespace CuteIssac.Data.Dungeon
         public EncounterPacingSettings ChallengeRoomEncounterPacing => challengeRoomEncounterPacing;
         public ChallengeRewardSettings ChallengeRewardSettings => challengeRewardSettings ?? ChallengeRewardSettings.CreateDefault();
         public SecretRoomRewardSettings SecretRoomRewardSettings => secretRoomRewardSettings ?? SecretRoomRewardSettings.CreateDefault();
+        public FloorSpecialRoomRules SpecialRoomRules => specialRoomRules;
         public RoomRewardTable NormalRoomRewardPool => normalRoomRewardPool;
         public RoomRewardTable BossRoomRewardPool => bossRoomRewardPool;
         public RoomRewardTable TreasureRoomRewardPool => treasureRoomRewardPool;

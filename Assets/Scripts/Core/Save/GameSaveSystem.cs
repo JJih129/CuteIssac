@@ -10,11 +10,13 @@ namespace CuteIssac.Core.Save
     /// <summary>
     /// Coordinates account-level meta save and optional active run snapshots without coupling gameplay systems to file IO.
     /// </summary>
+    [DefaultExecutionOrder(130)]
     [DisallowMultipleComponent]
     public sealed class GameSaveSystem : MonoBehaviour
     {
         [Header("References")]
         [SerializeField] private UnlockManager unlockManager;
+        [SerializeField] private MetaProgressionManager metaProgressionManager;
         [SerializeField] private GameOptionsService gameOptionsService;
         [SerializeField] private RunSaveSystem runSaveSystem;
         [SerializeField] private RunManager runManager;
@@ -58,6 +60,12 @@ namespace CuteIssac.Core.Save
                 gameOptionsService.OptionsChanged += HandleOptionsChanged;
             }
 
+            if (metaProgressionManager != null)
+            {
+                metaProgressionManager.ProgressionChanged -= HandleMetaChanged;
+                metaProgressionManager.ProgressionChanged += HandleMetaChanged;
+            }
+
             if (runManager != null)
             {
                 runManager.RunEnded -= HandleRunEnded;
@@ -75,6 +83,11 @@ namespace CuteIssac.Core.Save
             if (gameOptionsService != null)
             {
                 gameOptionsService.OptionsChanged -= HandleOptionsChanged;
+            }
+
+            if (metaProgressionManager != null)
+            {
+                metaProgressionManager.ProgressionChanged -= HandleMetaChanged;
             }
 
             if (runManager != null)
@@ -108,14 +121,22 @@ namespace CuteIssac.Core.Save
                 return;
             }
 
-            string directory = Path.GetDirectoryName(MetaSaveFilePath);
-
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            try
             {
-                Directory.CreateDirectory(directory);
-            }
+                string directory = Path.GetDirectoryName(MetaSaveFilePath);
 
-            File.WriteAllText(MetaSaveFilePath, JsonUtility.ToJson(saveData, true));
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllText(MetaSaveFilePath, JsonUtility.ToJson(saveData, true));
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"GameSaveSystem failed to write meta save: {exception.Message}", this);
+                return;
+            }
 
             if (saveRunSnapshot)
             {
@@ -135,6 +156,8 @@ namespace CuteIssac.Core.Save
 
             unlockManager?.ImportSaveData(saveData.Unlocks);
             gameOptionsService?.Import(saveData.Options);
+            metaProgressionManager?.Import(saveData.Progression);
+            unlockManager?.EvaluateProgressionUnlocks(metaProgressionManager != null ? metaProgressionManager.Progression : saveData.Progression);
             return true;
         }
 
@@ -148,15 +171,23 @@ namespace CuteIssac.Core.Save
         {
             saveData = null;
 
-            if (File.Exists(MetaSaveFilePath))
+            try
             {
-                string json = File.ReadAllText(MetaSaveFilePath);
-
-                if (!string.IsNullOrWhiteSpace(json))
+                if (File.Exists(MetaSaveFilePath))
                 {
-                    saveData = JsonUtility.FromJson<MetaSaveData>(json);
-                    return saveData != null;
+                    string json = File.ReadAllText(MetaSaveFilePath);
+
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        saveData = JsonUtility.FromJson<MetaSaveData>(json);
+                        NormalizeMetaSaveData(saveData);
+                        return saveData != null;
+                    }
                 }
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"GameSaveSystem ignored unreadable meta save: {exception.Message}", this);
             }
 
             return TryMigrateLegacyUnlockFile(out saveData);
@@ -186,6 +217,11 @@ namespace CuteIssac.Core.Save
                 saveData.Options = gameOptionsService.Export();
             }
 
+            if (metaProgressionManager != null)
+            {
+                saveData.Progression = metaProgressionManager.Export();
+            }
+
             return saveData;
         }
 
@@ -193,39 +229,74 @@ namespace CuteIssac.Core.Save
         {
             saveData = null;
 
-            if (!File.Exists(LegacyUnlockFilePath))
+            try
             {
+                if (!File.Exists(LegacyUnlockFilePath))
+                {
+                    return false;
+                }
+
+                string json = File.ReadAllText(LegacyUnlockFilePath);
+
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    return false;
+                }
+
+                UnlockSaveData legacyUnlockData = JsonUtility.FromJson<UnlockSaveData>(json);
+
+                if (legacyUnlockData == null)
+                {
+                    return false;
+                }
+
+                saveData = new MetaSaveData
+                {
+                    LastSavedUtc = DateTime.UtcNow.ToString("O"),
+                    Unlocks = legacyUnlockData,
+                    Options = gameOptionsService != null ? gameOptionsService.Export() : new GameOptionsData(),
+                    Progression = metaProgressionManager != null ? metaProgressionManager.Export() : new MetaProgressionSaveData()
+                };
+
+                NormalizeMetaSaveData(saveData);
+                File.WriteAllText(MetaSaveFilePath, JsonUtility.ToJson(saveData, true));
+                return true;
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"GameSaveSystem failed to migrate legacy unlock save: {exception.Message}", this);
+                saveData = null;
                 return false;
             }
-
-            string json = File.ReadAllText(LegacyUnlockFilePath);
-
-            if (string.IsNullOrWhiteSpace(json))
-            {
-                return false;
-            }
-
-            UnlockSaveData legacyUnlockData = JsonUtility.FromJson<UnlockSaveData>(json);
-
-            if (legacyUnlockData == null)
-            {
-                return false;
-            }
-
-            saveData = new MetaSaveData
-            {
-                LastSavedUtc = DateTime.UtcNow.ToString("O"),
-                Unlocks = legacyUnlockData,
-                Options = gameOptionsService != null ? gameOptionsService.Export() : new GameOptionsData()
-            };
-
-            File.WriteAllText(MetaSaveFilePath, JsonUtility.ToJson(saveData, true));
-            return true;
         }
 
         private void HandleMetaChanged()
         {
             SaveMetaState();
+        }
+
+        private static void NormalizeMetaSaveData(MetaSaveData saveData)
+        {
+            if (saveData == null)
+            {
+                return;
+            }
+
+            saveData.Unlocks ??= new UnlockSaveData();
+            saveData.Options ??= new GameOptionsData();
+            saveData.Progression ??= new MetaProgressionSaveData();
+            saveData.Progression.TotalBossRoomsCleared = Mathf.Max(0, saveData.Progression.TotalBossRoomsCleared);
+            saveData.Progression.TotalEnemyKills = Mathf.Max(0, saveData.Progression.TotalEnemyKills);
+            saveData.Progression.CurrentWinStreak = Mathf.Max(0, saveData.Progression.CurrentWinStreak);
+            saveData.Progression.BestWinStreak = Mathf.Max(saveData.Progression.CurrentWinStreak, saveData.Progression.BestWinStreak);
+            saveData.Progression.NoHitCombatRoomClears = Mathf.Max(0, saveData.Progression.NoHitCombatRoomClears);
+            saveData.Progression.BossClearsWithoutBombs = Mathf.Max(0, saveData.Progression.BossClearsWithoutBombs);
+            saveData.Progression.DiscoveredItemIds ??= new System.Collections.Generic.List<string>();
+            saveData.Progression.SeenEnemyIds ??= new System.Collections.Generic.List<string>();
+            saveData.Progression.CompletedAchievementIds ??= new System.Collections.Generic.List<string>();
+            saveData.Progression.EnemyKillCounts ??= new System.Collections.Generic.List<MetaProgressionCounterRecord>();
+            saveData.Progression.RoomTypeClearCounts ??= new System.Collections.Generic.List<MetaProgressionCounterRecord>();
+            saveData.Progression.CharacterRecords ??= new System.Collections.Generic.List<CharacterProgressionRecord>();
         }
 
         private void HandleOptionsChanged(GameOptionsData _)
@@ -255,6 +326,11 @@ namespace CuteIssac.Core.Save
             if (gameOptionsService == null)
             {
                 gameOptionsService = GetComponent<GameOptionsService>();
+            }
+
+            if (metaProgressionManager == null)
+            {
+                metaProgressionManager = GetComponent<MetaProgressionManager>();
             }
 
             if (runSaveSystem == null)

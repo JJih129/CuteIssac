@@ -44,8 +44,8 @@ MonoBehaviour:
     selectionWeight: 2
     difficultyCost: 4
     unlockFloor: 2
-    unlockedByDefault: 1
-    unlockKey: 
+    unlockedByDefault: 0
+    unlockKey: unlock.enemy.spawner
   - enemyId: floor2_turret
     enemyPrefab: {fileID: 930000106, guid: 6e3a1826aa5b492c94f1bd574f6ad8a1, type: 3}
     encounterTier: 0

@@ -25,6 +25,7 @@ namespace CuteIssac.Core.Run
         [Header("Catalog")]
         [SerializeField] private StartingBuildCatalog startingBuildCatalog;
         [SerializeField] private string resourcesCatalogPath = "StartingBuilds/DefaultStartingBuildCatalog";
+        [SerializeField] private bool enableLegacyStartingBuilds;
         [SerializeField] private bool requireSelectionOnStartup;
 
         private readonly List<StatModifier> _buildStatModifierBuffer = new();
@@ -48,6 +49,11 @@ namespace CuteIssac.Core.Run
             ResolveCatalog();
             ResolveDefaultBuild();
 
+            if (!enableLegacyStartingBuilds)
+            {
+                return;
+            }
+
             if (runManager != null)
             {
                 runManager.RunStarted -= HandleRunStarted;
@@ -65,6 +71,12 @@ namespace CuteIssac.Core.Run
 
         public bool TryBeginStartupSelection(Action onComplete)
         {
+            if (!enableLegacyStartingBuilds)
+            {
+                onComplete?.Invoke();
+                return false;
+            }
+
             ResolveCatalog();
             ResolveDefaultBuild();
 
@@ -87,6 +99,11 @@ namespace CuteIssac.Core.Run
 
         private void HandleRunStarted(RunContext _)
         {
+            if (!enableLegacyStartingBuilds)
+            {
+                return;
+            }
+
             if (_suppressNextRunStartLoadout)
             {
                 _suppressNextRunStartLoadout = false;

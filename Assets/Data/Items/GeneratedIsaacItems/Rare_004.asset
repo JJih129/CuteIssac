@@ -30,8 +30,8 @@ MonoBehaviour:
   description: Improves fire rate. Raises movement speed. Extends tear range.
   icon: {fileID: 0}
   rarity: 2
-  unlockedByDefault: 1
-  unlockKey: 
+  unlockedByDefault: 0
+  unlockKey: unlock.item.angel_deal
   itemTags: 0200000000000000
   statModifiers: []
   projectileModifiers: []

@@ -86,7 +86,8 @@ namespace CuteIssac.Enemy
         private void OnValidate()
         {
             ResolveReferences();
-            RefreshSprite(forceReset: true);
+            _hasScaleReference = false;
+            _lastAppliedSprite = null;
         }
 
         private void RefreshSprite(bool forceReset)
@@ -341,7 +342,7 @@ namespace CuteIssac.Enemy
 
         private static Vector2 ResolveSpriteWorldSize(Sprite sprite)
         {
-            return sprite != null ? sprite.bounds.size : Vector2.one;
+            return sprite != null ? (Vector2)sprite.bounds.size : Vector2.one;
         }
 
         private void ResolveReferences()

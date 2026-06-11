@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CuteIssac.Core.Run;
 using CuteIssac.Data.Dungeon;
 using UnityEngine;
 
@@ -19,6 +20,11 @@ namespace CuteIssac.Dungeon
 
         public DungeonMap Build(FloorConfig floorConfig, int seed)
         {
+            return Build(floorConfig, seed, null);
+        }
+
+        public DungeonMap Build(FloorConfig floorConfig, int seed, RunContext runContext)
+        {
             if (floorConfig == null)
             {
                 Debug.LogError("RoomGraphBuilder requires a FloorConfig.");
@@ -29,7 +35,7 @@ namespace CuteIssac.Dungeon
 
             try
             {
-                return BuildInternal(floorConfig, seed);
+                return BuildInternal(floorConfig, seed, runContext);
             }
             finally
             {
@@ -37,7 +43,7 @@ namespace CuteIssac.Dungeon
             }
         }
 
-        private DungeonMap BuildInternal(FloorConfig floorConfig, int seed)
+        private DungeonMap BuildInternal(FloorConfig floorConfig, int seed, RunContext runContext)
         {
             for (int attemptIndex = 0; attemptIndex < floorConfig.MaxGenerationAttempts; attemptIndex++)
             {
@@ -63,7 +69,7 @@ namespace CuteIssac.Dungeon
 
                 _distanceCalculator.CalculateDistances(dungeonMap, GridPosition.Zero);
 
-                if (!_roomTypeAssigner.Assign(dungeonMap, out string typeFailureReason))
+                if (!_roomTypeAssigner.Assign(dungeonMap, runContext, out string typeFailureReason))
                 {
                     Debug.LogWarning($"RoomGraphBuilder attempt {attemptIndex + 1}/{floorConfig.MaxGenerationAttempts} failed during room type assignment: {typeFailureReason}");
                     continue;

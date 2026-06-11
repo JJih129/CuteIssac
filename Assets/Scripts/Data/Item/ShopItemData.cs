@@ -15,6 +15,8 @@ namespace CuteIssac.Data.Item
         [SerializeField] private string displayName = "Shop Offer";
         [SerializeField] [TextArea] private string description;
         [SerializeField] private Sprite icon;
+        [SerializeField] private bool unlockedByDefault = true;
+        [SerializeField] private string unlockKey;
 
         [Header("Price")]
         [SerializeField] [Min(1)] private int price = 5;
@@ -28,6 +30,8 @@ namespace CuteIssac.Data.Item
         public string DisplayName => displayName;
         public string Description => description;
         public Sprite Icon => icon;
+        public bool UnlockedByDefault => unlockedByDefault;
+        public string UnlockKey => unlockKey;
         public int Price => Mathf.Max(1, price);
         public ShopCurrencyType CurrencyType => currencyType;
         public ShopDeliveryMode DeliveryMode => deliveryMode;
@@ -114,6 +118,8 @@ namespace CuteIssac.Data.Item
             runtimeItemData.displayName = displayName;
             runtimeItemData.description = description;
             runtimeItemData.icon = icon;
+            runtimeItemData.unlockedByDefault = true;
+            runtimeItemData.unlockKey = string.Empty;
             runtimeItemData.price = Mathf.Max(1, runtimePrice);
             runtimeItemData.currencyType = runtimeCurrencyType;
             runtimeItemData.deliveryMode = runtimeDeliveryMode;

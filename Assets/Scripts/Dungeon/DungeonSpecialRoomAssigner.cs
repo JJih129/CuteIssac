@@ -13,6 +13,7 @@ namespace CuteIssac.Dungeon
         private readonly List<DungeonRoomNode> _roomCandidateBuffer = new();
         private readonly List<SecretRoomCandidate> _secretCandidateBuffer = new();
         private readonly List<RoomData> _roomDataSelectionBuffer = new();
+        private readonly List<SpecialRoomRuleData> _specialRuleBuffer = new();
 
         public void Assign(DungeonMap dungeonMap)
         {
@@ -33,7 +34,32 @@ namespace CuteIssac.Dungeon
                 dungeonMap.FloorConfig.ShopRoomCount,
                 dungeonMap.FloorConfig.MinimumShopDistanceFromStart);
 
-            AssignSecretRooms(dungeonMap);
+            AssignReplacementRooms(
+                dungeonMap,
+                RoomType.Challenge,
+                dungeonMap.FloorConfig.ChallengeRoomCount,
+                dungeonMap.FloorConfig.MinimumChallengeDistanceFromStart);
+
+            AssignReplacementRooms(
+                dungeonMap,
+                RoomType.Trap,
+                dungeonMap.FloorConfig.TrapRoomCount,
+                dungeonMap.FloorConfig.MinimumTrapDistanceFromStart);
+
+            AssignReplacementRooms(
+                dungeonMap,
+                RoomType.Curse,
+                dungeonMap.FloorConfig.CurseRoomCount,
+                dungeonMap.FloorConfig.MinimumCurseDistanceFromStart);
+
+            AssignReplacementRooms(
+                dungeonMap,
+                RoomType.MiniBoss,
+                dungeonMap.FloorConfig.MiniBossRoomCount,
+                dungeonMap.FloorConfig.MinimumMiniBossDistanceFromStart);
+
+            AssignSecretRooms(dungeonMap, dungeonMap.FloorConfig.SecretRoomCount);
+            AssignRuleDrivenRooms(dungeonMap);
         }
 
         private void AssignReplacementRooms(DungeonMap dungeonMap, RoomType targetType, int count, int minimumDistance)
@@ -94,10 +120,46 @@ namespace CuteIssac.Dungeon
             return _roomCandidateBuffer[0];
         }
 
-        private void AssignSecretRooms(DungeonMap dungeonMap)
+        private void AssignRuleDrivenRooms(DungeonMap dungeonMap)
         {
-            int secretRoomCount = dungeonMap.FloorConfig.SecretRoomCount;
+            FloorSpecialRoomRules rules = dungeonMap.FloorConfig.SpecialRoomRules;
 
+            if (rules == null)
+            {
+                return;
+            }
+
+            _specialRuleBuffer.Clear();
+            rules.CollectAvailableRules(dungeonMap.FloorConfig.FloorIndex, _specialRuleBuffer);
+
+            for (int index = 0; index < _specialRuleBuffer.Count; index++)
+            {
+                SpecialRoomRuleData rule = _specialRuleBuffer[index];
+
+                if (rule == null || rule.RoomType == RoomType.Start || rule.RoomType == RoomType.Boss)
+                {
+                    continue;
+                }
+
+                int roomCount = ResolveRuleRoomCount(rule);
+
+                if (roomCount <= 0)
+                {
+                    continue;
+                }
+
+                if (rule.RoomType == RoomType.Secret)
+                {
+                    AssignSecretRooms(dungeonMap, roomCount);
+                    continue;
+                }
+
+                AssignReplacementRooms(dungeonMap, rule.RoomType, roomCount, ResolveRuleMinimumDistance(dungeonMap.FloorConfig, rule.RoomType));
+            }
+        }
+
+        private void AssignSecretRooms(DungeonMap dungeonMap, int secretRoomCount)
+        {
             for (int i = 0; i < secretRoomCount; i++)
             {
                 SecretRoomCandidate candidate = SelectSecretCandidate(dungeonMap);
@@ -253,6 +315,34 @@ namespace CuteIssac.Dungeon
             }
 
             return left.Position.GetHashCode().CompareTo(right.Position.GetHashCode());
+        }
+
+        private static int ResolveRuleRoomCount(SpecialRoomRuleData rule)
+        {
+            if (rule.GuaranteedCount > 0)
+            {
+                return rule.GuaranteedCount;
+            }
+
+            float chance = rule.RequiresBossCleared && rule.PostBossDealChance > 0f
+                ? rule.PostBossDealChance
+                : rule.BaseChance;
+            return Random.value <= chance ? 1 : 0;
+        }
+
+        private static int ResolveRuleMinimumDistance(FloorConfig floorConfig, RoomType roomType)
+        {
+            return roomType switch
+            {
+                RoomType.Treasure => floorConfig.MinimumTreasureDistanceFromStart,
+                RoomType.Shop => floorConfig.MinimumShopDistanceFromStart,
+                RoomType.Challenge => floorConfig.MinimumChallengeDistanceFromStart,
+                RoomType.Trap => floorConfig.MinimumTrapDistanceFromStart,
+                RoomType.Curse => floorConfig.MinimumCurseDistanceFromStart,
+                RoomType.MiniBoss => floorConfig.MinimumMiniBossDistanceFromStart,
+                RoomType.Secret => floorConfig.MinimumSecretDistanceFromStart,
+                _ => 2
+            };
         }
 
         private readonly struct SecretNeighbor

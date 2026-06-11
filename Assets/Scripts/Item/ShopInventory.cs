@@ -39,7 +39,7 @@ namespace CuteIssac.Item
         private ShopItem _highlightedItem;
         private Transform _runtimeContentRoot;
         private GameObject _runtimeShopkeeper;
-        private readonly HashSet<string> _selectedItemIds = new();
+        private readonly HashSet<string> _selectedItemIds = new(System.StringComparer.OrdinalIgnoreCase);
         private readonly List<ShopSlotState> _slotStateBuffer = new List<ShopSlotState>();
 
         public event System.Action<ShopItem, bool> PurchaseAttemptResolved;
@@ -92,6 +92,70 @@ namespace CuteIssac.Item
             }
         }
 
+        public int ConfigureTradeOffersFromItemPool(
+            ItemPoolData itemPool,
+            RoomType sourceRoomType,
+            SpecialRoomDealType dealType,
+            string ruleId,
+            ShopCurrencyType currencyType,
+            int priceMin,
+            int priceMax,
+            int offerCount)
+        {
+            ResolveItemPoolService();
+            EnsureRuntimeShopPresentation();
+            _highlightedItem = null;
+            CurrentHighlightedCanPurchase = false;
+            _selectedItemIds.Clear();
+
+            if (shopItems == null || shopItems.Length == 0)
+            {
+                return 0;
+            }
+
+            int slotCount = Mathf.Min(Mathf.Max(1, offerCount), shopItems.Length);
+            int configuredOfferCount = 0;
+            AlignShopSlots(slotCount);
+            int minPrice = Mathf.Max(1, priceMin);
+            int maxPrice = Mathf.Max(minPrice, priceMax);
+
+            for (int i = 0; i < slotCount; i++)
+            {
+                if (!TryGetShopItem(i, out ShopItem shopItem))
+                {
+                    continue;
+                }
+
+                if (!TrySelectTradeItem(itemPool, sourceRoomType, out ItemData selectedItem))
+                {
+                    ClearShopSlot(shopItem);
+                    continue;
+                }
+
+                int price = Random.Range(minPrice, maxPrice + 1);
+                ShopItemData runtimeShopItemData = ShopItemData.CreateRuntimePassiveItemOffer(
+                    selectedItem,
+                    price,
+                    currencyType);
+                ApplyRuntimeShopItem(shopItem, runtimeShopItemData);
+                shopItem.ConfigureSpecialDealContext(sourceRoomType, dealType, ruleId);
+
+                if (runtimeShopItemData != null)
+                {
+                    configuredOfferCount++;
+                    _selectedItemIds.Add(selectedItem.ItemId);
+                    runItemPoolService?.RegisterOffer(selectedItem);
+                }
+            }
+
+            for (int i = slotCount; i < shopItems.Length; i++)
+            {
+                ClearShopSlot(shopItems[i]);
+            }
+
+            return configuredOfferCount;
+        }
+
         public ShopItem GetClosestAvailableItem(
             Vector3 buyerPosition,
             float maxDistance,
@@ -106,7 +170,7 @@ namespace CuteIssac.Item
             {
                 ShopItem shopItem = shopItems[i];
 
-                if (shopItem == null || shopItem.IsSold)
+                if (shopItem == null || shopItem.IsSold || !shopItem.HasUnlockedOffer)
                 {
                     continue;
                 }
@@ -187,7 +251,7 @@ namespace CuteIssac.Item
             {
                 ShopItem shopItem = shopItems[i];
 
-                if (shopItem == null || shopItem.IsSold || !shopItem.gameObject.activeInHierarchy)
+                if (shopItem == null || shopItem.IsSold || !shopItem.HasUnlockedOffer || !shopItem.gameObject.activeInHierarchy)
                 {
                     continue;
                 }
@@ -210,7 +274,7 @@ namespace CuteIssac.Item
             {
                 ShopItem shopItem = shopItems[i];
 
-                if (shopItem == null || !shopItem.gameObject.activeInHierarchy || shopItem.IsSold)
+                if (shopItem == null || !shopItem.gameObject.activeInHierarchy || shopItem.IsSold || !shopItem.HasUnlockedOffer)
                 {
                     continue;
                 }
@@ -242,7 +306,7 @@ namespace CuteIssac.Item
             {
                 ShopItem shopItem = shopItems[i];
 
-                if (shopItem == null || shopItem.IsSold || !shopItem.gameObject.activeInHierarchy || shopItem.ShopItemData == null)
+                if (shopItem == null || shopItem.IsSold || !shopItem.HasUnlockedOffer || !shopItem.gameObject.activeInHierarchy || shopItem.ShopItemData == null)
                 {
                     continue;
                 }
@@ -581,6 +645,22 @@ namespace CuteIssac.Item
                 : new ItemPoolSelectionContext(RoomType.Shop, 1, _selectedItemIds, null, null, null, null, null);
 
             return itemPool.TrySelectRandomItem(selectionContext, out selectedItem);
+        }
+
+        private bool TrySelectTradeItem(ItemPoolData itemPool, RoomType sourceRoomType, out ItemData selectedItem)
+        {
+            selectedItem = null;
+            if (itemPool == null)
+            {
+                return false;
+            }
+
+            ItemPoolSelectionContext selectionContext = runItemPoolService != null
+                ? runItemPoolService.BuildSelectionContext(sourceRoomType, _selectedItemIds)
+                : new ItemPoolSelectionContext(sourceRoomType, 1, _selectedItemIds, null, null, null, null, null);
+
+            return itemPool.TrySelectRandomNonWeaponItem(selectionContext, out selectedItem)
+                || itemPool.TrySelectRandomItem(selectionContext, out selectedItem);
         }
 
         private int ResolveRandomItemOfferPrice(ItemData itemData)

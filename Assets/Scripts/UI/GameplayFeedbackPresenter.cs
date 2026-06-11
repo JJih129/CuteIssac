@@ -2,6 +2,7 @@ using CuteIssac.Core.Audio;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Pooling;
+using CuteIssac.Core.Settings;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Player;
 using CuteIssac.Room;
@@ -36,6 +37,8 @@ namespace CuteIssac.UI
         [SerializeField] private RectTransform bannerLayerRoot;
         [Tooltip("Optional minimap view used to keep secret-room reward banner colors aligned with HUD/minimap theming.")]
         [SerializeField] private MinimapPanelView minimapPanelView;
+        [Tooltip("Optional options service used to apply accessibility and feedback preferences.")]
+        [SerializeField] private GameOptionsService gameOptionsService;
 
         [Header("Colors")]
         [SerializeField] private Color enemyDamageColor = new(1f, 0.92f, 0.52f, 1f);
@@ -676,6 +679,23 @@ namespace CuteIssac.UI
                 return;
             }
 
+            float opacity = request.Opacity;
+            float duration = request.Duration;
+            int pulseCount = request.PulseCount;
+            float pulseStrength = request.PulseStrength;
+            float pulseFrequencyScale = request.PulseFrequencyScale;
+            float decaySoftness = request.DecaySoftness;
+
+            if (gameOptionsService != null && gameOptionsService.CurrentOptions != null && gameOptionsService.CurrentOptions.ReduceFlashes)
+            {
+                opacity *= 0.35f;
+                duration *= 0.5f;
+                pulseCount = Mathf.Min(pulseCount, 1);
+                pulseStrength *= 0.25f;
+                pulseFrequencyScale *= 0.5f;
+                decaySoftness = Mathf.Max(decaySoftness, 0.75f);
+            }
+
             ScreenThreatFlashView flashView = PrefabPoolService.Spawn(
                 ResolveThreatFlashTemplate(bannerRoot),
                 Vector3.zero,
@@ -683,12 +703,12 @@ namespace CuteIssac.UI
                 bannerRoot);
             flashView.Initialize(
                 request.FlashColor,
-                request.Opacity,
-                request.Duration,
-                request.PulseCount,
-                request.PulseStrength,
-                request.PulseFrequencyScale,
-                request.DecaySoftness);
+                opacity,
+                duration,
+                pulseCount,
+                pulseStrength,
+                pulseFrequencyScale,
+                decaySoftness);
         }
 
         private void HandleGameplayModalStateChanged(bool isModalActive)
@@ -761,6 +781,14 @@ namespace CuteIssac.UI
 
         private bool ShouldRenderFloatingFeedback(FloatingFeedbackVisualProfile visualProfile)
         {
+            if (gameOptionsService != null
+                && gameOptionsService.CurrentOptions != null
+                && !gameOptionsService.CurrentOptions.DamageNumbersEnabled
+                && (visualProfile == FloatingFeedbackVisualProfile.EnemyDamage || visualProfile == FloatingFeedbackVisualProfile.PlayerDamage))
+            {
+                return false;
+            }
+
             if (!damageNumbersOnly)
             {
                 return true;
@@ -864,6 +892,11 @@ namespace CuteIssac.UI
             if (minimapPanelView == null)
             {
                 minimapPanelView = FindFirstObjectByType<MinimapPanelView>(FindObjectsInactive.Exclude);
+            }
+
+            if (gameOptionsService == null)
+            {
+                gameOptionsService = FindFirstObjectByType<GameOptionsService>(FindObjectsInactive.Exclude);
             }
         }
 

@@ -1930,7 +1930,7 @@ namespace CuteIssac.Room
                 return compareLabel == "SHOP FUEL" ? 6f : 0f;
             }
 
-            float score = compareLabel == "COIN SHORT" ? -8f : 0f;
+            float score = compareLabel is "COIN SHORT" or "KEY SHORT" or "BOMB SHORT" or "HP SHORT" ? -8f : 0f;
             score += shopItem.ShopItemData.Offer.RewardType == ShopOfferRewardType.PassiveItem ? 12f : 4f;
             score += Mathf.Clamp(shopItem.Price, 0, 24) * 0.28f;
             return score;
@@ -2274,6 +2274,11 @@ namespace CuteIssac.Room
             }
 
             ShopSlotState slotState = shopItem.BuildSlotState(false, playerInventory, playerItemManager, playerHealth);
+            if (slotState.StatusLabel == "HP NEEDED")
+            {
+                return "HP SHORT";
+            }
+
             return slotState.StatusLabel switch
             {
                 "코인 부족" => "COIN SHORT",
@@ -2299,6 +2304,7 @@ namespace CuteIssac.Room
             {
                 ShopCurrencyType.Keys => "KEY",
                 ShopCurrencyType.Bombs => "BOMB",
+                ShopCurrencyType.Health => "HP",
                 _ => "COIN"
             };
 
@@ -2365,6 +2371,7 @@ namespace CuteIssac.Room
             {
                 ShopCurrencyType.Keys => new Color(0.74f, 0.88f, 1f, 1f),
                 ShopCurrencyType.Bombs => new Color(1f, 0.56f, 0.24f, 1f),
+                ShopCurrencyType.Health => new Color(1f, 0.42f, 0.52f, 1f),
                 _ => new Color(0.96f, 0.84f, 0.28f, 1f)
             };
         }

@@ -243,7 +243,7 @@ namespace CuteIssac.Core.Run
             }
 
             int seed = ResolveFloorSeed(runManager != null ? runManager.CurrentContext.Seed : 0, floorIndex);
-            DungeonInstantiationResult result = dungeonRunner.GenerateAndInstantiateDungeon(floorConfig, seed);
+            DungeonInstantiationResult result = dungeonRunner.GenerateAndInstantiateDungeon(floorConfig, seed, runManager != null ? runManager.CurrentContext : null);
 
             if (result == null)
             {

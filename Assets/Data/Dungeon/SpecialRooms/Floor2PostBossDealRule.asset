@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f5e5f8855734aa3b5b7bed927ba1b1d, type: 3}
+  m_Name: Floor2PostBossDealRule
+  m_EditorClassIdentifier: 
+  ruleId: f2_post_boss_deal
+  roomType: 9
+  minFloor: 2
+  maxFloor: 2
+  baseChance: 0
+  guaranteedCount: 0
+  requiresBossCleared: 1
+  entryCostType: 4
+  entryCostAmount: 1
+  rewardTable: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c560202, type: 2}
+  itemPool: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100802, type: 2}
+  rewardMultiplier: 1.2
+  dealType: 1
+  dealDisplayName: Devil Deal
+  dealAccentColor: {r: 0.94, g: 0.18, b: 0.28, a: 1}
+  spawnTradeOffers: 1
+  tradeCurrencyType: 3
+  tradeOfferCount: 2
+  tradePriceMin: 1
+  tradePriceMax: 2
+  hiddenDoor: 0
+  postBossDealChance: 0.35
+  angelChanceBonusWithoutDevilDealAccepted: 0.25
+  angelChanceBonusPerDevilDealDeclined: 0.15
+  angelChanceMultiplierAfterDevilDealAccepted: 0.25

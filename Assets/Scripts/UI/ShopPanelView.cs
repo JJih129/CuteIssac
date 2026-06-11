@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CuteIssac.Data.Dungeon;
 using CuteIssac.Item;
 using CuteIssac.Player;
 using UnityEngine;
@@ -112,6 +113,25 @@ namespace CuteIssac.UI
             UpdateResourceChip(coinResourceChipImage, coinResourceValueText, coinChipAccentColor, "코인", resources.Coins);
             UpdateResourceChip(keyResourceChipImage, keyResourceValueText, keyChipAccentColor, "열쇠", resources.Keys);
             UpdateResourceChip(bombResourceChipImage, bombResourceValueText, bombChipAccentColor, "폭탄", resources.Bombs);
+
+            if (titleText != null)
+            {
+                titleText.text = ResolvePanelTitle(slotStates);
+            }
+
+            if (hintText != null)
+            {
+                hintText.text = ResolvePanelHint(slotStates);
+            }
+
+            if (resourceText != null)
+            {
+                resourceText.text = "Resources";
+            }
+
+            UpdateResourceChip(coinResourceChipImage, coinResourceValueText, coinChipAccentColor, "Coins", resources.Coins);
+            UpdateResourceChip(keyResourceChipImage, keyResourceValueText, keyChipAccentColor, "Keys", resources.Keys);
+            UpdateResourceChip(bombResourceChipImage, bombResourceValueText, bombChipAccentColor, "Bombs", resources.Bombs);
 
             PresentSelectionSummary(slotStates);
 
@@ -320,6 +340,46 @@ namespace CuteIssac.UI
             }
         }
 
+        private static string ResolvePanelTitle(IReadOnlyList<ShopSlotState> slotStates)
+        {
+            return ResolvePrimaryDealType(slotStates) switch
+            {
+                SpecialRoomDealType.Devil => "Devil Deal",
+                SpecialRoomDealType.Angel => "Angel Deal",
+                SpecialRoomDealType.BlackMarket => "Black Market",
+                _ => "Shop"
+            };
+        }
+
+        private static string ResolvePanelHint(IReadOnlyList<ShopSlotState> slotStates)
+        {
+            return ResolvePrimaryDealType(slotStates) switch
+            {
+                SpecialRoomDealType.Devil => "Trade health for a stronger item.",
+                SpecialRoomDealType.Angel => "Spend health only if the offer fits the run.",
+                SpecialRoomDealType.BlackMarket => "Rare goods with harsher prices.",
+                _ => "Press E or Shift to buy the selected offer."
+            };
+        }
+
+        private static SpecialRoomDealType ResolvePrimaryDealType(IReadOnlyList<ShopSlotState> slotStates)
+        {
+            if (slotStates == null)
+            {
+                return SpecialRoomDealType.None;
+            }
+
+            for (int index = 0; index < slotStates.Count; index++)
+            {
+                if (slotStates[index].IsSpecialDeal)
+                {
+                    return slotStates[index].DealType;
+                }
+            }
+
+            return SpecialRoomDealType.None;
+        }
+
         private void PresentSelectionSummary(IReadOnlyList<ShopSlotState> slotStates)
         {
             ShopSlotState focusedState = default;
@@ -338,6 +398,23 @@ namespace CuteIssac.UI
                     hasFocusedState = true;
                     break;
                 }
+            }
+
+            if (!hasFocusedState)
+            {
+                if (selectionText != null)
+                {
+                    selectionText.text = "No offer selected";
+                    selectionText.color = idleSelectionTitleColor;
+                }
+
+                if (selectionStatusText != null)
+                {
+                    selectionStatusText.text = "Move near an offer to inspect it.";
+                    selectionStatusText.color = idleSelectionStatusColor;
+                }
+
+                return;
             }
 
             if (selectionText != null)
@@ -363,12 +440,33 @@ namespace CuteIssac.UI
 
         private string BuildSelectionTitle(ShopSlotState state)
         {
-            return $"선택 상품 · {state.DisplayName}";
+            if (state.IsSpecialDeal)
+            {
+                return $"{state.DealLabel} - {state.DisplayName}";
+            }
+
+            return $"Selected - {state.DisplayName}";
         }
 
         private string BuildSelectionStatus(ShopSlotState state)
         {
-            return $"{state.PriceLabel} · {state.StatusLabel}";
+            if (state.IsSpecialDeal)
+            {
+                return $"{state.PriceLabel} - {ResolveDealActionLabel(state.DealType)} - {state.StatusLabel}";
+            }
+
+            return $"{state.PriceLabel} - {state.StatusLabel}";
+        }
+
+        private static string ResolveDealActionLabel(SpecialRoomDealType dealType)
+        {
+            return dealType switch
+            {
+                SpecialRoomDealType.Devil => "Trade",
+                SpecialRoomDealType.Angel => "Vow",
+                SpecialRoomDealType.BlackMarket => "Buy",
+                _ => "Buy"
+            };
         }
 
         private void UpdateResourceChip(Image chipImage, Text valueText, Color accentColor, string label, int value)
@@ -411,6 +509,31 @@ namespace CuteIssac.UI
             if (canPurchase)
             {
                 return affordableColor;
+            }
+
+            if (statusLabel == "Coins needed")
+            {
+                return coinShortageColor;
+            }
+
+            if (statusLabel == "Keys needed")
+            {
+                return keyShortageColor;
+            }
+
+            if (statusLabel == "Bombs needed")
+            {
+                return bombShortageColor;
+            }
+
+            if (statusLabel == "HP needed" || statusLabel == "Full HP")
+            {
+                return healthMaxColor;
+            }
+
+            if (statusLabel == "Owned")
+            {
+                return ownedColor;
             }
 
             return statusLabel switch

@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f5e5f8855734aa3b5b7bed927ba1b1d, type: 3}
+  m_Name: Floor1TrapRule
+  m_EditorClassIdentifier: 
+  ruleId: f1_trap_room
+  roomType: 8
+  minFloor: 1
+  maxFloor: 1
+  baseChance: 0.45
+  guaranteedCount: 0
+  requiresBossCleared: 0
+  entryCostType: 0
+  entryCostAmount: 0
+  minimumHealthRatioToEnter: 0
+  rewardTable: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c550101, type: 2}
+  itemPool: {fileID: 0}
+  rewardMultiplier: 0.75
+  dealType: 0
+  dealDisplayName: 
+  dealAccentColor: {r: 1, g: 1, b: 1, a: 1}
+  spawnTradeOffers: 0
+  tradeCurrencyType: 3
+  tradeOfferCount: 2
+  tradePriceMin: 1
+  tradePriceMax: 2
+  hiddenDoor: 0
+  postBossDealChance: 0
+  angelChanceBonusWithoutDevilDealAccepted: 0.25
+  angelChanceBonusPerDevilDealDeclined: 0.15
+  angelChanceMultiplierAfterDevilDealAccepted: 0.25

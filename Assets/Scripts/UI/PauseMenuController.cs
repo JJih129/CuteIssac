@@ -33,6 +33,7 @@ namespace CuteIssac.UI
         private Button _quitButton;
         private Button _lastSelectedButton;
         private bool _isSettingsOpen;
+        private PauseSettingsTarget _settingsTarget = PauseSettingsTarget.Master;
 
         private void Awake()
         {
@@ -191,7 +192,7 @@ namespace CuteIssac.UI
         {
             if (_isSettingsOpen)
             {
-                ShowOverviewPanel();
+                CycleSettingsTarget();
                 return;
             }
 
@@ -202,7 +203,7 @@ namespace CuteIssac.UI
         {
             if (_isSettingsOpen)
             {
-                AdjustMasterVolume(-0.1f);
+                AdjustSelectedOption(-0.1f);
                 return;
             }
 
@@ -213,7 +214,7 @@ namespace CuteIssac.UI
         {
             if (_isSettingsOpen)
             {
-                AdjustMasterVolume(0.1f);
+                AdjustSelectedOption(0.1f);
                 return;
             }
 
@@ -244,6 +245,7 @@ namespace CuteIssac.UI
             if (paused)
             {
                 _isSettingsOpen = false;
+                _settingsTarget = PauseSettingsTarget.Master;
                 _cachedTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
                 Time.timeScale = 0f;
 
@@ -267,6 +269,7 @@ namespace CuteIssac.UI
             }
 
             _isSettingsOpen = false;
+            _settingsTarget = PauseSettingsTarget.Master;
             Time.timeScale = Mathf.Max(0.01f, _cachedTimeScale);
 
             if (pauseAudioListener)
@@ -280,6 +283,7 @@ namespace CuteIssac.UI
         private void ShowOverviewPanel()
         {
             _isSettingsOpen = false;
+            _settingsTarget = PauseSettingsTarget.Master;
             pauseMenuView?.Show(playerStats != null ? playerStats.CurrentStats : default);
             _lastSelectedButton = _resumeButton != null && _resumeButton.interactable
                 ? _resumeButton
@@ -289,7 +293,7 @@ namespace CuteIssac.UI
         private void ShowSettingsPanel()
         {
             _isSettingsOpen = true;
-            pauseMenuView?.ShowSettings(ResolveCurrentOptions());
+            pauseMenuView?.ShowSettings(ResolveCurrentOptions(), ResolveSettingsTargetLabel());
             _lastSelectedButton = _resumeButton != null && _resumeButton.interactable
                 ? _resumeButton
                 : ResolveDefaultSelection();
@@ -307,10 +311,35 @@ namespace CuteIssac.UI
                 : new GameOptionsData { MasterVolume = AudioListener.volume, Fullscreen = Screen.fullScreen };
         }
 
-        private void AdjustMasterVolume(float delta)
+        private void CycleSettingsTarget()
+        {
+            _settingsTarget = _settingsTarget switch
+            {
+                PauseSettingsTarget.Master => PauseSettingsTarget.Music,
+                PauseSettingsTarget.Music => PauseSettingsTarget.Sfx,
+                _ => PauseSettingsTarget.Master
+            };
+
+            pauseMenuView?.ShowSettings(ResolveCurrentOptions(), ResolveSettingsTargetLabel());
+            RefreshMenuSelectionVisuals();
+        }
+
+        private void AdjustSelectedOption(float delta)
         {
             GameOptionsData nextOptions = ResolveCurrentOptions();
-            nextOptions.MasterVolume = Mathf.Clamp01(nextOptions.MasterVolume + delta);
+
+            switch (_settingsTarget)
+            {
+                case PauseSettingsTarget.Music:
+                    nextOptions.MusicVolume = Mathf.Clamp01(nextOptions.MusicVolume + delta);
+                    break;
+                case PauseSettingsTarget.Sfx:
+                    nextOptions.SfxVolume = Mathf.Clamp01(nextOptions.SfxVolume + delta);
+                    break;
+                default:
+                    nextOptions.MasterVolume = Mathf.Clamp01(nextOptions.MasterVolume + delta);
+                    break;
+            }
 
             if (gameOptionsService != null)
             {
@@ -321,8 +350,18 @@ namespace CuteIssac.UI
                 AudioListener.volume = nextOptions.MasterVolume;
             }
 
-            pauseMenuView?.ShowSettings(nextOptions);
+            pauseMenuView?.ShowSettings(nextOptions, ResolveSettingsTargetLabel());
             RefreshMenuSelectionVisuals();
+        }
+
+        private string ResolveSettingsTargetLabel()
+        {
+            return _settingsTarget switch
+            {
+                PauseSettingsTarget.Music => "Music Volume",
+                PauseSettingsTarget.Sfx => "SFX Volume",
+                _ => "Master Volume"
+            };
         }
 
         private void RefreshMenuSelectionVisuals()
@@ -597,6 +636,13 @@ namespace CuteIssac.UI
             text.raycastTarget = false;
             text.color = Color.white;
             return text;
+        }
+
+        private enum PauseSettingsTarget
+        {
+            Master,
+            Music,
+            Sfx
         }
     }
 }

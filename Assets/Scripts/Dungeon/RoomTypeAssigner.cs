@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CuteIssac.Core.Meta;
+using CuteIssac.Core.Run;
 using CuteIssac.Data.Dungeon;
 using UnityEngine;
 
@@ -14,10 +15,16 @@ namespace CuteIssac.Dungeon
         private readonly List<DungeonRoomNode> _deadEndBuffer = new();
         private readonly List<DungeonRoomNode> _candidateBuffer = new();
         private readonly List<SecretRoomCandidate> _secretCandidateBuffer = new();
+        private readonly List<SpecialRoomRuleData> _specialRuleBuffer = new();
         private readonly HashSet<GridPosition> _mainRoutePositions = new();
         private readonly HashSet<GridPosition> _branchRoutePositions = new();
 
         public bool Assign(DungeonMap dungeonMap, out string failureReason)
+        {
+            return Assign(dungeonMap, null, out failureReason);
+        }
+
+        public bool Assign(DungeonMap dungeonMap, RunContext runContext, out string failureReason)
         {
             failureReason = null;
 
@@ -69,6 +76,11 @@ namespace CuteIssac.Dungeon
             }
 
             if (!TryAssignSecretRooms(dungeonMap, _mainRoutePositions, out failureReason))
+            {
+                return false;
+            }
+
+            if (!TryApplySpecialRoomRules(dungeonMap, _deadEndBuffer, _mainRoutePositions, bossRoom.DistanceFromStart, bossApproachRoom, runContext, out failureReason))
             {
                 return false;
             }
@@ -643,6 +655,231 @@ namespace CuteIssac.Dungeon
             return true;
         }
 
+        private bool TryApplySpecialRoomRules(
+            DungeonMap dungeonMap,
+            List<DungeonRoomNode> deadEnds,
+            HashSet<GridPosition> mainRoute,
+            int bossDistance,
+            DungeonRoomNode bossApproachRoom,
+            RunContext runContext,
+            out string failureReason)
+        {
+            failureReason = null;
+
+            FloorSpecialRoomRules rules = dungeonMap.FloorConfig.SpecialRoomRules;
+            if (rules == null)
+            {
+                return true;
+            }
+
+            _specialRuleBuffer.Clear();
+            rules.CollectAvailableRules(dungeonMap.FloorConfig.FloorIndex, _specialRuleBuffer);
+
+            for (int index = 0; index < _specialRuleBuffer.Count; index++)
+            {
+                SpecialRoomRuleData rule = _specialRuleBuffer[index];
+                if (!CanApplySpecialRoomRule(rule))
+                {
+                    continue;
+                }
+
+                int roomCount = ResolveRuleRoomCount(rule, runContext);
+                if (roomCount <= 0)
+                {
+                    continue;
+                }
+
+                if (ResolveConfiguredRoomCount(dungeonMap.FloorConfig, rule.RoomType) > 0)
+                {
+                    AttachRuleToExistingRooms(dungeonMap, rule, roomCount);
+                    continue;
+                }
+
+                if (!TryAssignRuleDrivenRoom(dungeonMap, deadEnds, mainRoute, bossDistance, bossApproachRoom, rule, roomCount, out failureReason))
+                {
+                    return false;
+                }
+            }
+
+            AttachFallbackRulesToConfiguredRooms(dungeonMap);
+            return true;
+        }
+
+        private bool TryAssignRuleDrivenRoom(
+            DungeonMap dungeonMap,
+            List<DungeonRoomNode> deadEnds,
+            HashSet<GridPosition> mainRoute,
+            int bossDistance,
+            DungeonRoomNode bossApproachRoom,
+            SpecialRoomRuleData rule,
+            int roomCount,
+            out string failureReason)
+        {
+            failureReason = null;
+
+            for (int i = 0; i < roomCount; i++)
+            {
+                if (rule.RoomType == RoomType.Secret)
+                {
+                    if (!TryAddRuleDrivenSecretRoom(dungeonMap, mainRoute, rule, out failureReason))
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                DungeonRoomNode selectedRoom = SelectRuleDrivenReplacementCandidate(
+                    dungeonMap,
+                    deadEnds,
+                    mainRoute,
+                    bossDistance,
+                    bossApproachRoom,
+                    rule.RoomType);
+
+                if (selectedRoom == null)
+                {
+                    Debug.LogWarning($"RoomTypeAssigner skipped rule room '{rule.RuleId}' because no eligible {rule.RoomType} candidate was available.");
+                    break;
+                }
+
+                selectedRoom.ApplyGeneratedMetadata(rule.RoomType, RoomDataSelector.SelectWeighted(dungeonMap.FloorConfig, rule.RoomType, _roomSelectionBuffer));
+                selectedRoom.SetSpecialRoomRule(rule);
+
+                if (selectedRoom.RoomData == null)
+                {
+                    failureReason = $"{rule.RoomType} RoomData pool was empty for special room rule '{rule.RuleId}'.";
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private bool TryAddRuleDrivenSecretRoom(
+            DungeonMap dungeonMap,
+            HashSet<GridPosition> mainRoute,
+            SpecialRoomRuleData rule,
+            out string failureReason)
+        {
+            failureReason = null;
+            SecretRoomCandidate candidate = SelectSecretCandidate(dungeonMap, mainRoute, requireDensePlacement: true);
+
+            if (!candidate.IsValid)
+            {
+                candidate = SelectSecretCandidate(dungeonMap, mainRoute, requireDensePlacement: false);
+            }
+
+            if (!candidate.IsValid)
+            {
+                Debug.LogWarning($"RoomTypeAssigner skipped rule secret room '{rule.RuleId}' because no eligible secret placement was available.");
+                return true;
+            }
+
+            RoomData secretRoomData = RoomDataSelector.SelectWeighted(dungeonMap.FloorConfig, RoomType.Secret, _roomSelectionBuffer);
+            if (secretRoomData == null)
+            {
+                failureReason = $"Secret RoomData pool was empty for special room rule '{rule.RuleId}'.";
+                return false;
+            }
+
+            DungeonRoomNode secretRoomNode = new(RoomType.Secret, secretRoomData, candidate.Position);
+            secretRoomNode.SetSpecialRoomRule(rule);
+
+            if (!dungeonMap.TryAddRoom(secretRoomNode))
+            {
+                failureReason = $"Secret room position {candidate.Position} was already occupied.";
+                return false;
+            }
+
+            for (int neighborIndex = 0; neighborIndex < candidate.NeighborCount; neighborIndex++)
+            {
+                SecretNeighbor neighbor = candidate.GetNeighbor(neighborIndex);
+                dungeonMap.ConnectRooms(candidate.Position, neighbor.DirectionFromSecret, neighbor.Room.GridPosition);
+                dungeonMap.ConnectRooms(neighbor.Room.GridPosition, RoomDirectionUtility.Opposite(neighbor.DirectionFromSecret), candidate.Position);
+            }
+
+            secretRoomNode.SetDistanceFromStart(candidate.DistanceFromStart);
+            return true;
+        }
+
+        private DungeonRoomNode SelectRuleDrivenReplacementCandidate(
+            DungeonMap dungeonMap,
+            List<DungeonRoomNode> deadEnds,
+            HashSet<GridPosition> mainRoute,
+            int bossDistance,
+            DungeonRoomNode bossApproachRoom,
+            RoomType roomType)
+        {
+            return roomType switch
+            {
+                RoomType.Challenge => SelectChallengeCandidate(dungeonMap, mainRoute, bossDistance, bossApproachRoom),
+                RoomType.Trap => SelectTrapCandidate(dungeonMap, mainRoute, bossDistance, bossApproachRoom),
+                RoomType.Curse => SelectCurseCandidate(dungeonMap, deadEnds, mainRoute, bossApproachRoom),
+                RoomType.MiniBoss => SelectMiniBossCandidate(dungeonMap, deadEnds, mainRoute, bossApproachRoom),
+                RoomType.Shop => SelectShopCandidate(dungeonMap, deadEnds, mainRoute, _branchRoutePositions, bossDistance, bossApproachRoom),
+                RoomType.Treasure => SelectTreasureCandidate(dungeonMap, deadEnds, mainRoute, _branchRoutePositions, bossApproachRoom),
+                _ => SelectGenericRuleCandidate(dungeonMap, roomType)
+            };
+        }
+
+        private DungeonRoomNode SelectGenericRuleCandidate(DungeonMap dungeonMap, RoomType roomType)
+        {
+            _candidateBuffer.Clear();
+            CollectEligibleRooms(
+                dungeonMap,
+                roomNode => roomNode.RoomType == RoomType.Normal
+                    && roomNode.DistanceFromStart >= ResolveRuleMinimumDistance(dungeonMap.FloorConfig, roomType)
+                    && !IsAdjacentToRestrictedSpecialRoom(dungeonMap, roomNode),
+                _candidateBuffer);
+            SortByDistanceDescending(_candidateBuffer);
+            return _candidateBuffer.Count > 0 ? _candidateBuffer[0] : null;
+        }
+
+        private void AttachRuleToExistingRooms(DungeonMap dungeonMap, SpecialRoomRuleData rule, int count)
+        {
+            _candidateBuffer.Clear();
+
+            foreach (KeyValuePair<GridPosition, DungeonRoomNode> roomPair in dungeonMap.RoomsByPosition)
+            {
+                DungeonRoomNode roomNode = roomPair.Value;
+                if (roomNode != null && roomNode.RoomType == rule.RoomType && roomNode.SpecialRoomRule == null)
+                {
+                    _candidateBuffer.Add(roomNode);
+                }
+            }
+
+            SortByDistanceDescending(_candidateBuffer);
+            int attachCount = Mathf.Min(Mathf.Max(0, count), _candidateBuffer.Count);
+            for (int i = 0; i < attachCount; i++)
+            {
+                _candidateBuffer[i].SetSpecialRoomRule(rule);
+            }
+        }
+
+        private void AttachFallbackRulesToConfiguredRooms(DungeonMap dungeonMap)
+        {
+            for (int index = 0; index < _specialRuleBuffer.Count; index++)
+            {
+                SpecialRoomRuleData rule = _specialRuleBuffer[index];
+                if (!CanApplySpecialRoomRule(rule)
+                    || rule.RequiresBossCleared
+                    || (rule.GuaranteedCount <= 0 && rule.BaseChance < 1f))
+                {
+                    continue;
+                }
+
+                foreach (KeyValuePair<GridPosition, DungeonRoomNode> roomPair in dungeonMap.RoomsByPosition)
+                {
+                    DungeonRoomNode roomNode = roomPair.Value;
+                    if (roomNode != null && roomNode.RoomType == rule.RoomType && roomNode.SpecialRoomRule == null)
+                    {
+                        roomNode.SetSpecialRoomRule(rule);
+                    }
+                }
+            }
+        }
+
         private SecretRoomCandidate SelectSecretCandidate(DungeonMap dungeonMap, HashSet<GridPosition> mainRoute, bool requireDensePlacement)
         {
             _secretCandidateBuffer.Clear();
@@ -1131,6 +1368,61 @@ namespace CuteIssac.Dungeon
             }
 
             return UnlockManager.IsRoomTypeUnlocked(roomType) ? configuredCount : 0;
+        }
+
+        private static bool CanApplySpecialRoomRule(SpecialRoomRuleData rule)
+        {
+            if (rule == null || rule.RoomType == RoomType.Start || rule.RoomType == RoomType.Boss)
+            {
+                return false;
+            }
+
+            return UnlockManager.IsRoomTypeUnlocked(rule.RoomType);
+        }
+
+        private static int ResolveRuleRoomCount(SpecialRoomRuleData rule, RunContext runContext)
+        {
+            return SpecialRoomDealChanceResolver.ResolveRoomCount(rule, runContext);
+        }
+
+        private static int ResolveConfiguredRoomCount(FloorConfig floorConfig, RoomType roomType)
+        {
+            if (floorConfig == null)
+            {
+                return 0;
+            }
+
+            return roomType switch
+            {
+                RoomType.Treasure => floorConfig.TreasureRoomCount,
+                RoomType.Shop => floorConfig.ShopRoomCount,
+                RoomType.Challenge => floorConfig.ChallengeRoomCount,
+                RoomType.Trap => floorConfig.TrapRoomCount,
+                RoomType.Curse => floorConfig.CurseRoomCount,
+                RoomType.MiniBoss => floorConfig.MiniBossRoomCount,
+                RoomType.Secret => floorConfig.SecretRoomCount,
+                _ => 0
+            };
+        }
+
+        private static int ResolveRuleMinimumDistance(FloorConfig floorConfig, RoomType roomType)
+        {
+            if (floorConfig == null)
+            {
+                return 2;
+            }
+
+            return roomType switch
+            {
+                RoomType.Treasure => floorConfig.MinimumTreasureDistanceFromStart,
+                RoomType.Shop => floorConfig.MinimumShopDistanceFromStart,
+                RoomType.Challenge => floorConfig.MinimumChallengeDistanceFromStart,
+                RoomType.Trap => floorConfig.MinimumTrapDistanceFromStart,
+                RoomType.Curse => floorConfig.MinimumCurseDistanceFromStart,
+                RoomType.MiniBoss => floorConfig.MinimumMiniBossDistanceFromStart,
+                RoomType.Secret => floorConfig.MinimumSecretDistanceFromStart,
+                _ => 2
+            };
         }
 
         private readonly struct SecretNeighbor

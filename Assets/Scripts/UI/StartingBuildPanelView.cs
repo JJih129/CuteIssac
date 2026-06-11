@@ -73,7 +73,7 @@ namespace CuteIssac.UI
                 optionView.Present(
                     build,
                     build == selectedBuild,
-                    build == null || onSelected == null ? null : (() => onSelected.Invoke(build)));
+                    build == null || onSelected == null ? null : new UnityAction(() => onSelected.Invoke(build)));
             }
         }
 

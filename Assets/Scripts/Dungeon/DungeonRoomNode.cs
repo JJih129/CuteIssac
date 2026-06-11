@@ -17,6 +17,7 @@ namespace CuteIssac.Dungeon
         private RoomType _roomType;
         private RoomLayoutData _resolvedLayout;
         private EnemyWaveAssignment _assignedEnemyWave;
+        private SpecialRoomRuleData _specialRoomRule;
 
         public DungeonRoomNode(RoomData roomData, GridPosition gridPosition)
             : this(roomData != null ? roomData.RoomType : RoomType.Normal, roomData, gridPosition)
@@ -33,6 +34,7 @@ namespace CuteIssac.Dungeon
         public RoomData RoomData => _roomData;
         public RoomLayoutData ResolvedLayout => _resolvedLayout;
         public EnemyWaveAssignment AssignedEnemyWave => _assignedEnemyWave;
+        public SpecialRoomRuleData SpecialRoomRule => _specialRoomRule;
         public GridPosition GridPosition { get; }
         public RoomType RoomType => _roomType;
         public IReadOnlyList<RoomConnection> Connections => _connections;
@@ -76,6 +78,12 @@ namespace CuteIssac.Dungeon
             _roomData = roomData;
             _resolvedLayout = null;
             _assignedEnemyWave = null;
+            _specialRoomRule = null;
+        }
+
+        public void SetSpecialRoomRule(SpecialRoomRuleData specialRoomRule)
+        {
+            _specialRoomRule = specialRoomRule;
         }
 
         public void SetResolvedLayout(RoomLayoutData roomLayoutData)

@@ -38,6 +38,7 @@ namespace CuteIssac.Item
         [SerializeField] private Color coinMarkerColor = new(1f, 0.85f, 0.25f, 1f);
         [SerializeField] private Color keyMarkerColor = new(0.7f, 0.9f, 1f, 1f);
         [SerializeField] private Color bombMarkerColor = new(1f, 0.55f, 0.2f, 1f);
+        [SerializeField] private Color healthMarkerColor = new(1f, 0.28f, 0.42f, 1f);
         [SerializeField] private Color availablePriceTextColor = new(1f, 0.98f, 0.78f, 1f);
         [SerializeField] private Color unavailablePriceTextColor = new(1f, 0.42f, 0.34f, 1f);
         [SerializeField] private Color soldPriceTextColor = new(0.66f, 0.66f, 0.66f, 0.92f);
@@ -112,6 +113,7 @@ namespace CuteIssac.Item
                 {
                     ShopCurrencyType.Keys => keyMarkerColor,
                     ShopCurrencyType.Bombs => bombMarkerColor,
+                    ShopCurrencyType.Health => healthMarkerColor,
                     _ => coinMarkerColor
                 };
             }
@@ -367,6 +369,7 @@ namespace CuteIssac.Item
             {
                 ShopCurrencyType.Keys => "K",
                 ShopCurrencyType.Bombs => "B",
+                ShopCurrencyType.Health => "H",
                 _ => "C"
             };
         }

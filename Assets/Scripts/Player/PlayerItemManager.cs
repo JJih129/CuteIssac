@@ -32,6 +32,7 @@ namespace CuteIssac.Player
         [SerializeField] private ItemData debugPickupItem;
 
         public event Action<ItemData> PassiveItemAcquired;
+        public event Action<ItemData> ItemAcquired;
 
         private readonly List<Action> _eventUnbindActions = new();
         private readonly List<TimedEventModifierInstance> _timedEventModifiers = new();
@@ -144,6 +145,7 @@ namespace CuteIssac.Player
                 runItemPoolService?.RegisterAcquired(itemData);
                 RaisePickupBanner(itemData);
                 PassiveItemAcquired?.Invoke(itemData);
+                ItemAcquired?.Invoke(itemData);
             }
 
             return added;
@@ -169,6 +171,7 @@ namespace CuteIssac.Player
             RebuildEventEffectBindings();
             runItemPoolService?.RegisterAcquired(itemData);
             RaisePickupBanner(itemData);
+            ItemAcquired?.Invoke(itemData);
             return true;
         }
 
@@ -199,6 +202,7 @@ namespace CuteIssac.Player
             if (equipped)
             {
                 RaisePickupBanner(itemData);
+                ItemAcquired?.Invoke(itemData);
             }
 
             return equipped;
@@ -1114,6 +1118,11 @@ namespace CuteIssac.Player
 
         private static void AppendStatSummary(StringBuilder builder, IReadOnlyList<StatModifier> statModifiers)
         {
+            if (TryAppendCleanStatSummary(builder, statModifiers))
+            {
+                return;
+            }
+
             if (statModifiers == null)
             {
                 return;
@@ -1154,8 +1163,44 @@ namespace CuteIssac.Player
             }
         }
 
+        private static bool TryAppendCleanStatSummary(StringBuilder builder, IReadOnlyList<StatModifier> statModifiers)
+        {
+            if (statModifiers == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < statModifiers.Count; index++)
+            {
+                StatModifier modifier = statModifiers[index];
+                string label = ResolveCleanStatLabel(modifier.StatType);
+                if (string.IsNullOrWhiteSpace(label))
+                {
+                    continue;
+                }
+
+                float displayValue = modifier.StatType == PlayerStatType.FireInterval
+                    ? -modifier.Value
+                    : modifier.Value;
+
+                if (Mathf.Abs(displayValue) <= 0.0001f)
+                {
+                    continue;
+                }
+
+                AppendSummaryChunk(builder, $"{(displayValue >= 0f ? "+" : string.Empty)}{displayValue:0.##} {label}");
+            }
+
+            return true;
+        }
+
         private static void AppendProjectileSummary(StringBuilder builder, IReadOnlyList<ProjectileModifier> projectileModifiers)
         {
+            if (TryAppendCleanProjectileSummary(builder, projectileModifiers))
+            {
+                return;
+            }
+
             if (projectileModifiers == null)
             {
                 return;
@@ -1190,6 +1235,25 @@ namespace CuteIssac.Player
             }
         }
 
+        private static bool TryAppendCleanProjectileSummary(StringBuilder builder, IReadOnlyList<ProjectileModifier> projectileModifiers)
+        {
+            if (projectileModifiers == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < projectileModifiers.Count; index++)
+            {
+                string label = ResolveCleanProjectileLabel(projectileModifiers[index].ModifierType);
+                if (!string.IsNullOrWhiteSpace(label))
+                {
+                    AppendSummaryChunk(builder, label);
+                }
+            }
+
+            return true;
+        }
+
         private static void AppendSummaryChunk(StringBuilder builder, string chunk)
         {
             if (string.IsNullOrWhiteSpace(chunk))
@@ -1210,6 +1274,12 @@ namespace CuteIssac.Player
             if (itemData == null)
             {
                 return string.Empty;
+            }
+
+            string cleanFlavorLine = ResolveCleanPickupFlavorLine(itemData);
+            if (!string.IsNullOrWhiteSpace(cleanFlavorLine))
+            {
+                return cleanFlavorLine;
             }
 
             if (!string.IsNullOrWhiteSpace(itemData.Description))
@@ -1242,6 +1312,84 @@ namespace CuteIssac.Player
                 ItemCategory.Bomb => "좋은 소식이다. 크게 터질 것이다.",
                 ItemCategory.Luck => "이쯤 되면 우연도 실력이다.",
                 _ => "누구의 물건이었을까?"
+            };
+        }
+
+        private static string ResolveCleanStatLabel(PlayerStatType statType)
+        {
+            return statType switch
+            {
+                PlayerStatType.Damage => "Damage",
+                PlayerStatType.FireInterval => "Tears",
+                PlayerStatType.MoveSpeed => "Move Speed",
+                PlayerStatType.ProjectileSpeed => "Shot Speed",
+                PlayerStatType.Range => "Range",
+                PlayerStatType.Luck => "Luck",
+                PlayerStatType.MaxHealth => "Max HP",
+                PlayerStatType.ProjectileCount => "Shots",
+                PlayerStatType.Knockback => "Knockback",
+                _ => string.Empty
+            };
+        }
+
+        private static string ResolveCleanProjectileLabel(ProjectileModifierType modifierType)
+        {
+            return modifierType switch
+            {
+                ProjectileModifierType.Pierce => "Piercing",
+                ProjectileModifierType.Homing => "Homing",
+                ProjectileModifierType.MultiShot => "Multishot",
+                ProjectileModifierType.Explode => "Explosive Shots",
+                ProjectileModifierType.Laser => "Laser Shots",
+                ProjectileModifierType.Split => "Split Shots",
+                ProjectileModifierType.Bounce => "Bouncing Shots",
+                ProjectileModifierType.Orbit => "Orbiting Shot",
+                ProjectileModifierType.Shield => "Shield Shot",
+                ProjectileModifierType.Lifesteal => "Lifesteal",
+                ProjectileModifierType.Scale => "Shot Size",
+                ProjectileModifierType.Speed => "Shot Speed",
+                ProjectileModifierType.Lifetime => "Shot Lifetime",
+                _ => string.Empty
+            };
+        }
+
+        private static string ResolveCleanPickupFlavorLine(ItemData itemData)
+        {
+            if (itemData == null)
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(itemData.Description))
+            {
+                return itemData.Description.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(itemData.FlavorText))
+            {
+                return itemData.FlavorText.Trim();
+            }
+
+            if (itemData.IsWeaponRelic && !string.IsNullOrWhiteSpace(itemData.WeaponMotif))
+            {
+                return itemData.WeaponMotif.Trim();
+            }
+
+            return itemData.ItemCategory switch
+            {
+                ItemCategory.Damage => "A sharper strike for the next room.",
+                ItemCategory.FireRate => "The rhythm tightens.",
+                ItemCategory.Movement => "Lighter steps, faster exits.",
+                ItemCategory.Projectile => "Shots behave a little less normally.",
+                ItemCategory.Defense => "A little more room for mistakes.",
+                ItemCategory.Economy => "More value from the run economy.",
+                ItemCategory.Utility => "A small tool with run-shaping potential.",
+                ItemCategory.Summon => "Something else joins the fight.",
+                ItemCategory.Orbital => "Protection starts to circle close.",
+                ItemCategory.Laser => "A focused line of damage.",
+                ItemCategory.Bomb => "More pressure from explosives.",
+                ItemCategory.Luck => "The run bends slightly in your favor.",
+                _ => "A strange item for this run."
             };
         }
 

@@ -7,6 +7,8 @@ namespace CuteIssac.Data.Unlock
     {
         Item = 0,
         Enemy = 1,
-        RoomType = 2
+        RoomType = 2,
+        Character = 3,
+        ShopItem = 4
     }
 }

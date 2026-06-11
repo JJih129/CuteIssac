@@ -256,6 +256,7 @@ namespace CuteIssac.Room
             SetState(RoomState.Entered);
             LastRewardSpawnCount = 0;
             RoomEntered?.Invoke(this);
+            GameplayRuntimeEvents.RaiseRoomEntered(new RoomEnteredSignal(this, roomType));
 
             if (roomEnemySpawner == null || !roomEnemySpawner.CanStartCombat())
             {

@@ -30,8 +30,8 @@ MonoBehaviour:
   description: Raises movement speed. Extends tear range.
   icon: {fileID: 0}
   rarity: 2
-  unlockedByDefault: 1
-  unlockKey: 
+  unlockedByDefault: 0
+  unlockKey: unlock.item.victory_cache
   itemTags: 00000000
   statModifiers: []
   projectileModifiers: []

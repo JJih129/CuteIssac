@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CuteIssac.Core.Gameplay;
 using CuteIssac.Data.Item;
 using UnityEngine;
 
@@ -164,6 +165,7 @@ namespace CuteIssac.Player
 
             Bombs -= amount;
             NotifyResourcesChanged();
+            GameplayRuntimeEvents.RaisePlayerBombSpent(new PlayerBombSpentSignal(this, amount));
             return true;
         }
 

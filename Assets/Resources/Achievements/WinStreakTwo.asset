@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2c7b4d9a3b448f2a6b1c0d5e9f778a1, type: 3}
+  m_Name: WinStreakTwo
+  m_EditorClassIdentifier: 
+  achievementId: meta.best_win_streak_2
+  displayName: Sweet Streak
+  description: Reach a best win streak of 2.
+  conditionType: 20
+  requiredId: 
+  requiredCount: 2
+  rewardTargetType: 1
+  rewardUnlockKey: unlock.item.streak_cache

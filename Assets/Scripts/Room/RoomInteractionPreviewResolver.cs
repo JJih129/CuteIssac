@@ -342,7 +342,7 @@ namespace CuteIssac.Room
                 string compareLabel = ResolveShopCompareLabel(shopItem, false, playerInventory, playerItemManager, playerHealth, playerStats);
                 outcomeLabel = compareLabel switch
                 {
-                    "COIN SHORT" or "KEY SHORT" or "BOMB SHORT" => BuildShopCostSummary(shopItem),
+                    "COIN SHORT" or "KEY SHORT" or "BOMB SHORT" or "HP SHORT" => BuildShopCostSummary(shopItem),
                     _ => compareLabel
                 };
                 outcomeColor = ResolveUnavailableCompareColor(shopItem);
@@ -522,6 +522,7 @@ namespace CuteIssac.Room
                     "코인 부족" => "COIN SHORT",
                     "열쇠 부족" => "KEY SHORT",
                     "폭탄 부족" => "BOMB SHORT",
+                    "HP NEEDED" => "HP SHORT",
                     "이미 보유" => "ALREADY OWNED",
                     "체력 가득" => "FULL HP",
                     "판매 완료" => "SOLD OUT",
@@ -553,6 +554,7 @@ namespace CuteIssac.Room
             {
                 ShopCurrencyType.Keys => "KEY",
                 ShopCurrencyType.Bombs => "BOMB",
+                ShopCurrencyType.Health => "HP",
                 _ => "COIN"
             };
 
@@ -565,7 +567,7 @@ namespace CuteIssac.Room
             {
                 "SOLD OUT" => -100f,
                 "ALREADY OWNED" => -64f,
-                "COIN SHORT" or "KEY SHORT" or "BOMB SHORT" or "SHOP LOCKED" => -34f,
+                "COIN SHORT" or "KEY SHORT" or "BOMB SHORT" or "HP SHORT" or "SHOP LOCKED" => -34f,
                 "NO WEAPON" => -30f,
                 "FULL HP" => -24f,
                 "AMMO FULL" => -22f,
@@ -1724,6 +1726,7 @@ namespace CuteIssac.Room
             {
                 ShopCurrencyType.Keys => new Color(0.74f, 0.88f, 1f, 1f),
                 ShopCurrencyType.Bombs => new Color(1f, 0.56f, 0.24f, 1f),
+                ShopCurrencyType.Health => new Color(1f, 0.42f, 0.52f, 1f),
                 _ => new Color(0.96f, 0.84f, 0.28f, 1f)
             };
         }

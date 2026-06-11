@@ -30,8 +30,8 @@ MonoBehaviour:
   description: Raises base damage. Improves fire rate.
   icon: {fileID: 0}
   rarity: 3
-  unlockedByDefault: 1
-  unlockKey: 
+  unlockedByDefault: 0
+  unlockKey: unlock.item.shop_cache
   itemTags: 0100000002000000
   statModifiers: []
   projectileModifiers: []

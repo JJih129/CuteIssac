@@ -101,17 +101,25 @@ namespace CuteIssac.Room
         private bool _built;
         private float _phaseOffset;
         private ItemRarity? _manifestedRewardRarity;
+        private string _labelOverride;
         private readonly List<ActiveBurst> _activeBursts = new();
 
-        public void Configure(RoomController roomController, Color accentColor)
+        public void Configure(RoomController roomController, Color accentColor, string labelOverride = null)
         {
             _roomController = roomController;
             _accentColor = accentColor;
+            _labelOverride = labelOverride;
+            if (!string.IsNullOrWhiteSpace(_labelOverride))
+            {
+                showWorldLabel = true;
+            }
+
             ResolveVisualThemeReferences();
             RefreshStateFromRoom();
 
             if (_built)
             {
+                CreateLabelIfNeeded();
                 ApplyTheme();
             }
         }
@@ -200,23 +208,36 @@ namespace CuteIssac.Room
             CreateSpriteLayer("LeftFlame", whiteSprite, new Vector3(leftCandleOffset.x, leftCandleOffset.y + 0.24f, 0f), candleSize * 0.46f, 45f, Color.Lerp(candleColor, Color.white, 0.35f), 5);
             CreateSpriteLayer("RightFlame", whiteSprite, new Vector3(rightCandleOffset.x, rightCandleOffset.y + 0.24f, 0f), candleSize * 0.46f, 45f, Color.Lerp(candleColor, Color.white, 0.35f), 5);
 
-            if (showWorldLabel)
-            {
-                GameObject labelObject = new("CurseLabel");
-                labelObject.transform.SetParent(transform, false);
-                labelObject.transform.localPosition = labelOffset;
-                _labelText = labelObject.AddComponent<TextMesh>();
-                _labelText.text = ResolveLabelText();
-                _labelText.anchor = TextAnchor.MiddleCenter;
-                _labelText.alignment = TextAlignment.Center;
-                _labelText.fontSize = labelFontSize;
-                _labelText.characterSize = labelCharacterSize;
-                _labelText.color = labelColor;
-                _labelText.gameObject.layer = gameObject.layer;
-                LocalizedUiFontProvider.Apply(_labelText);
-                _labelBaseLocalPosition = _labelText.transform.localPosition;
-            }
+            CreateLabelIfNeeded();
             _built = true;
+        }
+
+        private void CreateLabelIfNeeded()
+        {
+            if (!showWorldLabel || _labelText != null)
+            {
+                return;
+            }
+
+            Transform existingLabel = transform.Find("CurseLabel");
+            GameObject labelObject = existingLabel != null ? existingLabel.gameObject : new GameObject("CurseLabel");
+            labelObject.transform.SetParent(transform, false);
+            labelObject.transform.localPosition = labelOffset;
+            _labelText = labelObject.GetComponent<TextMesh>();
+            if (_labelText == null)
+            {
+                _labelText = labelObject.AddComponent<TextMesh>();
+            }
+
+            _labelText.text = ResolveLabelText();
+            _labelText.anchor = TextAnchor.MiddleCenter;
+            _labelText.alignment = TextAlignment.Center;
+            _labelText.fontSize = labelFontSize;
+            _labelText.characterSize = labelCharacterSize;
+            _labelText.color = labelColor;
+            _labelText.gameObject.layer = gameObject.layer;
+            LocalizedUiFontProvider.Apply(_labelText);
+            _labelBaseLocalPosition = _labelText.transform.localPosition;
         }
 
         private void ApplyTheme()
@@ -319,6 +340,11 @@ namespace CuteIssac.Room
                 return;
             }
 
+            if (TryRaiseCleanTransitionBanner())
+            {
+                return;
+            }
+
             switch (_altarState)
             {
                 case AltarState.RewardReady:
@@ -337,6 +363,31 @@ namespace CuteIssac.Room
                         ResolveBannerAccentColor(rewardClaimedBannerColor),
                         rewardClaimedBannerDuration));
                     break;
+            }
+        }
+
+        private bool TryRaiseCleanTransitionBanner()
+        {
+            switch (_altarState)
+            {
+                case AltarState.RewardReady:
+                    SpawnRewardBurst(true);
+                    GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
+                        ResolveLabelText(),
+                        "The reward is ready.",
+                        ResolveBannerAccentColor(rewardReadyBannerColor),
+                        rewardReadyBannerDuration));
+                    return true;
+                case AltarState.RewardClaimed:
+                    SpawnRewardBurst(false);
+                    GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
+                        ResolveLabelText(),
+                        "The altar has settled.",
+                        ResolveBannerAccentColor(rewardClaimedBannerColor),
+                        rewardClaimedBannerDuration));
+                    return true;
+                default:
+                    return false;
             }
         }
 
@@ -405,6 +456,17 @@ namespace CuteIssac.Room
 
         private string ResolveLabelText()
         {
+            if (!string.IsNullOrWhiteSpace(_labelOverride))
+            {
+                return _labelOverride;
+            }
+
+            string cleanLabel = ResolveCleanLabelText();
+            if (!string.IsNullOrWhiteSpace(cleanLabel))
+            {
+                return cleanLabel;
+            }
+
             if (_altarState == AltarState.RewardReady && _manifestedRewardRarity.HasValue)
             {
                 return _manifestedRewardRarity.Value switch
@@ -424,6 +486,30 @@ namespace CuteIssac.Room
                 AltarState.RewardReady => "대가가 기다린다",
                 AltarState.RewardClaimed => "제단이 잠잠해졌다",
                 _ => "피의 제단"
+            };
+        }
+
+        private string ResolveCleanLabelText()
+        {
+            if (_altarState == AltarState.RewardReady && _manifestedRewardRarity.HasValue)
+            {
+                return _manifestedRewardRarity.Value switch
+                {
+                    ItemRarity.Common => "Reward Ready",
+                    ItemRarity.Uncommon => "Uncommon Reward",
+                    ItemRarity.Rare => "Rare Reward",
+                    ItemRarity.Legendary => "Legendary Reward",
+                    ItemRarity.Relic => "Relic Reward",
+                    ItemRarity.Boss => "Boss Reward",
+                    _ => "Reward Ready"
+                };
+            }
+
+            return _altarState switch
+            {
+                AltarState.RewardReady => "Reward Ready",
+                AltarState.RewardClaimed => "Altar Settled",
+                _ => "Curse Altar"
             };
         }
 

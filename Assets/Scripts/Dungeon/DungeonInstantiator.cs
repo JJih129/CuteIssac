@@ -174,16 +174,24 @@ namespace CuteIssac.Dungeon
                         continue;
                     }
 
+                    SpecialRoomRuleData targetSpecialRule = targetNode.SpecialRoomRule ?? ResolveSpecialRoomRule(dungeonMap.FloorConfig, targetNode.RoomType);
+
                     sourceDoor.SetConnection(targetRoom, targetDoor);
                     sourceDoor.ConfigureEntryCost(
-                        ResolveEntryKeyCost(dungeonMap, targetNode),
-                        ResolveConsumeEntryCostOnce(targetNode));
+                        ResolveEntryKeyCost(dungeonMap, targetNode, targetSpecialRule),
+                        ResolveConsumeEntryCostOnce(targetNode, targetSpecialRule));
+                    sourceDoor.ConfigureResourceEntryCost(
+                        ResolveEntryResourceCostType(targetSpecialRule),
+                        ResolveEntryResourceCostAmount(targetSpecialRule),
+                        true);
+                    sourceDoor.ConfigureBossClearEntryRequirement(targetSpecialRule != null && targetSpecialRule.RequiresBossCleared);
+                    sourceDoor.ConfigureMinimumHealthEntryRequirement(targetSpecialRule != null ? targetSpecialRule.MinimumHealthRatioToEnter : 0f);
                     sourceDoor.ConfigureHealthEntryCost(
-                        ShouldRequireCurseHealthEntryCost(roomNode, targetNode) ? 1f : 0f,
+                        ResolveEntryHealthCost(roomNode, targetNode, targetSpecialRule),
                         true,
                         true);
 
-                    ConfigureSecretDoorAccess(roomNode, targetNode, sourceDoor);
+                    ConfigureSecretDoorAccess(roomNode, targetNode, sourceDoor, targetSpecialRule);
                 }
             }
         }
@@ -234,6 +242,8 @@ namespace CuteIssac.Dungeon
                 : roomInstance.RoomId;
 
             roomInstance.ConfigureRuntimeMetadata(runtimeRoomId, roomNode.RoomType);
+            SpecialRoomRuleData specialRoomRule = roomNode.SpecialRoomRule ?? ResolveSpecialRoomRule(floorConfig, roomNode.RoomType);
+            ConfigureSpecialRoomRuntimeMetadata(roomInstance, specialRoomRule);
 
             RoomEnemySpawner roomEnemySpawner = roomInstance.GetComponent<RoomEnemySpawner>();
 
@@ -275,6 +285,12 @@ namespace CuteIssac.Dungeon
                     roomNode.RoomType,
                     roomNode.RoomData,
                     floorConfig != null ? floorConfig.GetItemPool(roomNode.RoomType) : null);
+                roomTypeContentController.ConfigureSpecialRoomRule(specialRoomRule);
+            }
+
+            if (roomRewardSpawner != null)
+            {
+                roomRewardSpawner.ConfigureSpecialRoomRule(roomNode.RoomType, specialRoomRule);
             }
 
             RoomObstacleSpawner roomObstacleSpawner = roomInstance.GetComponent<RoomObstacleSpawner>();
@@ -291,14 +307,35 @@ namespace CuteIssac.Dungeon
             return $"{roomNode.RoomType}_{layoutId}_{roomNode.GridPosition.X}_{roomNode.GridPosition.Y}";
         }
 
-        private static void ConfigureSecretDoorAccess(DungeonRoomNode sourceNode, DungeonRoomNode targetNode, RoomDoor sourceDoor)
+        private static void ConfigureSpecialRoomRuntimeMetadata(RoomController roomInstance, SpecialRoomRuleData specialRoomRule)
+        {
+            if (roomInstance == null || specialRoomRule == null)
+            {
+                return;
+            }
+
+            SpecialRoomRuntimeMetadata metadata = roomInstance.GetComponent<SpecialRoomRuntimeMetadata>();
+            if (metadata == null)
+            {
+                metadata = roomInstance.gameObject.AddComponent<SpecialRoomRuntimeMetadata>();
+            }
+
+            metadata.Configure(specialRoomRule);
+        }
+
+        private static void ConfigureSecretDoorAccess(
+            DungeonRoomNode sourceNode,
+            DungeonRoomNode targetNode,
+            RoomDoor sourceDoor,
+            SpecialRoomRuleData targetSpecialRule)
         {
             if (sourceNode == null || targetNode == null || sourceDoor == null)
             {
                 return;
             }
 
-            if (sourceNode.RoomType == RoomType.Secret || targetNode.RoomType != RoomType.Secret)
+            bool requiresHiddenDoor = targetSpecialRule != null && targetSpecialRule.HiddenDoor;
+            if (sourceNode.RoomType == RoomType.Secret || (targetNode.RoomType != RoomType.Secret && !requiresHiddenDoor))
             {
                 sourceDoor.ConfigureRevealRequirement(false, true);
                 return;
@@ -344,7 +381,29 @@ namespace CuteIssac.Dungeon
             return sourceNode.RoomType != RoomType.Curse && targetNode.RoomType == RoomType.Curse;
         }
 
-        private static int ResolveEntryKeyCost(DungeonMap dungeonMap, DungeonRoomNode targetNode)
+        private static SpecialRoomRuleData ResolveSpecialRoomRule(FloorConfig floorConfig, RoomType roomType)
+        {
+            FloorSpecialRoomRules rules = floorConfig != null ? floorConfig.SpecialRoomRules : null;
+            IReadOnlyList<SpecialRoomRuleData> ruleList = rules != null ? rules.Rules : null;
+            if (ruleList == null)
+            {
+                return null;
+            }
+
+            int floorIndex = floorConfig != null ? floorConfig.FloorIndex : 1;
+            for (int i = 0; i < ruleList.Count; i++)
+            {
+                SpecialRoomRuleData rule = ruleList[i];
+                if (rule != null && rule.RoomType == roomType && rule.IsAvailableForFloor(floorIndex))
+                {
+                    return rule;
+                }
+            }
+
+            return null;
+        }
+
+        private static int ResolveEntryKeyCost(DungeonMap dungeonMap, DungeonRoomNode targetNode, SpecialRoomRuleData targetSpecialRule)
         {
             if (targetNode == null)
             {
@@ -352,10 +411,13 @@ namespace CuteIssac.Dungeon
             }
 
             int authoredCost = targetNode.RoomData != null ? targetNode.RoomData.EntryKeyCost : 0;
+            int specialCost = targetSpecialRule != null && targetSpecialRule.EntryCostType == SpecialRoomCostType.Key
+                ? targetSpecialRule.EntryCostAmount
+                : 0;
 
             if (targetNode.RoomType != RoomType.Treasure)
             {
-                return authoredCost;
+                return Mathf.Max(authoredCost, specialCost);
             }
 
             int floorIndex = dungeonMap != null && dungeonMap.FloorConfig != null
@@ -364,14 +426,52 @@ namespace CuteIssac.Dungeon
 
             if (floorIndex == 1)
             {
-                return 0;
+                return specialCost;
             }
 
-            return floorIndex > 1 ? Mathf.Max(1, authoredCost) : authoredCost;
+            int treasureCost = floorIndex > 1 ? Mathf.Max(1, authoredCost) : authoredCost;
+            return Mathf.Max(treasureCost, specialCost);
         }
 
-        private static bool ResolveConsumeEntryCostOnce(DungeonRoomNode targetNode)
+        private static float ResolveEntryHealthCost(
+            DungeonRoomNode sourceNode,
+            DungeonRoomNode targetNode,
+            SpecialRoomRuleData targetSpecialRule)
         {
+            float specialCost = targetSpecialRule != null && targetSpecialRule.EntryCostType == SpecialRoomCostType.Health
+                ? targetSpecialRule.EntryCostAmount
+                : 0f;
+            float fallbackCurseCost = ShouldRequireCurseHealthEntryCost(sourceNode, targetNode) ? 1f : 0f;
+            return Mathf.Max(specialCost, fallbackCurseCost);
+        }
+
+        private static SpecialRoomCostType ResolveEntryResourceCostType(SpecialRoomRuleData targetSpecialRule)
+        {
+            if (targetSpecialRule == null)
+            {
+                return SpecialRoomCostType.None;
+            }
+
+            return targetSpecialRule.EntryCostType == SpecialRoomCostType.Coin || targetSpecialRule.EntryCostType == SpecialRoomCostType.Bomb
+                ? targetSpecialRule.EntryCostType
+                : SpecialRoomCostType.None;
+        }
+
+        private static int ResolveEntryResourceCostAmount(SpecialRoomRuleData targetSpecialRule)
+        {
+            return targetSpecialRule != null
+                && (targetSpecialRule.EntryCostType == SpecialRoomCostType.Coin || targetSpecialRule.EntryCostType == SpecialRoomCostType.Bomb)
+                ? targetSpecialRule.EntryCostAmount
+                : 0;
+        }
+
+        private static bool ResolveConsumeEntryCostOnce(DungeonRoomNode targetNode, SpecialRoomRuleData targetSpecialRule)
+        {
+            if (targetSpecialRule != null && targetSpecialRule.EntryCostAmount > 0)
+            {
+                return true;
+            }
+
             return targetNode != null
                 && targetNode.RoomData != null
                 && targetNode.RoomData.ConsumeEntryCostOnce;

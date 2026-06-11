@@ -7,6 +7,7 @@ namespace CuteIssac.Item
     {
         Coins = 0,
         Keys = 1,
-        Bombs = 2
+        Bombs = 2,
+        Health = 3
     }
 }

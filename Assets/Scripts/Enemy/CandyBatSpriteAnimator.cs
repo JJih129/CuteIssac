@@ -79,7 +79,8 @@ namespace CuteIssac.Enemy
         private void OnValidate()
         {
             ResolveReferences();
-            RefreshSprite(true);
+            _hasScaleReference = false;
+            _lastAppliedSprite = null;
         }
 
         private void RefreshSprite(bool forceReset)
@@ -266,7 +267,7 @@ namespace CuteIssac.Enemy
 
             Sprite referenceSprite = frontFrame1 != null ? frontFrame1 : ResolveFallbackSprite();
             _baseSpriteLocalScale = bodySpriteRenderer.transform.localScale;
-            _referenceSpriteWorldSize = referenceSprite != null ? referenceSprite.bounds.size : Vector2.one;
+            _referenceSpriteWorldSize = referenceSprite != null ? (Vector2)referenceSprite.bounds.size : Vector2.one;
             _hasScaleReference = true;
         }
 

@@ -30,8 +30,8 @@ MonoBehaviour:
   description: Shots home toward enemies. Fires extra tears.
   icon: {fileID: 0}
   rarity: 2
-  unlockedByDefault: 1
-  unlockKey: 
+  unlockedByDefault: 0
+  unlockKey: unlock.item.challenge_rank_s
   itemTags: 0500000003000000
   statModifiers: []
   projectileModifiers: []

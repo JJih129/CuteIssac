@@ -19,6 +19,10 @@ MonoBehaviour:
   targetType: 0
   targetKey: unlock.item.boss_crown
   targetRoomType: 0
-  requiredEnemyId: BossChaser
+  requiredEnemyId: floor1_boss_chaser
+  requiredCount: 1
   requiredFloorIndex: 2
   requiredItemId: 
+  requiredCharacterId:
+  requiredClearMark: run_victory
+  requiredRoomType: 0

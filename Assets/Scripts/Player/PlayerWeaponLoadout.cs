@@ -633,6 +633,36 @@ namespace CuteIssac.Player
             return true;
         }
 
+        public bool ApplyStartingWeapon(ItemData itemData)
+        {
+            ResolveReferences();
+            ClearWeaponSlots();
+
+            if (itemData == null)
+            {
+                InitializeStarterWeapon();
+                NotifyStateChanged();
+                return CurrentSlot != null;
+            }
+
+            WeaponRuntimeSlot startingSlot = CreateRuntimeSlot(itemData, true);
+            if (startingSlot == null)
+            {
+                InitializeStarterWeapon();
+                NotifyStateChanged();
+                return false;
+            }
+
+            _weaponSlots.Add(startingSlot);
+            RegisterWeaponSlot(startingSlot);
+            _equippedIndex = 0;
+            CancelReload();
+            _dryFireRemaining = 0f;
+            RefreshPlayerStats();
+            NotifyStateChanged();
+            return true;
+        }
+
         public bool OwnsWeaponItem(ItemData itemData)
         {
             if (itemData == null)
@@ -889,6 +919,11 @@ namespace CuteIssac.Player
 
         private WeaponRuntimeSlot CreateRuntimeSlot(ItemData itemData)
         {
+            return CreateRuntimeSlot(itemData, false);
+        }
+
+        private WeaponRuntimeSlot CreateRuntimeSlot(ItemData itemData, bool isStarter)
+        {
             if (itemData == null || !itemData.IsWeaponRelic || itemData.WeaponProfile == null)
             {
                 return null;
@@ -919,8 +954,24 @@ namespace CuteIssac.Player
                 profile.SpreadDegrees,
                 profile.KnockbackMultiplier,
                 BuildWeaponProjectileTraits(profile),
-                false,
+                isStarter,
                 itemData.Rarity);
+        }
+
+        private void ClearWeaponSlots()
+        {
+            if (_isWeaponCarouselOpen)
+            {
+                RestoreWeaponCarouselTimeScale();
+            }
+
+            _weaponSlots.Clear();
+            _ownedWeaponItemIds.Clear();
+            _equippedIndex = 0;
+            _weaponCarouselPreviewIndex = -1;
+            _isWeaponCarouselOpen = false;
+            CancelReload();
+            _dryFireRemaining = 0f;
         }
 
         private static ProjectileTraitState BuildWeaponProjectileTraits(ItemWeaponProfile profile)
@@ -1297,48 +1348,32 @@ namespace CuteIssac.Player
             string motif = slot.MotifLabel ?? string.Empty;
             string key = $"{itemId} {displayName} {motif}".ToLowerInvariant();
 
-            if (key.Contains("gatebreach")
-                || key.Contains("shotgun")
-                || key.Contains("590")
-                || key.Contains("샷건"))
+            if (key.Contains("gatebreach") || key.Contains("shotgun") || key.Contains("590"))
             {
                 return GameAudioEventType.ShotgunFired;
             }
 
-            if (key.Contains("longwatch")
-                || key.Contains("sniper")
-                || key.Contains("700")
-                || key.Contains("저격"))
+            if (key.Contains("longwatch") || key.Contains("sniper") || key.Contains("700"))
             {
                 return GameAudioEventType.SniperFired;
             }
 
-            if (key.Contains("vector")
-                || key.Contains("smg")
-                || key.Contains("기관단총"))
+            if (key.Contains("vector") || key.Contains("smg"))
             {
                 return GameAudioEventType.SmgFired;
             }
 
-            if (key.Contains("patrol")
-                || key.Contains("rifle")
-                || key.Contains("4a1")
-                || key.Contains("돌격소총"))
+            if (key.Contains("patrol") || key.Contains("rifle") || key.Contains("4a1"))
             {
                 return GameAudioEventType.AssaultRifleFired;
             }
 
-            if (key.Contains("minigun")
-                || key.Contains("mini gun")
-                || key.Contains("미니건"))
+            if (key.Contains("minigun") || key.Contains("mini gun"))
             {
                 return GameAudioEventType.MinigunFired;
             }
 
-            if (key.Contains("bazooka")
-                || key.Contains("rocket")
-                || key.Contains("launcher")
-                || key.Contains("바주카"))
+            if (key.Contains("bazooka") || key.Contains("rocket") || key.Contains("launcher"))
             {
                 return GameAudioEventType.RocketLauncherFired;
             }

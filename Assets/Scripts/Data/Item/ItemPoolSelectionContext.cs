@@ -101,17 +101,23 @@ namespace CuteIssac.Data.Item
 
             if (UnlockedItemKeys is HashSet<string> unlockedHashSet)
             {
-                return unlockedHashSet.Contains(itemData.UnlockKey);
+                if (unlockedHashSet.Contains(itemData.UnlockKey))
+                {
+                    return true;
+                }
             }
 
             if (UnlockedItemKeys is ISet<string> unlockedSet)
             {
-                return unlockedSet.Contains(itemData.UnlockKey);
+                if (unlockedSet.Contains(itemData.UnlockKey))
+                {
+                    return true;
+                }
             }
 
             foreach (string unlockedItemKey in UnlockedItemKeys)
             {
-                if (unlockedItemKey == itemData.UnlockKey)
+                if (string.Equals(unlockedItemKey, itemData.UnlockKey, System.StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -134,17 +140,23 @@ namespace CuteIssac.Data.Item
 
             if (itemIds is HashSet<string> itemHashSet)
             {
-                return itemHashSet.Contains(itemData.ItemId);
+                if (itemHashSet.Contains(itemData.ItemId))
+                {
+                    return true;
+                }
             }
 
             if (itemIds is ISet<string> itemSet)
             {
-                return itemSet.Contains(itemData.ItemId);
+                if (itemSet.Contains(itemData.ItemId))
+                {
+                    return true;
+                }
             }
 
             foreach (string itemId in itemIds)
             {
-                if (itemId == itemData.ItemId)
+                if (string.Equals(itemId, itemData.ItemId, System.StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }

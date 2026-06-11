@@ -1,6 +1,7 @@
 using CuteIssac.Player;
 using CuteIssac.Dungeon;
 using CuteIssac.Core.Feedback;
+using CuteIssac.Core.Gameplay;
 using CuteIssac.Data.Dungeon;
 using System.Collections.Generic;
 using System;
@@ -60,6 +61,11 @@ namespace CuteIssac.Room
         [Header("Entry Cost")]
         [SerializeField] [Min(0)] private int requiredKeysToEnter;
         [SerializeField] private bool consumeKeysOnFirstEntry = true;
+        [SerializeField] private SpecialRoomCostType requiredResourceCostType = SpecialRoomCostType.None;
+        [SerializeField] [Min(0)] private int requiredResourceToEnter;
+        [SerializeField] private bool consumeResourceOnFirstEntry = true;
+        [SerializeField] private bool requireBossClearToEnter;
+        [SerializeField] [Range(0f, 1f)] private float minimumHealthRatioToEnter;
         [SerializeField] [Min(0f)] private float requiredHealthToEnter;
         [SerializeField] private bool consumeHealthOnFirstEntry = true;
         [SerializeField] private bool denyLethalHealthEntry = true;
@@ -74,8 +80,12 @@ namespace CuteIssac.Room
         public bool IsRevealed => !_requiresReveal || _isRevealed;
         public bool HasUnrevealedSecretAccess => _isAvailable && _requiresReveal && !_isRevealed && connectedRoom != null;
         public bool HasUnpaidKeyEntryCost => HasPendingKeyEntryCost();
+        public bool HasUnpaidResourceEntryCost => HasPendingResourceEntryCost();
         public bool HasUnpaidHealthEntryCost => HasPendingHealthEntryCost();
         public int RequiredKeysToEnter => GetRequiredKeyCost();
+        public int RequiredResourceToEnter => GetRequiredResourceCost();
+        public SpecialRoomCostType RequiredResourceCostType => requiredResourceCostType;
+        public float MinimumHealthRatioToEnter => Mathf.Clamp01(minimumHealthRatioToEnter);
         public float RequiredHealthToEnter => GetRequiredHealthCost();
         public Color HealthEntryWarningColor => healthCostWarningColor;
 
@@ -84,6 +94,9 @@ namespace CuteIssac.Room
         private bool _requiresReveal;
         private bool _isRevealed = true;
         private bool _entryCostPaid;
+        private bool _resourceEntryCostPaid;
+        private bool _bossClearEntrySatisfied;
+        private bool _hasRoomClearSubscription;
         private bool _healthEntryCostPaid;
         private float _lastDeniedFeedbackTime = float.NegativeInfinity;
         private SpriteRenderer[] _resolvedSecretHintTintTargets;
@@ -110,6 +123,17 @@ namespace CuteIssac.Room
         {
             ValidateDirectionFromTransform(false);
             ResolveReferences();
+            _bossClearEntrySatisfied = !requireBossClearToEnter;
+            RefreshBossClearSubscription();
+        }
+
+        private void OnDestroy()
+        {
+            if (_hasRoomClearSubscription)
+            {
+                GameplayRuntimeEvents.RoomCleared -= HandleRuntimeRoomCleared;
+                _hasRoomClearSubscription = false;
+            }
         }
 
         private void Reset()
@@ -155,7 +179,7 @@ namespace CuteIssac.Room
             bool shouldShowKeyCostWarning = !_combatLocked
                 && _isAvailable
                 && (!_requiresReveal || _isRevealed)
-                && HasPendingKeyEntryCost();
+                && (HasPendingKeyEntryCost() || HasPendingResourceEntryCost());
             bool shouldShowHealthCostWarning = !_combatLocked
                 && _isAvailable
                 && (!_requiresReveal || _isRevealed)
@@ -212,13 +236,26 @@ namespace CuteIssac.Room
 
             if (IsLocked)
             {
-                ShowTraversalBlockedFeedback(playerController, "ENTRY LOCKED");
+                string label = requireBossClearToEnter && !_bossClearEntrySatisfied ? "BOSS FIRST" : "ENTRY LOCKED";
+                ShowTraversalBlockedFeedback(playerController, label);
+                return false;
+            }
+
+            if (!CanMeetMinimumHealthEntryRequirement(playerController))
+            {
+                ShowDeniedMinimumHealthEntryFeedback(playerController);
                 return false;
             }
 
             if (!CanPayEntryCost(playerController))
             {
                 ShowDeniedEntryFeedback(playerController);
+                return false;
+            }
+
+            if (!CanPayResourceEntryCost(playerController))
+            {
+                ShowDeniedResourceEntryFeedback(playerController);
                 return false;
             }
 
@@ -239,12 +276,14 @@ namespace CuteIssac.Room
                 }
 
                 TryConsumeEntryCost(playerController);
+                TryConsumeResourceEntryCost(playerController);
                 return TryConsumeHealthEntryCost(playerController);
             }
 
             if (connectedRoom != null && connectedRoom.State == RoomState.Idle)
             {
                 TryConsumeEntryCost(playerController);
+                TryConsumeResourceEntryCost(playerController);
                 if (!TryConsumeHealthEntryCost(playerController))
                 {
                     return false;
@@ -270,6 +309,58 @@ namespace CuteIssac.Room
             connectedRoom = nextRoom;
             connectedDoor = nextDoor;
             SetDoorAvailable(nextRoom != null);
+        }
+
+        public bool TryBuildPendingEntryCostLabel(out string label)
+        {
+            label = string.Empty;
+            int requiredKeyCost = GetRequiredKeyCost();
+            if (requiredKeyCost > 0)
+            {
+                label = AppendEntryRequirementLabel(label, $"KEY x{requiredKeyCost}");
+            }
+
+            int requiredResourceCost = GetRequiredResourceCost();
+            if (requiredResourceCost > 0)
+            {
+                label = AppendEntryRequirementLabel(label, $"{ResolveResourceCostLabel()} x{requiredResourceCost}");
+            }
+
+            int requiredHealthCost = Mathf.CeilToInt(GetRequiredHealthCost());
+            if (requiredHealthCost > 0)
+            {
+                label = AppendEntryRequirementLabel(label, $"HP -{requiredHealthCost}");
+            }
+
+            if (MinimumHealthRatioToEnter > 0.001f)
+            {
+                label = AppendEntryRequirementLabel(label, $"HP {Mathf.CeilToInt(MinimumHealthRatioToEnter * 100f)}%+");
+            }
+
+            return !string.IsNullOrWhiteSpace(label);
+        }
+
+        public bool TryResolveConnectedSpecialRoomPresentation(out string displayName, out Color accentColor)
+        {
+            displayName = string.Empty;
+            accentColor = ResolveConnectedRoomAccent();
+
+            if (connectedRoom == null)
+            {
+                return false;
+            }
+
+            SpecialRoomRuntimeMetadata metadata = connectedRoom.GetComponent<SpecialRoomRuntimeMetadata>();
+            if (metadata == null || !metadata.HasDealPresentation)
+            {
+                return false;
+            }
+
+            displayName = metadata.DisplayName;
+            accentColor = metadata.AccentColor.a > 0.01f
+                ? new Color(metadata.AccentColor.r, metadata.AccentColor.g, metadata.AccentColor.b, 1f)
+                : accentColor;
+            return !string.IsNullOrWhiteSpace(displayName);
         }
 
         public void ConfigureRevealRequirement(bool requiresReveal, bool startsRevealed = false)
@@ -303,6 +394,43 @@ namespace CuteIssac.Room
                 EnsureKeyCostPrompt();
             }
 
+            RefreshDoorState();
+        }
+
+        public void ConfigureResourceEntryCost(SpecialRoomCostType costType, int amount, bool consumeOnce)
+        {
+            if (costType != SpecialRoomCostType.Coin && costType != SpecialRoomCostType.Bomb)
+            {
+                requiredResourceCostType = SpecialRoomCostType.None;
+                requiredResourceToEnter = 0;
+            }
+            else
+            {
+                requiredResourceCostType = costType;
+                requiredResourceToEnter = Mathf.Max(0, amount);
+            }
+
+            consumeResourceOnFirstEntry = consumeOnce;
+            _resourceEntryCostPaid = requiredResourceToEnter <= 0;
+            if (requiredResourceToEnter > 0 || keyCostPromptRoot != null || keyCostPromptText != null)
+            {
+                EnsureKeyCostPrompt();
+            }
+
+            RefreshDoorState();
+        }
+
+        public void ConfigureBossClearEntryRequirement(bool requiresBossClear)
+        {
+            requireBossClearToEnter = requiresBossClear;
+            _bossClearEntrySatisfied = !requiresBossClear;
+            RefreshBossClearSubscription();
+            RefreshDoorState();
+        }
+
+        public void ConfigureMinimumHealthEntryRequirement(float minimumHealthRatio)
+        {
+            minimumHealthRatioToEnter = Mathf.Clamp01(minimumHealthRatio);
             RefreshDoorState();
         }
 
@@ -436,10 +564,12 @@ namespace CuteIssac.Room
         private void RefreshDoorState()
         {
             bool isRevealedAndAvailable = _isAvailable && (!_requiresReveal || _isRevealed);
-            bool canTraverse = isRevealedAndAvailable && !_combatLocked;
-            bool shouldBlock = !_isAvailable || (_requiresReveal && !_isRevealed) || _combatLocked;
+            bool bossGateLocked = requireBossClearToEnter && !_bossClearEntrySatisfied;
+            bool canTraverse = isRevealedAndAvailable && !_combatLocked && !bossGateLocked;
+            bool shouldBlock = !_isAvailable || (_requiresReveal && !_isRevealed) || _combatLocked || bossGateLocked;
             bool showSecretHint = _isAvailable && _requiresReveal && !_isRevealed;
             bool showKeyCostWarning = canTraverse && HasPendingKeyEntryCost();
+            bool showResourceCostWarning = canTraverse && HasPendingResourceEntryCost();
             bool showHealthCostWarning = canTraverse && HasPendingHealthEntryCost();
             bool hasStateVisualObjects =
                 (lockedStateObjects != null && lockedStateObjects.Length > 0) ||
@@ -468,7 +598,7 @@ namespace CuteIssac.Room
             SetObjectsActive(_runtimeLockedStateObjects, isRevealedAndAvailable && _combatLocked);
             SetObjectsActive(_runtimeUnlockedStateObjects, isRevealedAndAvailable && !_combatLocked);
             ApplySecretHintState(showSecretHint);
-            ApplyKeyCostWarningState(showKeyCostWarning);
+            ApplyKeyCostWarningState(showKeyCostWarning || showResourceCostWarning);
             ApplyHealthCostWarningState(showHealthCostWarning);
         }
 
@@ -476,6 +606,38 @@ namespace CuteIssac.Room
         {
             ValidateDirectionFromTransform(true);
             ResolveReferences();
+        }
+
+        private void RefreshBossClearSubscription()
+        {
+            bool shouldSubscribe = requireBossClearToEnter && !_bossClearEntrySatisfied;
+            if (shouldSubscribe == _hasRoomClearSubscription)
+            {
+                return;
+            }
+
+            if (shouldSubscribe)
+            {
+                GameplayRuntimeEvents.RoomCleared += HandleRuntimeRoomCleared;
+            }
+            else
+            {
+                GameplayRuntimeEvents.RoomCleared -= HandleRuntimeRoomCleared;
+            }
+
+            _hasRoomClearSubscription = shouldSubscribe;
+        }
+
+        private void HandleRuntimeRoomCleared(RoomClearSignal signal)
+        {
+            if (signal.Room == null || signal.Room.RoomType != RoomType.Boss)
+            {
+                return;
+            }
+
+            _bossClearEntrySatisfied = true;
+            RefreshBossClearSubscription();
+            RefreshDoorState();
         }
 
         /// <summary>
@@ -890,6 +1052,11 @@ namespace CuteIssac.Room
             return GetRequiredKeyCost() > 0;
         }
 
+        private bool HasPendingResourceEntryCost()
+        {
+            return GetRequiredResourceCost() > 0;
+        }
+
         private bool CanPayEntryCost(PlayerController playerController)
         {
             int requiredKeyCost = GetRequiredKeyCost(playerController);
@@ -901,6 +1068,47 @@ namespace CuteIssac.Room
 
             PlayerInventory playerInventory = ResolvePlayerInventory(playerController);
             return playerInventory != null && playerInventory.Keys >= requiredKeyCost;
+        }
+
+        private bool CanMeetMinimumHealthEntryRequirement(PlayerController playerController)
+        {
+            float minimumHealthRatio = MinimumHealthRatioToEnter;
+            if (minimumHealthRatio <= 0.001f)
+            {
+                return true;
+            }
+
+            PlayerHealth playerHealth = ResolvePlayerHealth(playerController);
+            if (playerHealth == null)
+            {
+                return false;
+            }
+
+            float requiredHealth = Mathf.Max(1f, playerHealth.MaxHealth) * minimumHealthRatio;
+            return playerHealth.CurrentHealth >= requiredHealth;
+        }
+
+        private bool CanPayResourceEntryCost(PlayerController playerController)
+        {
+            int requiredResourceCost = GetRequiredResourceCost(playerController);
+
+            if (requiredResourceCost <= 0)
+            {
+                return true;
+            }
+
+            PlayerInventory playerInventory = ResolvePlayerInventory(playerController);
+            if (playerInventory == null)
+            {
+                return false;
+            }
+
+            return requiredResourceCostType switch
+            {
+                SpecialRoomCostType.Coin => playerInventory.Coins >= requiredResourceCost,
+                SpecialRoomCostType.Bomb => playerInventory.Bombs >= requiredResourceCost,
+                _ => true
+            };
         }
 
         private void ShowDeniedEntryFeedback(PlayerController playerController)
@@ -929,6 +1137,60 @@ namespace CuteIssac.Room
                 1.34f,
                 visualProfile: FloatingFeedbackVisualProfile.EventLabel));
             PresentCommitRejectedFeedback(accentColor, TraversalDoorGuidanceStyle.Guided);
+        }
+
+        private void ShowDeniedResourceEntryFeedback(PlayerController playerController)
+        {
+            int requiredResourceCost = GetRequiredResourceCost(playerController);
+
+            if (playerController == null || requiredResourceCost <= 0)
+            {
+                return;
+            }
+
+            if (Time.unscaledTime - _lastDeniedFeedbackTime < deniedEntryFeedbackCooldown)
+            {
+                return;
+            }
+
+            _lastDeniedFeedbackTime = Time.unscaledTime;
+            Color accentColor = ResolveResourceDeniedAccent();
+
+            GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
+                playerController.transform.position + Vector3.up * 0.9f,
+                $"{ResolveResourceCostLabel()} x{requiredResourceCost} NEEDED",
+                accentColor,
+                1.05f,
+                0.85f,
+                1.34f,
+                visualProfile: FloatingFeedbackVisualProfile.EventLabel));
+            PresentCommitRejectedFeedback(accentColor, TraversalDoorGuidanceStyle.Guided);
+        }
+
+        private void ShowDeniedMinimumHealthEntryFeedback(PlayerController playerController)
+        {
+            if (playerController == null || MinimumHealthRatioToEnter <= 0.001f)
+            {
+                return;
+            }
+
+            if (Time.unscaledTime - _lastDeniedFeedbackTime < deniedEntryFeedbackCooldown)
+            {
+                return;
+            }
+
+            _lastDeniedFeedbackTime = Time.unscaledTime;
+            Color accentColor = ResolveHealthDeniedAccent();
+
+            GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
+                playerController.transform.position + Vector3.up * 0.9f,
+                $"HP {Mathf.CeilToInt(MinimumHealthRatioToEnter * 100f)}%+ NEEDED",
+                accentColor,
+                1.05f,
+                0.85f,
+                1.34f,
+                visualProfile: FloatingFeedbackVisualProfile.EventLabel));
+            PresentCommitRejectedFeedback(accentColor, TraversalDoorGuidanceStyle.GuidedRisk);
         }
 
         private void ShowDeniedHealthEntryFeedback(PlayerController playerController)
@@ -983,6 +1245,41 @@ namespace CuteIssac.Room
             if (playerInventory.TrySpendKeys(requiredKeyCost) && consumeKeysOnFirstEntry)
             {
                 _entryCostPaid = true;
+                RefreshDoorState();
+            }
+        }
+
+        private void TryConsumeResourceEntryCost(PlayerController playerController)
+        {
+            int requiredResourceCost = GetRequiredResourceCost(playerController);
+
+            if (requiredResourceCost <= 0)
+            {
+                if (consumeResourceOnFirstEntry && requiredResourceToEnter > 0)
+                {
+                    _resourceEntryCostPaid = true;
+                    RefreshDoorState();
+                }
+
+                return;
+            }
+
+            PlayerInventory playerInventory = ResolvePlayerInventory(playerController);
+            if (playerInventory == null)
+            {
+                return;
+            }
+
+            bool paid = requiredResourceCostType switch
+            {
+                SpecialRoomCostType.Coin => playerInventory.TrySpendCoins(requiredResourceCost),
+                SpecialRoomCostType.Bomb => playerInventory.TrySpendBombs(requiredResourceCost),
+                _ => false
+            };
+
+            if (paid && consumeResourceOnFirstEntry)
+            {
+                _resourceEntryCostPaid = true;
                 RefreshDoorState();
             }
         }
@@ -1087,6 +1384,14 @@ namespace CuteIssac.Room
             return Color.Lerp(ResolveConnectedRoomAccent(), new Color(0.7f, 0.9f, 1f, 1f), 0.46f);
         }
 
+        private Color ResolveResourceDeniedAccent()
+        {
+            Color resourceColor = requiredResourceCostType == SpecialRoomCostType.Bomb
+                ? new Color(1f, 0.58f, 0.36f, 1f)
+                : new Color(1f, 0.86f, 0.34f, 1f);
+            return Color.Lerp(ResolveConnectedRoomAccent(), resourceColor, 0.54f);
+        }
+
         private Color ResolveHealthDeniedAccent()
         {
             return Color.Lerp(ResolveConnectedRoomAccent(), healthCostWarningColor, 0.72f);
@@ -1102,6 +1407,11 @@ namespace CuteIssac.Room
             if (GetRequiredKeyCost() > 0)
             {
                 return ResolveKeyDeniedAccent();
+            }
+
+            if (GetRequiredResourceCost() > 0)
+            {
+                return ResolveResourceDeniedAccent();
             }
 
             return ResolveConnectedRoomAccent();
@@ -1189,8 +1499,9 @@ namespace CuteIssac.Room
             }
 
             int requiredKeyCost = GetRequiredKeyCost();
+            int requiredResourceCost = GetRequiredResourceCost();
 
-            if (requiredKeyCost <= 0)
+            if (requiredKeyCost <= 0 && requiredResourceCost <= 0)
             {
                 if (_lastDisplayedKeyCost != 0)
                 {
@@ -1201,13 +1512,19 @@ namespace CuteIssac.Room
                 return;
             }
 
-            if (_lastDisplayedKeyCost == requiredKeyCost)
+            int displayHash = requiredKeyCost > 0
+                ? requiredKeyCost
+                : -requiredResourceCost - ((int)requiredResourceCostType * 1000);
+
+            if (_lastDisplayedKeyCost == displayHash)
             {
                 return;
             }
 
-            keyCostPromptText.text = $"KEY x{requiredKeyCost}";
-            _lastDisplayedKeyCost = requiredKeyCost;
+            keyCostPromptText.text = requiredKeyCost > 0
+                ? $"KEY x{requiredKeyCost}"
+                : $"{ResolveResourceCostLabel()} x{requiredResourceCost}";
+            _lastDisplayedKeyCost = displayHash;
         }
 
         private void EnsureHealthCostPrompt()
@@ -1297,6 +1614,41 @@ namespace CuteIssac.Room
             return itemManager != null
                 ? itemManager.ResolveEffectiveDoorKeyCost(baseCost, ResolveEntryCostRoomType())
                 : baseCost;
+        }
+
+        private int GetRequiredResourceCost(PlayerController playerController = null)
+        {
+            int baseCost = Mathf.Max(0, requiredResourceToEnter);
+            if (baseCost <= 0 || (consumeResourceOnFirstEntry && _resourceEntryCostPaid))
+            {
+                return 0;
+            }
+
+            return requiredResourceCostType == SpecialRoomCostType.Coin || requiredResourceCostType == SpecialRoomCostType.Bomb
+                ? baseCost
+                : 0;
+        }
+
+        private string ResolveResourceCostLabel()
+        {
+            return requiredResourceCostType switch
+            {
+                SpecialRoomCostType.Bomb => "BOMB",
+                SpecialRoomCostType.Coin => "COIN",
+                _ => "COST"
+            };
+        }
+
+        private static string AppendEntryRequirementLabel(string currentLabel, string nextLabel)
+        {
+            if (string.IsNullOrWhiteSpace(nextLabel))
+            {
+                return currentLabel ?? string.Empty;
+            }
+
+            return string.IsNullOrWhiteSpace(currentLabel)
+                ? nextLabel
+                : $"{currentLabel} / {nextLabel}";
         }
 
         private float GetRequiredHealthCost(PlayerController playerController = null)

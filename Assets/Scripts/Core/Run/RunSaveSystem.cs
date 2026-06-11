@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
 using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Meta;
+using CuteIssac.Data.Dungeon;
 using CuteIssac.Dungeon;
 using CuteIssac.Player;
 using CuteIssac.Room;
@@ -13,11 +15,14 @@ namespace CuteIssac.Core.Run
     /// Writes a lightweight run snapshot to disk whenever core run progress changes.
     /// This keeps save file ownership in one place while gameplay systems remain unaware of file IO.
     /// </summary>
+    [DefaultExecutionOrder(120)]
     [DisallowMultipleComponent]
     public sealed class RunSaveSystem : MonoBehaviour
     {
         [Header("References")]
         [SerializeField] private RunManager runManager;
+        [SerializeField] private CharacterProfileManager characterProfileManager;
+        [SerializeField] private MetaProgressionManager metaProgressionManager;
         [SerializeField] private DungeonInstantiator dungeonInstantiator;
         [SerializeField] private RoomNavigationController roomNavigationController;
         [SerializeField] private MinimapController minimapController;
@@ -113,8 +118,19 @@ namespace CuteIssac.Core.Run
             RequestSave();
         }
 
+        public void SaveCurrentRunNow()
+        {
+            SaveCurrentRunImmediate();
+        }
+
         private void SaveCurrentRunImmediate()
         {
+            if (!ShouldWriteRunSave())
+            {
+                _saveRequested = false;
+                return;
+            }
+
             RunSaveData saveData = BuildSaveData();
 
             if (saveData == null)
@@ -122,14 +138,23 @@ namespace CuteIssac.Core.Run
                 return;
             }
 
-            string directory = Path.GetDirectoryName(SaveFilePath);
-
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            try
             {
-                Directory.CreateDirectory(directory);
+                string directory = Path.GetDirectoryName(SaveFilePath);
+
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllText(SaveFilePath, JsonUtility.ToJson(saveData, true));
+            }
+            catch (System.Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"RunSaveSystem failed to write run save: {exception.Message}", this);
+                return;
             }
 
-            File.WriteAllText(SaveFilePath, JsonUtility.ToJson(saveData, true));
             _saveRequested = false;
             _lastSaveRealtime = Time.realtimeSinceStartup;
         }
@@ -137,9 +162,16 @@ namespace CuteIssac.Core.Run
         [ContextMenu("Delete Run Save")]
         public void DeleteRunSave()
         {
-            if (File.Exists(SaveFilePath))
+            try
             {
-                File.Delete(SaveFilePath);
+                if (File.Exists(SaveFilePath))
+                {
+                    File.Delete(SaveFilePath);
+                }
+            }
+            catch (System.Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"RunSaveSystem failed to delete run save: {exception.Message}", this);
             }
         }
 
@@ -147,20 +179,44 @@ namespace CuteIssac.Core.Run
         {
             saveData = null;
 
-            if (!File.Exists(SaveFilePath))
+            try
             {
+                if (!File.Exists(SaveFilePath))
+                {
+                    return false;
+                }
+
+                string json = File.ReadAllText(SaveFilePath);
+
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    return false;
+                }
+
+                saveData = JsonUtility.FromJson<RunSaveData>(json);
+                saveData?.Normalize();
+                return saveData != null;
+            }
+            catch (System.Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"RunSaveSystem ignored unreadable run save: {exception.Message}", this);
+                saveData = null;
                 return false;
             }
+        }
 
-            string json = File.ReadAllText(SaveFilePath);
-
-            if (string.IsNullOrWhiteSpace(json))
+        private bool ShouldWriteRunSave()
+        {
+            if (runManager == null)
             {
-                return false;
+                return dungeonInstantiator != null && dungeonInstantiator.CurrentInstance != null;
             }
 
-            saveData = JsonUtility.FromJson<RunSaveData>(json);
-            return saveData != null;
+            RunState state = runManager.CurrentState;
+            return state == RunState.StartingRun
+                || state == RunState.InRun
+                || state == RunState.TransitioningFloor
+                || state == RunState.Paused;
         }
 
         private RunSaveData BuildSaveData()
@@ -180,13 +236,27 @@ namespace CuteIssac.Core.Run
             if (runManager != null)
             {
                 RunContext context = runManager.CurrentContext;
+                saveData.SelectedCharacterId = characterProfileManager != null ? characterProfileManager.SelectedCharacterId : string.Empty;
+                saveData.ElapsedRunSeconds = metaProgressionManager != null ? metaProgressionManager.CurrentRunElapsedSeconds : 0f;
                 saveData.DungeonSeed = context.Seed;
                 saveData.CurrentFloorIndex = context.CurrentFloorIndex;
                 saveData.ClearedRoomCount = context.ClearedRoomCount;
                 saveData.TotalClearedRoomCount = context.TotalClearedRoomCount;
                 saveData.ResolvedRoomCount = context.ResolvedRoomCount;
                 saveData.TotalResolvedRoomCount = context.TotalResolvedRoomCount;
+                saveData.EnemyKillCount = context.EnemyKillCount;
                 saveData.BossRoomClearCount = context.BossRoomClearCount;
+                saveData.IsHardMode = context.IsHardMode;
+                saveData.DevilDealsPurchased = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.DevilDealsPurchased : 0;
+                saveData.AngelDealsPurchased = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.AngelDealsPurchased : 0;
+                saveData.BlackMarketDealsPurchased = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.BlackMarketDealsPurchased : 0;
+                saveData.DevilDealsOffered = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.DevilDealsOffered : 0;
+                saveData.AngelDealsOffered = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.AngelDealsOffered : 0;
+                saveData.BlackMarketDealsOffered = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.BlackMarketDealsOffered : 0;
+                saveData.DevilDealsDeclined = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.DevilDealsDeclined : 0;
+                saveData.HasPendingDevilDealOffer = context.SpecialRoomDeals != null && context.SpecialRoomDeals.HasPendingDevilDealOffer;
+                saveData.PendingDevilDealRoomType = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.PendingDevilDealRoomType : RoomType.Curse;
+                saveData.PendingDevilDealRuleId = context.SpecialRoomDeals != null ? context.SpecialRoomDeals.PendingDevilDealRuleId : string.Empty;
                 saveData.RunState = context.State;
                 saveData.EndReason = context.EndReason;
                 saveData.CurrentRoomId = roomNavigationController != null && roomNavigationController.CurrentRoom != null
@@ -301,6 +371,16 @@ namespace CuteIssac.Core.Run
             if (runManager == null)
             {
                 runManager = GetComponent<RunManager>();
+            }
+
+            if (characterProfileManager == null)
+            {
+                characterProfileManager = GetComponent<CharacterProfileManager>();
+            }
+
+            if (metaProgressionManager == null)
+            {
+                metaProgressionManager = GetComponent<MetaProgressionManager>();
             }
 
             if (dungeonInstantiator == null)
@@ -469,7 +549,8 @@ namespace CuteIssac.Core.Run
 
         private void HandleRunEnded(RunContext _, RunEndReason __)
         {
-            SaveCurrentRunImmediate();
+            _saveRequested = false;
+            DeleteRunSave();
         }
 
         private void HandleFloorTransitionCompleted(RunFloorTransitionInfo _)

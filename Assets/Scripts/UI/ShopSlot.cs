@@ -1,4 +1,5 @@
 using CuteIssac.Item;
+using CuteIssac.Data.Dungeon;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -43,6 +44,10 @@ namespace CuteIssac.UI
         [SerializeField] private Color coinBadgeColor = new(1f, 0.84f, 0.25f, 1f);
         [SerializeField] private Color keyBadgeColor = new(0.7f, 0.9f, 1f, 1f);
         [SerializeField] private Color bombBadgeColor = new(1f, 0.55f, 0.2f, 1f);
+        [SerializeField] private Color healthBadgeColor = new(0.94f, 0.22f, 0.34f, 1f);
+        [SerializeField] private Color devilDealAccentColor = new(0.78f, 0.12f, 0.18f, 1f);
+        [SerializeField] private Color angelDealAccentColor = new(1f, 0.95f, 0.7f, 1f);
+        [SerializeField] private Color blackMarketAccentColor = new(0.42f, 0.24f, 0.62f, 1f);
         [SerializeField] private Color availableStatusColor = new(0.88f, 1f, 0.9f, 1f);
         [SerializeField] private Color unavailableStatusColor = new(1f, 0.82f, 0.78f, 1f);
         [SerializeField] private Color soldStatusColor = new(0.82f, 0.82f, 0.82f, 1f);
@@ -103,7 +108,7 @@ namespace CuteIssac.UI
 
             if (accentBarImage != null)
             {
-                accentBarImage.color = slotState.IsHighlighted ? highlightFrameColor : accentBarColor;
+                accentBarImage.color = slotState.IsHighlighted ? highlightFrameColor : ResolveDealAccent(slotState);
             }
 
             if (highlightFrameImage != null)
@@ -126,7 +131,9 @@ namespace CuteIssac.UI
 
             if (currencyBadgeImage != null)
             {
-                currencyBadgeImage.color = ResolveCurrencyAccent(slotState.CurrencyType);
+                currencyBadgeImage.color = slotState.IsSpecialDeal
+                    ? ResolveDealAccent(slotState)
+                    : ResolveCurrencyAccent(slotState.CurrencyType);
             }
 
             if (nameText != null)
@@ -157,7 +164,7 @@ namespace CuteIssac.UI
             if (statusText != null)
             {
                 statusText.supportRichText = false;
-                statusText.text = slotState.IsSold ? "판매 완료" : slotState.StatusLabel;
+                statusText.text = slotState.IsSold ? "Sold" : slotState.StatusLabel;
                 statusText.color = slotState.IsSold
                     ? soldStatusColor
                     : (slotState.CanPurchase ? availableStatusColor : unavailableStatusColor);
@@ -205,7 +212,19 @@ namespace CuteIssac.UI
             {
                 ShopCurrencyType.Keys => keyBadgeColor,
                 ShopCurrencyType.Bombs => bombBadgeColor,
+                ShopCurrencyType.Health => healthBadgeColor,
                 _ => coinBadgeColor
+            };
+        }
+
+        private Color ResolveDealAccent(ShopSlotState slotState)
+        {
+            return slotState.DealType switch
+            {
+                SpecialRoomDealType.Devil => devilDealAccentColor,
+                SpecialRoomDealType.Angel => angelDealAccentColor,
+                SpecialRoomDealType.BlackMarket => blackMarketAccentColor,
+                _ => accentBarColor
             };
         }
     }

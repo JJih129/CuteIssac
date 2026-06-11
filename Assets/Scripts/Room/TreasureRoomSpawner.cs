@@ -51,7 +51,7 @@ namespace CuteIssac.Room
         private GameObject _runtimePickupPrefabOverride;
         private bool _hasSpawnedTreasure;
         private bool _hasResolvedTreasureChoice;
-        private readonly HashSet<string> _selectedItemIds = new();
+        private readonly HashSet<string> _selectedItemIds = new(System.StringComparer.OrdinalIgnoreCase);
         private readonly List<BasePickupLogic> _spawnedChoices = new();
         private readonly List<ItemData> _choiceItemBuffer = new();
         private RunItemPoolService _runItemPoolService;

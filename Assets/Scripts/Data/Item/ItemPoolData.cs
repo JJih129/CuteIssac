@@ -107,6 +107,11 @@ namespace CuteIssac.Data.Item
                 ItemPoolEntry entry = entries[i];
                 ItemData itemData = entry.ItemData;
 
+                if (!IsItemInPool(itemData))
+                {
+                    continue;
+                }
+
                 if (!entry.IsAvailableFor(selectionContext.RoomType, selectionContext.FloorIndex))
                 {
                     continue;
@@ -179,6 +184,30 @@ namespace CuteIssac.Data.Item
             }
 
             return effectiveWeight;
+        }
+
+        private bool IsItemInPool(ItemData itemData)
+        {
+            if (itemData == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<ItemPoolType> sourcePools = itemData.SourcePools;
+            if (sourcePools == null || sourcePools.Count == 0)
+            {
+                return true;
+            }
+
+            for (int index = 0; index < sourcePools.Count; index++)
+            {
+                if (sourcePools[index] == poolType)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private float ResolveRarityWeight(ItemRarity rarity)

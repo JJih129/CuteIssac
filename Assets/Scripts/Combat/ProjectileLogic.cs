@@ -334,7 +334,7 @@ namespace CuteIssac.Combat
 
             Vector2? impactNormal = collision.contactCount > 0
                 ? collision.GetContact(0).normal
-                : null;
+                : default(Vector2?);
             HandleHit(collision.collider, impactNormal);
         }
 

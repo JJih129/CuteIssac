@@ -2468,8 +2468,8 @@ namespace CuteIssac.UI
             _momentumRewardPresentationRoom = signal.Room;
             _momentumRewardPresentationRoomType = signal.Room.RoomType;
             _momentumRewardPresentationHeadline = "Momentum Payout Live";
-            _momentumRewardPresentationDetail = $"{BuildMomentumRewardStatusSegment(signal.Summary)} 쨌 Highlighted flow rewards just dropped into the room.";
             _momentumRewardPresentationBadgeLabel = "FLOW";
+            _momentumRewardPresentationDetail = $"{BuildMomentumRewardStatusSegment(signal.Summary)} - Highlighted flow rewards just dropped into the room.";
             _momentumRewardPresentationEyebrow = "PAYOUT LIVE";
             _momentumRewardPresentationCompactTag = ResolveMomentumRewardCompactTag(signal.Summary);
             _momentumRewardPresentationDetailEyebrow = signal.MomentumBonusItemRolls > 0 ? "HIGHLIGHTED ITEM" : "FLOW CACHE";
@@ -3510,6 +3510,11 @@ namespace CuteIssac.UI
 
         private void BuildCleanCurseRoomStatus(out string headline, out string detail, out Color accentColor)
         {
+            if (TryBuildSpecialDealRoomStatus(out headline, out detail, out accentColor))
+            {
+                return;
+            }
+
             switch (_observedRoom.State)
             {
                 case RoomState.Rewarded when _observedRoom.HasRewardContent:
@@ -3528,6 +3533,41 @@ namespace CuteIssac.UI
                     accentColor = new Color(0.84f, 0.34f, 0.66f, 1f);
                     return;
             }
+        }
+
+        private bool TryBuildSpecialDealRoomStatus(out string headline, out string detail, out Color accentColor)
+        {
+            headline = string.Empty;
+            detail = string.Empty;
+            accentColor = Color.white;
+
+            if (_observedRoom == null
+                || !_observedRoom.TryGetComponent(out SpecialRoomRuntimeMetadata metadata)
+                || !metadata.HasDealPresentation)
+            {
+                return false;
+            }
+
+            headline = metadata.DisplayName;
+            accentColor = metadata.AccentColor;
+            detail = metadata.DealType switch
+            {
+                SpecialRoomDealType.Devil => "Spend HP for high-impact item offers.",
+                SpecialRoomDealType.Angel => "Trade HP for sanctified item offers.",
+                SpecialRoomDealType.BlackMarket => "Special stock is open for a price.",
+                _ => "Special trade offers are available."
+            };
+
+            if (_observedRoom.HasRewardContent)
+            {
+                detail = "Reward content is ready in this deal room.";
+            }
+            else if (_observedRoom.State == RoomState.Rewarded)
+            {
+                detail = "Deal room resolved. Check remaining offers before leaving.";
+            }
+
+            return true;
         }
 
         private void BuildCleanNormalRoomStatus(out string headline, out string detail, out Color accentColor)

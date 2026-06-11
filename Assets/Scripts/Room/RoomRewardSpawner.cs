@@ -115,13 +115,15 @@ namespace CuteIssac.Room
 
         private readonly List<RoomRewardEntry> _candidateEntries = new();
         private readonly List<RoomRewardEntry> _selectionPool = new();
-        private readonly HashSet<string> _selectedRewardItemIds = new();
+        private readonly HashSet<string> _selectedRewardItemIds = new(System.StringComparer.OrdinalIgnoreCase);
         private RoomRewardTable _runtimeDefaultRewardTable;
         private RoomRewardTable _runtimeRewardTableOverride;
         private ItemPoolData _runtimeItemRewardPool;
         private GameObject _runtimeItemRewardPickupPrefab;
         private ChallengeRewardSettings _runtimeChallengeRewardSettings;
         private SecretRoomRewardSettings _runtimeSecretRewardSettings;
+        private SpecialRoomRuleData _runtimeSpecialRoomRule;
+        private float _runtimeRewardMultiplier = 1f;
         private bool _hasSpawnedRewards;
         private bool _isShuttingDown;
         private RunItemPoolService _runItemPoolService;
@@ -159,6 +161,8 @@ namespace CuteIssac.Room
             roomTypeForRewards = roomType;
             _runtimeDefaultRewardTable = defaultRewardTable;
             _runtimeRewardTableOverride = null;
+            _runtimeSpecialRoomRule = null;
+            _runtimeRewardMultiplier = 1f;
             _hasSpawnedRewards = false;
         }
 
@@ -169,6 +173,8 @@ namespace CuteIssac.Room
         {
             roomTypeForRewards = roomType;
             _runtimeRewardTableOverride = rewardTableOverride;
+            _runtimeSpecialRoomRule = null;
+            _runtimeRewardMultiplier = 1f;
             _hasSpawnedRewards = false;
         }
 
@@ -196,6 +202,32 @@ namespace CuteIssac.Room
         {
             roomTypeForRewards = roomType;
             _runtimeSecretRewardSettings = secretRoomRewardSettings;
+            _hasSpawnedRewards = false;
+        }
+
+        public void ConfigureSpecialRoomRule(RoomType roomType, SpecialRoomRuleData specialRoomRule)
+        {
+            roomTypeForRewards = roomType;
+            _runtimeSpecialRoomRule = specialRoomRule;
+
+            if (specialRoomRule == null)
+            {
+                _runtimeRewardMultiplier = 1f;
+                return;
+            }
+
+            if (specialRoomRule.RewardTable != null)
+            {
+                _runtimeRewardTableOverride = specialRoomRule.RewardTable;
+            }
+
+            if (specialRoomRule.ItemPool != null)
+            {
+                _runtimeItemRewardPool = specialRoomRule.ItemPool;
+                _selectedRewardItemIds.Clear();
+            }
+
+            _runtimeRewardMultiplier = specialRoomRule.RewardMultiplier;
             _hasSpawnedRewards = false;
         }
 
@@ -397,6 +429,7 @@ namespace CuteIssac.Room
                         resolvedRewardTable,
                         _selectionPool.Count,
                         allowNonCombatRewards);
+                    baseSelectionCount = ApplyRuntimeRewardMultiplier(baseSelectionCount);
                     int standardBonusSelectionCount = bonusRewardSelections
                         + pressureBonusRewardSelections
                         + passiveBonusRewardSelections
@@ -419,7 +452,7 @@ namespace CuteIssac.Room
             }
 
             int standardItemRollCount = ShouldSpawnItemPoolReward()
-                ? 1 + bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls + secretBonusItemRolls
+                ? ApplyRuntimeRewardMultiplier(1) + bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls + secretBonusItemRolls
                 : 0;
 
             for (int itemRollIndex = 0; itemRollIndex < standardItemRollCount; itemRollIndex++)
@@ -787,9 +820,10 @@ namespace CuteIssac.Room
                 return 0;
             }
 
+            RoomType selectionRoomType = ResolveItemSelectionRoomType();
             ItemPoolSelectionContext selectionContext = _runItemPoolService != null
-                ? _runItemPoolService.BuildSelectionContext(roomTypeForRewards, _selectedRewardItemIds)
-                : new ItemPoolSelectionContext(roomTypeForRewards, 1, _selectedRewardItemIds, null, null, null, null, null);
+                ? _runItemPoolService.BuildSelectionContext(selectionRoomType, _selectedRewardItemIds)
+                : new ItemPoolSelectionContext(selectionRoomType, 1, _selectedRewardItemIds, null, null, null, null, null);
 
             if (!_runtimeItemRewardPool.TrySelectRandomNonWeaponItem(selectionContext, out ItemData selectedItem) || selectedItem == null)
             {
@@ -978,9 +1012,10 @@ namespace CuteIssac.Room
                 return 0;
             }
 
+            RoomType selectionRoomType = ResolveItemSelectionRoomType();
             ItemPoolSelectionContext selectionContext = _runItemPoolService != null
-                ? _runItemPoolService.BuildSelectionContext(roomTypeForRewards, _selectedRewardItemIds)
-                : new ItemPoolSelectionContext(roomTypeForRewards, 1, _selectedRewardItemIds, null, null, null, null, null);
+                ? _runItemPoolService.BuildSelectionContext(selectionRoomType, _selectedRewardItemIds)
+                : new ItemPoolSelectionContext(selectionRoomType, 1, _selectedRewardItemIds, null, null, null, null, null);
 
             if (!_runtimeItemRewardPool.TrySelectRandomItem(selectionContext, out ItemData selectedItem) || selectedItem == null)
             {
@@ -1024,6 +1059,16 @@ namespace CuteIssac.Room
                 itemPickupLogic.ConfigureItem(selectedItem);
                 _selectedRewardItemIds.Add(selectedItem.ItemId);
                 _runItemPoolService?.RegisterOffer(selectedItem);
+
+                if (IsSpecialRoomItemReward())
+                {
+                    GameplayRuntimeEvents.RaiseSpecialRoomRewardManifested(new SpecialRoomRewardManifestedSignal(
+                        roomController,
+                        roomTypeForRewards,
+                        _runtimeSpecialRoomRule != null ? _runtimeSpecialRoomRule.RuleId : string.Empty,
+                        _runtimeSpecialRoomRule != null ? _runtimeSpecialRoomRule.DealType : SpecialRoomDealType.None,
+                        selectedItem));
+                }
 
                 if (roomTypeForRewards == RoomType.Curse && roomController != null)
                 {
@@ -1330,10 +1375,10 @@ namespace CuteIssac.Room
                 FilterRoomClearRewardCandidates(_candidateEntries);
                 if (_candidateEntries.Count > 0)
                 {
-                    int selectionCount = EstimateBaseRewardSelectionCount(
+                    int selectionCount = EstimateRuntimeRewardMultiplier(EstimateBaseRewardSelectionCount(
                             resolvedRewardTable,
                             _candidateEntries.Count,
-                            allowNonCombatRewards)
+                            allowNonCombatRewards))
                         + Mathf.Max(0, bonusRewardSelections)
                         + Mathf.Max(0, secretBonusRewardSelections);
 
@@ -1359,10 +1404,56 @@ namespace CuteIssac.Room
             }
 
             int estimatedItemCount = ShouldSpawnItemPoolReward()
-                ? 1 + Mathf.Max(0, bonusItemRolls) + Mathf.Max(0, secretBonusItemRolls)
+                ? EstimateRuntimeRewardMultiplier(1) + Mathf.Max(0, bonusItemRolls) + Mathf.Max(0, secretBonusItemRolls)
                 : 0;
 
             return estimatedEntryCount + estimatedItemCount;
+        }
+
+        private int ApplyRuntimeRewardMultiplier(int count)
+        {
+            if (count <= 0)
+            {
+                return 0;
+            }
+
+            float multiplier = Mathf.Max(0f, _runtimeRewardMultiplier);
+            if (Mathf.Approximately(multiplier, 1f))
+            {
+                return count;
+            }
+
+            if (multiplier <= 0f)
+            {
+                return 0;
+            }
+
+            float scaledCount = count * multiplier;
+            int wholeCount = Mathf.FloorToInt(scaledCount);
+            float fractionalCount = scaledCount - wholeCount;
+
+            if (fractionalCount > 0f && Random.value < fractionalCount)
+            {
+                wholeCount++;
+            }
+
+            return Mathf.Max(1, wholeCount);
+        }
+
+        private int EstimateRuntimeRewardMultiplier(int count)
+        {
+            if (count <= 0)
+            {
+                return 0;
+            }
+
+            float multiplier = Mathf.Max(0f, _runtimeRewardMultiplier);
+            if (multiplier <= 0f)
+            {
+                return 0;
+            }
+
+            return Mathf.Max(1, Mathf.RoundToInt(count * multiplier));
         }
 
         private delegate float RewardWeightMultiplierResolver(RoomRewardEntry entry);
@@ -1475,7 +1566,8 @@ namespace CuteIssac.Room
             return (roomTypeForRewards == RoomType.Boss
                     || roomTypeForRewards == RoomType.Secret
                     || roomTypeForRewards == RoomType.Challenge
-                    || roomTypeForRewards == RoomType.Curse)
+                    || roomTypeForRewards == RoomType.Curse
+                    || _runtimeSpecialRoomRule != null)
                 && _runtimeItemRewardPool != null
                 && _runtimeItemRewardPickupPrefab != null;
         }
@@ -1688,41 +1780,41 @@ namespace CuteIssac.Room
 
             string title = challengeClearRank switch
             {
-                ChallengeClearRank.S => "?꾩쟾 ?됯? S",
-                ChallengeClearRank.A => "?꾩쟾 ?됯? A",
-                ChallengeClearRank.B => "?꾩쟾 ?꾩＜",
-                _ => "?꾩쟾 ?뺣컯 蹂댁긽"
+                ChallengeClearRank.S => "Challenge Rank S",
+                ChallengeClearRank.A => "Challenge Rank A",
+                ChallengeClearRank.B => "Challenge Clear",
+                _ => "Challenge Reward"
             };
 
             string rewardSummary;
             if (bonusRewardSelections > 0 && bonusItemRolls > 0)
             {
-                rewardSummary = $"+蹂댁긽 {bonusRewardSelections} / +?꾩씠??{bonusItemRolls}";
+                rewardSummary = $"+Reward {bonusRewardSelections} / +Item Roll {bonusItemRolls}";
             }
             else if (bonusRewardSelections > 0)
             {
-                rewardSummary = $"+蹂댁긽 {bonusRewardSelections}";
+                rewardSummary = $"+Reward {bonusRewardSelections}";
             }
             else if (bonusItemRolls > 0)
             {
-                rewardSummary = $"+?꾩씠??{bonusItemRolls}";
+                rewardSummary = $"+Item Roll {bonusItemRolls}";
             }
             else
             {
-                rewardSummary = "湲곕낯 蹂댁긽 ?띾뱷";
+                rewardSummary = "Standard reward";
             }
 
             string pressureSummary = challengePressureTier switch
             {
-                ChallengePressureTier.Deadly => "移섎챸 ?뺣컯 ?뚰뙆",
-                ChallengePressureTier.Elite => "?섎━???뺣컯 ?뚰뙆",
-                ChallengePressureTier.Reinforced => "利앹썝 ?뺣컯 ?뚰뙆",
+                ChallengePressureTier.Deadly => "Deadly pressure cleared",
+                ChallengePressureTier.Elite => "Elite pressure cleared",
+                ChallengePressureTier.Reinforced => "Reinforced pressure cleared",
                 _ => string.Empty
             };
 
             string subtitle = string.IsNullOrEmpty(pressureSummary)
                 ? rewardSummary
-                : $"{rewardSummary} 쨌 {pressureSummary}";
+                : $"{rewardSummary} - {pressureSummary}";
 
             Color accentColor = challengeClearRank switch
             {
@@ -1753,19 +1845,19 @@ namespace CuteIssac.Room
             string subtitle;
             if (bonusRewardSelections > 0 && bonusItemRolls > 0)
             {
-                subtitle = $"+蹂댁긽 {bonusRewardSelections} / +?꾩씠??{bonusItemRolls}";
+                subtitle = $"+Reward {bonusRewardSelections} / +Item Roll {bonusItemRolls}";
             }
             else if (bonusRewardSelections > 0)
             {
-                subtitle = $"+蹂댁긽 {bonusRewardSelections}";
+                subtitle = $"+Reward {bonusRewardSelections}";
             }
             else
             {
-                subtitle = $"+?꾩씠??{bonusItemRolls}";
+                subtitle = $"+Item Roll {bonusItemRolls}";
             }
 
             GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                "鍮꾨? ??됱쿂 諛쒓껄",
+                "Secret Cache Found",
                 subtitle,
                 new Color(0.88f, 0.62f, 1f, 1f),
                 1.9f));
@@ -1819,6 +1911,11 @@ namespace CuteIssac.Room
 
         private RoomType ResolveRewardFilterRoomType()
         {
+            if (_runtimeSpecialRoomRule != null && _runtimeSpecialRoomRule.RewardTable != null)
+            {
+                return roomTypeForRewards;
+            }
+
             return roomTypeForRewards switch
             {
                 RoomType.MiniBoss => RoomType.Boss,
@@ -1826,6 +1923,26 @@ namespace CuteIssac.Room
                 RoomType.Curse => RoomType.Normal,
                 _ => roomTypeForRewards
             };
+        }
+
+        private RoomType ResolveItemSelectionRoomType()
+        {
+            if (_runtimeSpecialRoomRule == null)
+            {
+                return roomTypeForRewards;
+            }
+
+            return _runtimeSpecialRoomRule.RoomType;
+        }
+
+        private bool IsSpecialRoomItemReward()
+        {
+            return roomController != null
+                && _runtimeSpecialRoomRule != null
+                && (roomTypeForRewards == RoomType.Secret
+                    || roomTypeForRewards == RoomType.Challenge
+                    || roomTypeForRewards == RoomType.Curse
+                    || _runtimeSpecialRoomRule.DealType != SpecialRoomDealType.None);
         }
 
         private void Reset()

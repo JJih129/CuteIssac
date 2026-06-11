@@ -1,4 +1,5 @@
 using System;
+using CuteIssac.Core.Gameplay;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Run;
 using UnityEngine;
@@ -73,7 +74,7 @@ namespace CuteIssac.Core.Run
             ChangeState(RunState.StartingRun);
 
             int seed = ResolveSeed();
-            _context.Initialize(seed, requestedFloorIndex);
+            _context.Initialize(seed, requestedFloorIndex, RunLaunchRequest.ConsumeHardModeRequest());
             ChangeState(RunState.InRun);
             RunStarted?.Invoke(_context);
             return true;
@@ -95,7 +96,19 @@ namespace CuteIssac.Core.Run
                 saveData.TotalClearedRoomCount,
                 saveData.ResolvedRoomCount,
                 saveData.TotalResolvedRoomCount,
-                saveData.BossRoomClearCount);
+                saveData.EnemyKillCount,
+                saveData.BossRoomClearCount,
+                saveData.IsHardMode,
+                saveData.DevilDealsPurchased,
+                saveData.AngelDealsPurchased,
+                saveData.BlackMarketDealsPurchased,
+                saveData.DevilDealsOffered,
+                saveData.AngelDealsOffered,
+                saveData.BlackMarketDealsOffered,
+                saveData.DevilDealsDeclined,
+                saveData.HasPendingDevilDealOffer,
+                saveData.PendingDevilDealRoomType,
+                saveData.PendingDevilDealRuleId);
             ChangeState(RunState.InRun);
             RunStarted?.Invoke(_context);
         }
@@ -138,6 +151,36 @@ namespace CuteIssac.Core.Run
             _context.RegisterRoomResolution(roomType, hadCombatEncounter);
         }
 
+        public void RegisterEnemyKill()
+        {
+            if (CurrentState != RunState.InRun)
+            {
+                return;
+            }
+
+            _context.RegisterEnemyKill();
+        }
+
+        public void RegisterSpecialRoomDealPurchase(SpecialRoomDealType dealType)
+        {
+            if (CurrentState != RunState.InRun)
+            {
+                return;
+            }
+
+            _context.RegisterSpecialRoomDealPurchase(dealType);
+        }
+
+        public void RegisterSpecialRoomDealOffer(SpecialRoomDealType dealType, RoomType roomType, string ruleId)
+        {
+            if (CurrentState != RunState.InRun)
+            {
+                return;
+            }
+
+            _context.RegisterSpecialRoomDealOffer(dealType, roomType, ruleId);
+        }
+
         public void AdvanceFloor()
         {
             if (CurrentState != RunState.InRun)
@@ -146,6 +189,14 @@ namespace CuteIssac.Core.Run
             }
 
             int previousFloorIndex = _context.CurrentFloorIndex;
+            if (_context.TryConfirmPendingDevilDealDecline(out RoomType declinedRoomType, out string declinedRuleId))
+            {
+                GameplayRuntimeEvents.RaiseSpecialRoomDealDeclined(new SpecialRoomDealDeclinedSignal(
+                    SpecialRoomDealType.Devil,
+                    declinedRoomType,
+                    declinedRuleId));
+            }
+
             ChangeState(RunState.TransitioningFloor);
 
             RunFloorTransitionInfo transitionInfo =

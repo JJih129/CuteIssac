@@ -3,7 +3,6 @@ using CuteIssac.Core.Run;
 using CuteIssac.Core.Save;
 using CuteIssac.Core.Settings;
 using CuteIssac.Core.Debug;
-using CuteIssac.Data.Run;
 using CuteIssac.Item;
 using UnityEngine;
 
@@ -18,12 +17,12 @@ namespace CuteIssac.Core.Bootstrap
     {
         [Header("References")]
         [SerializeField] private RunManager runManager;
-        [SerializeField] private RunConfiguration startupRunConfiguration;
+        [SerializeField] private CuteIssac.Data.Run.RunConfiguration startupRunConfiguration;
 
         [Header("Startup")]
         [SerializeField] private bool bootstrapOnAwake = true;
         [SerializeField] private bool autoStartRunOnAwake = true;
-        [SerializeField] private bool preferStartupBuildSelectionBeforeRunRestore = true;
+        [SerializeField] private bool preferCharacterSelectionBeforeRunRestore = true;
         [SerializeField] [Min(0)] private int prewarmCoinPickupCount = 48;
         [SerializeField] [Min(0)] private int prewarmBombPickupCount = 8;
         [SerializeField] [Min(0)] private int prewarmAmmoPickupCount = 12;
@@ -33,6 +32,8 @@ namespace CuteIssac.Core.Bootstrap
 #endif
 
         private bool _hasBootstrapped;
+        private bool _startPhaseReached;
+        private bool _hasAutoStartedRun;
 
         private void Awake()
         {
@@ -67,40 +68,51 @@ namespace CuteIssac.Core.Bootstrap
                 prewarmKeyPickupCount);
             runManager.Bootstrap(startupRunConfiguration);
 
-            if (autoStartRunOnAwake)
+            if (_startPhaseReached)
             {
-                RunRestoreController runRestoreController = GetComponent<RunRestoreController>();
-                StartingBuildManager startingBuildManager = GetComponent<StartingBuildManager>();
-
-                if (RunLaunchRequest.ConsumeNewRunFromFirstFloorRequest())
-                {
-                    // Title "new game" must not resume a stale run snapshot from a later floor.
-                    GetComponent<RunSaveSystem>()?.DeleteRunSave();
-                    runManager.StartNewRunAtFloor(1);
-                    return;
-                }
-
-                if (preferStartupBuildSelectionBeforeRunRestore
-                    && startingBuildManager != null
-                    && startingBuildManager.TryBeginStartupSelection(runManager.StartNewRun))
-                {
-                    return;
-                }
-
-                if (runRestoreController != null && runRestoreController.TryResumeLatestRun())
-                {
-                    return;
-                }
-
-                if (!preferStartupBuildSelectionBeforeRunRestore
-                    && startingBuildManager != null
-                    && startingBuildManager.TryBeginStartupSelection(runManager.StartNewRun))
-                {
-                    return;
-                }
-
-                runManager.StartNewRun();
+                TryAutoStartRun();
             }
+        }
+
+        private void Start()
+        {
+            _startPhaseReached = true;
+            TryAutoStartRun();
+        }
+
+        private void TryAutoStartRun()
+        {
+            if (!autoStartRunOnAwake || _hasAutoStartedRun || !_hasBootstrapped || runManager == null)
+            {
+                return;
+            }
+
+            _hasAutoStartedRun = true;
+            RunRestoreController runRestoreController = GetComponent<RunRestoreController>();
+            CharacterProfileManager characterProfileManager = GetComponent<CharacterProfileManager>();
+
+            if (RunLaunchRequest.ConsumeNewRunFromFirstFloorRequest())
+            {
+                // Title "new game" must not resume a stale run snapshot from a later floor.
+                GetComponent<RunSaveSystem>()?.DeleteRunSave();
+                characterProfileManager?.ConsumeLaunchCharacterIfAny();
+                runManager.StartNewRunAtFloor(1);
+                return;
+            }
+
+            if (!preferCharacterSelectionBeforeRunRestore && runRestoreController != null && runRestoreController.TryResumeLatestRun())
+            {
+                return;
+            }
+
+            characterProfileManager?.ConsumeLaunchCharacterIfAny();
+
+            if (preferCharacterSelectionBeforeRunRestore && runRestoreController != null && runRestoreController.TryResumeLatestRun())
+            {
+                return;
+            }
+
+            runManager.StartNewRun();
         }
 
         private bool TryResolveRunManager()
@@ -136,6 +148,16 @@ namespace CuteIssac.Core.Bootstrap
                 gameObject.AddComponent<UnlockManager>();
             }
 
+            if (GetComponent<CharacterProfileManager>() == null)
+            {
+                gameObject.AddComponent<CharacterProfileManager>();
+            }
+
+            if (GetComponent<MetaProgressionManager>() == null)
+            {
+                gameObject.AddComponent<MetaProgressionManager>();
+            }
+
             if (GetComponent<GameOptionsService>() == null)
             {
                 gameObject.AddComponent<GameOptionsService>();
@@ -149,11 +171,6 @@ namespace CuteIssac.Core.Bootstrap
             if (GetComponent<GameSaveSystem>() == null)
             {
                 gameObject.AddComponent<GameSaveSystem>();
-            }
-
-            if (GetComponent<StartingBuildManager>() == null)
-            {
-                gameObject.AddComponent<StartingBuildManager>();
             }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

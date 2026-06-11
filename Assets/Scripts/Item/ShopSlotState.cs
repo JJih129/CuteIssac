@@ -1,4 +1,5 @@
 using CuteIssac.Data.Item;
+using CuteIssac.Data.Dungeon;
 using UnityEngine;
 
 namespace CuteIssac.Item
@@ -17,7 +18,9 @@ namespace CuteIssac.Item
             bool isVisible,
             bool canPurchase,
             bool isSold,
-            bool isHighlighted)
+            bool isHighlighted,
+            SpecialRoomDealType dealType = SpecialRoomDealType.None,
+            string dealLabel = "")
         {
             DisplayName = displayName;
             PriceLabel = priceLabel;
@@ -28,6 +31,8 @@ namespace CuteIssac.Item
             CanPurchase = canPurchase;
             IsSold = isSold;
             IsHighlighted = isHighlighted;
+            DealType = dealType;
+            DealLabel = dealLabel ?? string.Empty;
         }
 
         public string DisplayName { get; }
@@ -39,5 +44,8 @@ namespace CuteIssac.Item
         public bool CanPurchase { get; }
         public bool IsSold { get; }
         public bool IsHighlighted { get; }
+        public SpecialRoomDealType DealType { get; }
+        public string DealLabel { get; }
+        public bool IsSpecialDeal => DealType != SpecialRoomDealType.None;
     }
 }

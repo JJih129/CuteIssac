@@ -1,6 +1,9 @@
 using CuteIssac.Core.Audio;
+using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Meta;
 using CuteIssac.Core.Pooling;
 using CuteIssac.Core.Spawning;
+using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
 using CuteIssac.Player;
 using UnityEngine;
@@ -24,16 +27,29 @@ namespace CuteIssac.Item
         [SerializeField] private ShopItemView shopItemView;
 
         private bool _isSold;
+        private RoomType _specialDealRoomType;
+        private SpecialRoomDealType _specialDealType;
+        private string _specialDealRuleId;
 
         public ShopItemData ShopItemData => shopItemData;
         public int Price => shopItemData != null ? shopItemData.Price : 0;
         public ShopCurrencyType CurrencyType => shopItemData != null ? shopItemData.CurrencyType : ShopCurrencyType.Coins;
         public bool IsSold => _isSold;
+        public bool HasUnlockedOffer => shopItemData == null ||
+            UnlockManager.IsUnlocked(shopItemData.UnlockKey, shopItemData.UnlockedByDefault);
 
         public void ConfigureShopItemData(ShopItemData runtimeShopItemData)
         {
             shopItemData = runtimeShopItemData;
             _isSold = false;
+            ClearSpecialDealContext();
+        }
+
+        public void ConfigureSpecialDealContext(RoomType roomType, SpecialRoomDealType dealType, string ruleId)
+        {
+            _specialDealRoomType = roomType;
+            _specialDealType = dealType;
+            _specialDealRuleId = ruleId ?? string.Empty;
         }
 
         public void ConfigureRuntimeReferences(ShopItemView runtimeShopItemView, Transform runtimeRewardSpawnAnchor)
@@ -59,7 +75,12 @@ namespace CuteIssac.Item
                 return false;
             }
 
-            if (!CanAfford(playerInventory, playerItemManager))
+            if (!HasUnlockedOffer)
+            {
+                return false;
+            }
+
+            if (!CanAfford(playerInventory, playerItemManager, playerHealth))
             {
                 return false;
             }
@@ -81,7 +102,7 @@ namespace CuteIssac.Item
             };
         }
 
-        public bool CanAfford(PlayerInventory playerInventory, PlayerItemManager playerItemManager = null)
+        public bool CanAfford(PlayerInventory playerInventory, PlayerItemManager playerItemManager = null, PlayerHealth playerHealth = null)
         {
             if (playerInventory == null || shopItemData == null)
             {
@@ -99,6 +120,7 @@ namespace CuteIssac.Item
             {
                 ShopCurrencyType.Keys => playerInventory.Keys >= price,
                 ShopCurrencyType.Bombs => playerInventory.Bombs >= price,
+                ShopCurrencyType.Health => playerHealth != null && playerHealth.CurrentHealth > price,
                 _ => playerInventory.Coins >= price
             };
         }
@@ -115,6 +137,7 @@ namespace CuteIssac.Item
             {
                 ShopCurrencyType.Keys => playerInventory.TrySpendKeys(price),
                 ShopCurrencyType.Bombs => playerInventory.TrySpendBombs(price),
+                ShopCurrencyType.Health => playerHealth != null && playerHealth.TrySpendHealth(price, transform, false),
                 _ => playerInventory.TrySpendCoins(price)
             });
 
@@ -125,11 +148,12 @@ namespace CuteIssac.Item
 
             if (!TryDeliverReward(playerInventory, playerItemManager, playerHealth))
             {
-                Refund(playerInventory, price);
+                Refund(playerInventory, playerHealth, price);
                 return false;
             }
 
             _isSold = true;
+            RaiseSpecialDealPurchased(price);
             GameAudioEvents.Raise(GameAudioEventType.ShopPurchased, transform.position);
             RefreshView(false, playerInventory, playerItemManager, playerHealth);
             return true;
@@ -196,11 +220,17 @@ namespace CuteIssac.Item
         {
             bool isVisible = shopItemData != null;
             bool canPurchase = CanPurchase(playerInventory, playerItemManager, playerHealth);
+            int effectivePrice = ResolveEffectivePrice(playerItemManager);
             string displayName = isVisible ? shopItemData.DisplayName : string.Empty;
-            string priceLabel = isVisible ? $"{GetCurrencyLabel(shopItemData.CurrencyType)} {ResolveEffectivePrice(playerItemManager)}" : string.Empty;
+            string basePriceLabel = isVisible ? $"{GetCurrencyLabel(shopItemData.CurrencyType)} {effectivePrice}" : string.Empty;
+            string priceLabel = isVisible ? ResolvePresentationPriceLabel(basePriceLabel, effectivePrice) : string.Empty;
             string statusLabel = _isSold
                 ? "판매 완료"
                 : (canPurchase ? "구매 가능" : ResolveUnavailableReason(playerInventory, playerItemManager, playerHealth));
+
+            statusLabel = _isSold
+                ? "Sold"
+                : (canPurchase ? "Ready" : ResolveUnavailableReason(playerInventory, playerItemManager, playerHealth));
 
             return new ShopSlotState(
                 displayName,
@@ -211,7 +241,36 @@ namespace CuteIssac.Item
                 isVisible,
                 canPurchase,
                 _isSold,
-                isHighlighted);
+                isHighlighted,
+                _specialDealType,
+                ResolveDealLabel(_specialDealType));
+        }
+
+        private string ResolvePresentationPriceLabel(string fallbackPriceLabel, int effectivePrice)
+        {
+            if (_specialDealType == SpecialRoomDealType.None || shopItemData == null)
+            {
+                return fallbackPriceLabel;
+            }
+
+            return _specialDealType switch
+            {
+                SpecialRoomDealType.Devil => $"Blood price: {effectivePrice} HP",
+                SpecialRoomDealType.Angel => $"Vow cost: {effectivePrice} HP",
+                SpecialRoomDealType.BlackMarket => $"Black price: {fallbackPriceLabel}",
+                _ => fallbackPriceLabel
+            };
+        }
+
+        private static string ResolveDealLabel(SpecialRoomDealType dealType)
+        {
+            return dealType switch
+            {
+                SpecialRoomDealType.Devil => "Devil Deal",
+                SpecialRoomDealType.Angel => "Angel Deal",
+                SpecialRoomDealType.BlackMarket => "Black Market",
+                _ => string.Empty
+            };
         }
 
         private bool TryDeliverReward(PlayerInventory playerInventory, PlayerItemManager playerItemManager, PlayerHealth playerHealth)
@@ -291,7 +350,31 @@ namespace CuteIssac.Item
             return rewardObject != null;
         }
 
-        private void Refund(PlayerInventory playerInventory, int price)
+        private void ClearSpecialDealContext()
+        {
+            _specialDealRoomType = RoomType.Normal;
+            _specialDealType = SpecialRoomDealType.None;
+            _specialDealRuleId = string.Empty;
+        }
+
+        private void RaiseSpecialDealPurchased(int price)
+        {
+            if (_specialDealType == SpecialRoomDealType.None)
+            {
+                return;
+            }
+
+            ItemData itemData = shopItemData != null ? shopItemData.Offer.PassiveItem : null;
+            GameplayRuntimeEvents.RaiseSpecialRoomDealPurchased(new SpecialRoomDealPurchasedSignal(
+                _specialDealType,
+                _specialDealRoomType,
+                _specialDealRuleId,
+                this,
+                itemData,
+                price));
+        }
+
+        private void Refund(PlayerInventory playerInventory, PlayerHealth playerHealth, int price)
         {
             if (playerInventory == null || price <= 0)
             {
@@ -306,6 +389,9 @@ namespace CuteIssac.Item
                 case ShopCurrencyType.Bombs:
                     playerInventory.AddBombs(price);
                     break;
+                case ShopCurrencyType.Health:
+                    playerHealth?.RestoreHealth(price);
+                    break;
                 default:
                     playerInventory.AddCoins(price);
                     break;
@@ -319,8 +405,19 @@ namespace CuteIssac.Item
                 return string.Empty;
             }
 
-            if (!CanAfford(playerInventory, playerItemManager))
+            string englishReason = ResolveUnavailableReasonEnglish(playerInventory, playerItemManager, playerHealth);
+            if (!string.IsNullOrWhiteSpace(englishReason))
             {
+                return englishReason;
+            }
+
+            if (!CanAfford(playerInventory, playerItemManager, playerHealth))
+            {
+                if (shopItemData.CurrencyType == ShopCurrencyType.Health)
+                {
+                    return "HP NEEDED";
+                }
+
                 return shopItemData.CurrencyType switch
                 {
                     ShopCurrencyType.Keys => "열쇠 부족",
@@ -342,13 +439,71 @@ namespace CuteIssac.Item
             };
         }
 
+        private string ResolveUnavailableReasonEnglish(PlayerInventory playerInventory, PlayerItemManager playerItemManager, PlayerHealth playerHealth)
+        {
+            if (shopItemData == null)
+            {
+                return string.Empty;
+            }
+
+            if (!HasUnlockedOffer)
+            {
+                return "Locked";
+            }
+
+            if (!CanAfford(playerInventory, playerItemManager, playerHealth))
+            {
+                return shopItemData.CurrencyType switch
+                {
+                    ShopCurrencyType.Keys => "Keys needed",
+                    ShopCurrencyType.Bombs => "Bombs needed",
+                    ShopCurrencyType.Health => "HP needed",
+                    _ => "Coins needed"
+                };
+            }
+
+            ShopOffer offer = shopItemData.Offer;
+            return offer.RewardType switch
+            {
+                ShopOfferRewardType.PassiveItem when playerItemManager != null && offer.PassiveItem != null && playerItemManager.OwnsItem(offer.PassiveItem) => "Owned",
+                ShopOfferRewardType.Health when playerHealth != null && playerHealth.CurrentHealth >= playerHealth.MaxHealth => "Full HP",
+                ShopOfferRewardType.Ammo when ResolveWeaponLoadout(playerInventory, playerHealth, playerItemManager) == null => "No weapon",
+                ShopOfferRewardType.Ammo when !CanReceiveAmmo(playerInventory, playerItemManager, playerHealth) => "Ammo full",
+                ShopOfferRewardType.SpeedHeart when playerHealth != null && !playerHealth.CanReceiveSpeedHeart(offer.ResourceAmount) => "Speed full",
+                _ => string.Empty
+            };
+        }
+
         private static string GetCurrencyLabel(ShopCurrencyType currencyType)
         {
+            string englishLabel = ResolveCurrencyLabelEnglish(currencyType);
+            if (!string.IsNullOrWhiteSpace(englishLabel))
+            {
+                return englishLabel;
+            }
+
+            if (currencyType == ShopCurrencyType.Health)
+            {
+                return "HP";
+            }
+
             return currencyType switch
             {
                 ShopCurrencyType.Keys => "열쇠",
                 ShopCurrencyType.Bombs => "폭탄",
                 _ => "코인"
+            };
+        }
+
+        private static string ResolveCurrencyLabelEnglish(ShopCurrencyType currencyType)
+        {
+            return currencyType switch
+            {
+                ShopCurrencyType.Keys => "KEY",
+                ShopCurrencyType.Bombs => "BOMB",
+                ShopCurrencyType.Health => "HP",
+                ShopCurrencyType.Coins => "COIN",
+                _ => string.Empty
             };
         }
 

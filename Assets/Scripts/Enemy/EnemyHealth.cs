@@ -23,6 +23,8 @@ namespace CuteIssac.Enemy
         [SerializeField] [Min(1f)] private float bossHealthMultiplier = 12f;
         [SerializeField] [Range(0.1f, 1f)] private float firstFloorBossHealthScale = 0.5f;
         [SerializeField] [Range(0.4f, 1.2f)] private float regularEnemyGlobalHealthScale = 0.82f;
+        [SerializeField] [Min(1f)] private float hardModeRegularHealthMultiplier = 1.18f;
+        [SerializeField] [Min(1f)] private float hardModeBossHealthMultiplier = 1.12f;
         [SerializeField] private ChampionEnemyModifier championEnemyModifier;
         [SerializeField] private EnemyVisual enemyVisual;
 
@@ -62,6 +64,7 @@ namespace CuteIssac.Enemy
         private void OnEnable()
         {
             EnemyRegistry.Register(this);
+            GameplayRuntimeEvents.RaiseEnemySeen(this);
         }
 
         private void OnDisable()
@@ -184,6 +187,12 @@ namespace CuteIssac.Enemy
             float multiplier = _isBossEnemy
                 ? ResolveBossHealthMultiplier()
                 : regularEnemyHealthMultiplier * regularEnemyGlobalHealthScale;
+            if (IsHardModeRunActive())
+            {
+                multiplier *= _isBossEnemy
+                    ? hardModeBossHealthMultiplier
+                    : hardModeRegularHealthMultiplier;
+            }
             return maxHealth * Mathf.Max(1f, multiplier);
         }
 
@@ -199,6 +208,13 @@ namespace CuteIssac.Enemy
             }
 
             return multiplier;
+        }
+
+        private bool IsHardModeRunActive()
+        {
+            return _runManager != null
+                && _runManager.CurrentContext.HasActiveRun
+                && _runManager.CurrentContext.IsHardMode;
         }
 
         private void Die()

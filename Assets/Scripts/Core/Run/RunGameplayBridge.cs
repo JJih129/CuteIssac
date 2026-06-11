@@ -100,6 +100,12 @@ namespace CuteIssac.Core.Run
 
             GameplayRuntimeEvents.RoomResolved -= HandleRoomResolved;
             GameplayRuntimeEvents.RoomResolved += HandleRoomResolved;
+            GameplayRuntimeEvents.EnemyKilled -= HandleEnemyKilled;
+            GameplayRuntimeEvents.EnemyKilled += HandleEnemyKilled;
+            GameplayRuntimeEvents.SpecialRoomDealPurchased -= HandleSpecialRoomDealPurchased;
+            GameplayRuntimeEvents.SpecialRoomDealPurchased += HandleSpecialRoomDealPurchased;
+            GameplayRuntimeEvents.SpecialRoomDealOffered -= HandleSpecialRoomDealOffered;
+            GameplayRuntimeEvents.SpecialRoomDealOffered += HandleSpecialRoomDealOffered;
         }
 
         private void UnsubscribeCoreSources()
@@ -110,6 +116,39 @@ namespace CuteIssac.Core.Run
             }
 
             GameplayRuntimeEvents.RoomResolved -= HandleRoomResolved;
+            GameplayRuntimeEvents.EnemyKilled -= HandleEnemyKilled;
+            GameplayRuntimeEvents.SpecialRoomDealPurchased -= HandleSpecialRoomDealPurchased;
+            GameplayRuntimeEvents.SpecialRoomDealOffered -= HandleSpecialRoomDealOffered;
+        }
+
+        private void HandleEnemyKilled(EnemyKilledSignal signal)
+        {
+            if (runManager == null || !runManager.CurrentContext.HasActiveRun)
+            {
+                return;
+            }
+
+            runManager.RegisterEnemyKill();
+        }
+
+        private void HandleSpecialRoomDealOffered(SpecialRoomDealOfferedSignal signal)
+        {
+            if (runManager == null || !signal.IsValid || !runManager.CurrentContext.HasActiveRun)
+            {
+                return;
+            }
+
+            runManager.RegisterSpecialRoomDealOffer(signal.DealType, signal.RoomType, signal.RuleId);
+        }
+
+        private void HandleSpecialRoomDealPurchased(SpecialRoomDealPurchasedSignal signal)
+        {
+            if (runManager == null || !signal.IsValid || !runManager.CurrentContext.HasActiveRun)
+            {
+                return;
+            }
+
+            runManager.RegisterSpecialRoomDealPurchase(signal.DealType);
         }
 
         private void RebindPlayerHealth()

@@ -20,5 +20,9 @@ MonoBehaviour:
   targetKey: unlock.enemy.spawner
   targetRoomType: 0
   requiredEnemyId: 
+  requiredCount: 1
   requiredFloorIndex: 2
   requiredItemId: 
+  requiredCharacterId:
+  requiredClearMark: run_victory
+  requiredRoomType: 0

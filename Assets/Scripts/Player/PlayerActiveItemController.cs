@@ -28,6 +28,7 @@ namespace CuteIssac.Player
         [SerializeField] private ActiveItemData startingActiveItem;
 
         public event Action<PlayerActiveItemSlotState> ActiveItemStateChanged;
+        public event Action<ActiveItemData> ActiveItemEquipped;
 
         public ActiveItemData EquippedItem { get; private set; }
         public ActiveItemData TimedEffectSourceItem => _timedEffectSourceItem;
@@ -93,11 +94,17 @@ namespace CuteIssac.Player
 
         public void EquipActiveItem(ActiveItemData activeItemData)
         {
+            bool changed = EquippedItem != activeItemData;
             EquippedItem = activeItemData;
             _currentCharge = activeItemData != null && activeItemData.StartFullyCharged
                 ? activeItemData.MaxCharge
                 : 0;
             NotifyStateChanged();
+
+            if (changed && activeItemData != null)
+            {
+                ActiveItemEquipped?.Invoke(activeItemData);
+            }
         }
 
         public void RestoreForRunResume(ActiveItemData activeItemData, int currentCharge)

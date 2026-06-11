@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f6318f4b7c846f1b692c0a835d3e710, type: 3}
+  m_Name: ProspectorCharacter
+  m_EditorClassIdentifier: 
+  characterId: prospector
+  displayName: Prospector
+  description: Starts with more resources and a shotgun relic.
+  icon: {fileID: 0}
+  unlockedByDefault: 1
+  unlockKey: 
+  startingCoins: 6
+  startingKeys: 1
+  startingBombs: 2
+  startingWeaponItem: {fileID: 11400000, guid: 329da32fc035405e94f35c1ab74d4a1b, type: 2}
+  startingActiveItem: {fileID: 11400000, guid: f102a84d0f8f45e38d08d0f2941d2002, type: 2}
+  startingPassiveItems:
+  - {fileID: 11400000, guid: e39692fcaa99438896f4f48675ce1e1d, type: 2}
+  statModifiers: []
+  projectileModifiers: []

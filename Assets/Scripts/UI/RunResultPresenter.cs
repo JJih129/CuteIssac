@@ -1,4 +1,9 @@
+using System.Collections.Generic;
+using System.Text;
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Meta;
+using CuteIssac.Data.Item;
+using CuteIssac.Core.Settings;
 using CuteIssac.Dungeon;
 using CuteIssac.Player;
 using UnityEngine;
@@ -12,6 +17,7 @@ namespace CuteIssac.UI
     /// Binds RunManager lifecycle events to a skinnable result screen.
     /// The presenter owns fallback UI creation so scenes can stay lightweight until a final prefab is authored.
     /// </summary>
+    [DefaultExecutionOrder(140)]
     [DisallowMultipleComponent]
     public sealed class RunResultPresenter : MonoBehaviour
     {
@@ -20,6 +26,9 @@ namespace CuteIssac.UI
 
         [Header("References")]
         [SerializeField] private RunManager runManager;
+        [SerializeField] private RunSaveSystem runSaveSystem;
+        [SerializeField] private CharacterProfileManager characterProfileManager;
+        [SerializeField] private MetaProgressionManager metaProgressionManager;
         [SerializeField] private PlayerInventory playerInventory;
         [SerializeField] private PlayerActiveItemController playerActiveItemController;
         [SerializeField] private PlayerConsumableHolder playerConsumableHolder;
@@ -93,8 +102,10 @@ namespace CuteIssac.UI
             }
 
             SetResultModalActive(true);
+            runSaveSystem?.DeleteRunSave();
             runResultPanelView.ShowSummary(BuildSummary(context, endReason), resultActionHint);
             runResultPanelView.BindRestartAction(RestartRun);
+            runResultPanelView.BindMainMenuAction(ReturnToMainMenu);
             FocusRestartButton();
 
             if (pauseGameplayWhenResultIsVisible)
@@ -136,8 +147,112 @@ namespace CuteIssac.UI
                 playerInventory != null ? playerInventory.Coins : 0,
                 playerInventory != null ? playerInventory.Keys : 0,
                 playerInventory != null ? playerInventory.Bombs : 0,
+                context != null ? context.EnemyKillCount : 0,
                 context != null ? context.CurrentFloorIndex : 1,
-                endReason);
+                endReason,
+                context != null && context.IsHardMode,
+                characterProfileManager != null ? characterProfileManager.SelectedDisplayName : "Default",
+                metaProgressionManager != null ? metaProgressionManager.LastCompletedRunSeconds : 0f,
+                metaProgressionManager != null ? metaProgressionManager.Progression.TotalRuns : 0,
+                metaProgressionManager != null ? metaProgressionManager.Progression.TotalWins : 0,
+                metaProgressionManager != null ? metaProgressionManager.Progression.TotalDefeats : 0,
+                metaProgressionManager != null ? metaProgressionManager.Progression.BestFloor : 0,
+                metaProgressionManager != null ? metaProgressionManager.Progression.CurrentWinStreak : 0,
+                metaProgressionManager != null ? metaProgressionManager.Progression.BestWinStreak : 0,
+                BuildUnlockText(),
+                BuildClearMarkText(),
+                BuildAcquiredItemsText(),
+                BuildAchievementText(),
+                metaProgressionManager != null ? metaProgressionManager.LastRunChallengeSummaryText : string.Empty);
+        }
+
+        private string BuildAcquiredItemsText()
+        {
+            List<string> itemNames = new();
+            HashSet<string> seenKeys = new();
+
+            if (playerInventory != null)
+            {
+                IReadOnlyList<ItemData> passiveItems = playerInventory.PassiveItems;
+                for (int index = 0; index < passiveItems.Count; index++)
+                {
+                    TryAppendItemName(passiveItems[index], itemNames, seenKeys);
+                }
+            }
+
+            if (playerActiveItemController != null && playerActiveItemController.EquippedItem != null)
+            {
+                TryAppendItemName(
+                    playerActiveItemController.EquippedItem.ItemId,
+                    playerActiveItemController.EquippedItem.DisplayName,
+                    itemNames,
+                    seenKeys);
+            }
+
+            if (playerConsumableHolder != null && playerConsumableHolder.HeldConsumable != null)
+            {
+                TryAppendItemName(
+                    playerConsumableHolder.HeldConsumable.ItemId,
+                    playerConsumableHolder.HeldConsumable.DisplayName,
+                    itemNames,
+                    seenKeys);
+            }
+
+            if (itemNames.Count == 0)
+            {
+                return "None";
+            }
+
+            const int maxVisibleItems = 8;
+            StringBuilder builder = new();
+            int visibleCount = Mathf.Min(itemNames.Count, maxVisibleItems);
+
+            for (int index = 0; index < visibleCount; index++)
+            {
+                if (builder.Length > 0)
+                {
+                    builder.Append(", ");
+                }
+
+                builder.Append(itemNames[index]);
+            }
+
+            if (itemNames.Count > maxVisibleItems)
+            {
+                builder.Append(" +");
+                builder.Append(itemNames.Count - maxVisibleItems);
+                builder.Append(" more");
+            }
+
+            return builder.ToString();
+        }
+
+        private static void TryAppendItemName(ItemData itemData, List<string> itemNames, HashSet<string> seenKeys)
+        {
+            if (itemData == null)
+            {
+                return;
+            }
+
+            TryAppendItemName(itemData.ItemId, itemData.DisplayName, itemNames, seenKeys);
+        }
+
+        private static void TryAppendItemName(string itemId, string displayName, List<string> itemNames, HashSet<string> seenKeys)
+        {
+            if (itemNames == null || seenKeys == null)
+            {
+                return;
+            }
+
+            string key = !string.IsNullOrWhiteSpace(itemId)
+                ? itemId.Trim()
+                : displayName?.Trim();
+            if (string.IsNullOrWhiteSpace(key) || !seenKeys.Add(key))
+            {
+                return;
+            }
+
+            itemNames.Add(string.IsNullOrWhiteSpace(displayName) ? key : displayName.Trim());
         }
 
         private void ResolveReferences()
@@ -147,9 +262,24 @@ namespace CuteIssac.UI
                 runManager = GetComponent<RunManager>();
             }
 
+            if (runSaveSystem == null)
+            {
+                runSaveSystem = GetComponent<RunSaveSystem>();
+            }
+
             if (playerInventory == null)
             {
                 playerInventory = FindFirstObjectByType<PlayerInventory>(FindObjectsInactive.Exclude);
+            }
+
+            if (characterProfileManager == null)
+            {
+                characterProfileManager = GetComponent<CharacterProfileManager>();
+            }
+
+            if (metaProgressionManager == null)
+            {
+                metaProgressionManager = GetComponent<MetaProgressionManager>();
             }
 
             if (playerActiveItemController == null)
@@ -410,6 +540,10 @@ namespace CuteIssac.UI
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
+            GameOptionsService optionsService = FindFirstObjectByType<GameOptionsService>(FindObjectsInactive.Exclude);
+            GameOptionsService.ApplyUiScale(scaler, optionsService != null && optionsService.CurrentOptions != null
+                ? optionsService.CurrentOptions.UiScale
+                : 1f);
 
             if (canvas.GetComponent<GraphicRaycaster>() == null)
             {
@@ -449,7 +583,48 @@ namespace CuteIssac.UI
             WorldTextModalSuppressor.SetSuppressed(false);
             SetResultModalActive(false);
             RestoreTimeScale();
+            RunLaunchRequest.RequestNewRunFromFirstFloor();
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+
+        private void ReturnToMainMenu()
+        {
+            UiModalState.ResetAll();
+            WorldTextModalSuppressor.SetSuppressed(false);
+            SetResultModalActive(false);
+            RestoreTimeScale();
+            runSaveSystem?.DeleteRunSave();
+            SceneManager.LoadScene("TitleScene", LoadSceneMode.Single);
+        }
+
+        private string BuildUnlockText()
+        {
+            if (metaProgressionManager == null || metaProgressionManager.LastNewUnlockDescriptions.Count == 0)
+            {
+                return "No new unlocks";
+            }
+
+            return string.Join(", ", metaProgressionManager.LastNewUnlockDescriptions);
+        }
+
+        private string BuildAchievementText()
+        {
+            if (metaProgressionManager == null || metaProgressionManager.LastNewAchievementDescriptions.Count == 0)
+            {
+                return "No new achievements";
+            }
+
+            return string.Join(", ", metaProgressionManager.LastNewAchievementDescriptions);
+        }
+
+        private string BuildClearMarkText()
+        {
+            if (metaProgressionManager == null || metaProgressionManager.LastNewClearMarks.Count == 0)
+            {
+                return "No new clear marks";
+            }
+
+            return string.Join(", ", metaProgressionManager.LastNewClearMarks);
         }
     }
 }

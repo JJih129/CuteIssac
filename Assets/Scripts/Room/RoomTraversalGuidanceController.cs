@@ -313,6 +313,11 @@ namespace CuteIssac.Room
             accentColor = door != null && door.ConnectedRoom != null
                 ? ResolveRoomAccent(door.ConnectedRoom.RoomType)
                 : ResolveRoomAccent(RoomType.Normal);
+            if (door != null && door.TryResolveConnectedSpecialRoomPresentation(out _, out Color specialAccentColor))
+            {
+                accentColor = specialAccentColor;
+            }
+
             targetRoomType = door != null && door.ConnectedRoom != null
                 ? door.ConnectedRoom.RoomType
                 : RoomType.Normal;
@@ -684,6 +689,10 @@ namespace CuteIssac.Room
                 score += riskBias;
                 string reasonTag = ResolveDoorReasonTag(strategicReasonTag, flowReasonTag, flowBias, riskReasonTag, riskBias, intentReasonTag, intentBias, traceReasonTag, traceBias);
                 Color accentColor = ResolveRouteAccent(targetRoom.RoomType, traceBias, intentBias);
+                if (door.TryResolveConnectedSpecialRoomPresentation(out _, out Color specialAccentColor))
+                {
+                    accentColor = specialAccentColor;
+                }
 
                 if (score > bestScore)
                 {
@@ -1078,12 +1087,48 @@ namespace CuteIssac.Room
                 return false;
             }
 
+            int requiredResourceCost = door.RequiredResourceToEnter;
+            if (requiredResourceCost > 0)
+            {
+                if (playerInventory == null)
+                {
+                    return false;
+                }
+
+                if (door.RequiredResourceCostType == SpecialRoomCostType.Coin && playerInventory.Coins < requiredResourceCost)
+                {
+                    return false;
+                }
+
+                if (door.RequiredResourceCostType == SpecialRoomCostType.Bomb && playerInventory.Bombs < requiredResourceCost)
+                {
+                    return false;
+                }
+            }
+
             if (!door.HasUnpaidHealthEntryCost || playerHealth == null)
+            {
+                return CanMeetMinimumHealthDoorRequirement(door);
+            }
+
+            return playerHealth.CurrentHealth > door.RequiredHealthToEnter
+                && CanMeetMinimumHealthDoorRequirement(door);
+        }
+
+        private bool CanMeetMinimumHealthDoorRequirement(RoomDoor door)
+        {
+            if (door == null || door.MinimumHealthRatioToEnter <= 0.001f)
             {
                 return true;
             }
 
-            return playerHealth.CurrentHealth > door.RequiredHealthToEnter;
+            if (playerHealth == null)
+            {
+                return false;
+            }
+
+            float requiredHealth = Mathf.Max(1f, playerHealth.MaxHealth) * door.MinimumHealthRatioToEnter;
+            return playerHealth.CurrentHealth >= requiredHealth;
         }
 
         private RouteNeedContext BuildRouteNeedContext(RoomController room)
@@ -1645,7 +1690,7 @@ namespace CuteIssac.Room
             out string compactTag,
             out string detailEyebrow)
         {
-            string roomLabel = ResolveRoomTypeGuidanceLabel(roomType);
+            string roomLabel = ResolveDoorRoomGuidanceLabel(door, roomType);
             headline = $"{roomLabel} Route Recommended";
 
             if (IsShotProfileCompareLabel(compareLabel))
@@ -1664,7 +1709,7 @@ namespace CuteIssac.Room
         private static string BuildShotProfileDetail(RoomType roomType, string compareLabel, RoomDoor door)
         {
             string directionLabel = ResolveDirectionLabel(door != null ? door.DoorDirection : RoomDirection.Up);
-            string roomLabel = ResolveRoomTypeGuidanceLabel(roomType);
+            string roomLabel = ResolveDoorRoomGuidanceLabel(door, roomType);
             string routeLabel = string.IsNullOrWhiteSpace(directionLabel)
                 ? roomLabel
                 : $"{roomLabel} {directionLabel}";
@@ -1677,7 +1722,7 @@ namespace CuteIssac.Room
         private static string BuildReasonDetail(RoomType roomType, string reasonTag, RoomDoor door)
         {
             string directionLabel = ResolveDirectionLabel(door != null ? door.DoorDirection : RoomDirection.Up);
-            string roomLabel = ResolveRoomTypeGuidanceLabel(roomType);
+            string roomLabel = ResolveDoorRoomGuidanceLabel(door, roomType);
             string routeLabel = string.IsNullOrWhiteSpace(directionLabel)
                 ? roomLabel
                 : $"{roomLabel} {directionLabel}";
@@ -1743,6 +1788,18 @@ namespace CuteIssac.Room
             };
         }
 
+        private static string ResolveDoorRoomGuidanceLabel(RoomDoor door, RoomType fallbackRoomType)
+        {
+            if (door != null
+                && door.TryResolveConnectedSpecialRoomPresentation(out string specialDisplayName, out _)
+                && !string.IsNullOrWhiteSpace(specialDisplayName))
+            {
+                return specialDisplayName.Trim().ToUpperInvariant();
+            }
+
+            return ResolveRoomTypeGuidanceLabel(fallbackRoomType);
+        }
+
         private static string ResolveDirectionLabel(RoomDirection direction)
         {
             return direction switch
@@ -1763,18 +1820,7 @@ namespace CuteIssac.Room
             }
 
             string roomLabel = door.ConnectedRoom != null
-                ? door.ConnectedRoom.RoomType switch
-                {
-                    RoomType.Treasure => "TREASURE",
-                    RoomType.Shop => "SHOP",
-                    RoomType.Boss => "BOSS",
-                    RoomType.Secret => "SECRET",
-                    RoomType.Challenge => "CHALLENGE",
-                    RoomType.MiniBoss => "ELITE",
-                    RoomType.Curse => "CURSE",
-                    RoomType.Trap => "TRAP",
-                    _ => "PUSH"
-                }
+                ? ResolveDoorRoomGuidanceLabel(door, door.ConnectedRoom.RoomType)
                 : "PUSH";
 
             string directionLabel = door.DoorDirection switch
@@ -1789,11 +1835,10 @@ namespace CuteIssac.Room
             string baseLabel = string.IsNullOrEmpty(directionLabel)
                 ? roomLabel
                 : $"{roomLabel} {directionLabel}";
-            int requiredKeyCost = door.RequiredKeysToEnter;
 
-            if (requiredKeyCost > 0)
+            if (door.TryBuildPendingEntryCostLabel(out string entryCostLabel))
             {
-                baseLabel = $"{baseLabel} / KEY x{requiredKeyCost}";
+                baseLabel = $"{baseLabel} / {entryCostLabel}";
             }
 
             if (IsShotProfileCompareLabel(compareLabel))

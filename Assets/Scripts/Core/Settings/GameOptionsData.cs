@@ -12,7 +12,13 @@ namespace CuteIssac.Core.Settings
         public float MusicVolume = 0.85f;
         public float SfxVolume = 1f;
         public bool Fullscreen = true;
+        public int ResolutionWidth = 1920;
+        public int ResolutionHeight = 1080;
+        public float UiScale = 1f;
         public bool CameraShakeEnabled = true;
         public bool DamageNumbersEnabled = true;
+        public bool HighContrastUi;
+        public bool ReduceFlashes;
+        public bool ColorBlindAssist;
     }
 }

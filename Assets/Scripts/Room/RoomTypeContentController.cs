@@ -1,4 +1,5 @@
 using CuteIssac.Core.Audio;
+using CuteIssac.Core.Gameplay;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
 using CuteIssac.Data.Room;
@@ -42,7 +43,9 @@ namespace CuteIssac.Room
         private RoomData _runtimeRoomData;
         private RoomTypeContentEntry _resolvedEntry;
         private ItemPoolData _runtimeFloorItemPool;
+        private SpecialRoomRuleData _runtimeSpecialRoomRule;
         private bool _hasSpawnedEntryContent;
+        private bool _specialTradeOfferNotified;
         private GameObject _spawnedEntryContent;
         private GameObject _spawnedCombatSetpiece;
         private ShopInventory _spawnedShopInventory;
@@ -77,7 +80,9 @@ namespace CuteIssac.Room
             _runtimeRoomType = roomType;
             _runtimeRoomData = roomData;
             _runtimeFloorItemPool = floorItemPoolOverride;
+            _runtimeSpecialRoomRule = null;
             _hasSpawnedEntryContent = false;
+            _specialTradeOfferNotified = false;
             _spawnedEntryContent = null;
             _spawnedShopInventory = null;
 
@@ -110,6 +115,16 @@ namespace CuteIssac.Room
             if (preSpawnEntryContentOnConfigure)
             {
                 TrySpawnEntryContent();
+            }
+        }
+
+        public void ConfigureSpecialRoomRule(SpecialRoomRuleData specialRoomRule)
+        {
+            _runtimeSpecialRoomRule = specialRoomRule;
+
+            if (_hasSpawnedEntryContent)
+            {
+                ConfigureSpecialTradeInventory();
             }
         }
 
@@ -179,10 +194,9 @@ namespace CuteIssac.Room
                 return;
             }
 
-            if (contentSpawnAnchor != null)
-            {
-                targetBuffer.Add(contentSpawnAnchor);
-            }
+            // Empty anchors are layout helpers, not interactable content. Highlighting them
+            // creates a floating white beam in start/normal rooms with no target underneath.
+            return;
         }
 
         public bool TryGetCombatSetpieceTransform(out Transform setpieceTransform)
@@ -262,12 +276,18 @@ namespace CuteIssac.Room
 
         private void TrySpawnEntryContent()
         {
-            if (_hasSpawnedEntryContent || _resolvedEntry == null)
+            if (_hasSpawnedEntryContent)
             {
                 return;
             }
 
-            if (!_resolvedEntry.SpawnContentOnFirstEntry && _runtimeRoomType != RoomType.Curse)
+            bool shouldSpawnSpecialTradeContent = ShouldSpawnSpecialTradeContent();
+            if (_resolvedEntry == null && !shouldSpawnSpecialTradeContent)
+            {
+                return;
+            }
+
+            if (_resolvedEntry != null && !_resolvedEntry.SpawnContentOnFirstEntry && _runtimeRoomType != RoomType.Curse && !shouldSpawnSpecialTradeContent)
             {
                 return;
             }
@@ -278,11 +298,11 @@ namespace CuteIssac.Room
                 return;
             }
 
-            GameObject entryContentPrefab = _resolvedEntry.EntryContentPrefab;
+            GameObject entryContentPrefab = _resolvedEntry != null ? _resolvedEntry.EntryContentPrefab : null;
 
             if (entryContentPrefab == null)
             {
-                TrySpawnFallbackCurseEntryContent();
+                TrySpawnFallbackSpecialTradeContent();
                 return;
             }
 
@@ -308,6 +328,8 @@ namespace CuteIssac.Room
                 shopInventory.ConfigureFromItemPool(ResolveItemPoolOverride());
             }
 
+            ConfigureSpecialTradeInventory();
+
             if (_runtimeRoomType == RoomType.Shop)
             {
                 GameAudioEvents.Raise(GameAudioEventType.ShopEntered, spawnPosition);
@@ -316,9 +338,9 @@ namespace CuteIssac.Room
             _hasSpawnedEntryContent = true;
         }
 
-        private void TrySpawnFallbackCurseEntryContent()
+        private void TrySpawnFallbackSpecialTradeContent()
         {
-            if (_runtimeRoomType != RoomType.Curse)
+            if (_runtimeRoomType != RoomType.Curse && !ShouldSpawnSpecialTradeContent())
             {
                 return;
             }
@@ -327,17 +349,94 @@ namespace CuteIssac.Room
             Vector3 spawnPosition = contentSpawnAnchor != null ? contentSpawnAnchor.position : transform.position;
             Quaternion spawnRotation = contentSpawnAnchor != null ? contentSpawnAnchor.rotation : Quaternion.identity;
 
-            GameObject fallbackContent = new("Curse_FallbackEntryContent");
+            GameObject fallbackContent = new($"{_runtimeRoomType}_FallbackEntryContent");
             fallbackContent.transform.SetParent(parent, false);
             fallbackContent.transform.SetPositionAndRotation(spawnPosition, spawnRotation);
             _spawnedEntryContent = fallbackContent;
 
             CurseRoomEntryVisual curseRoomEntryVisual = fallbackContent.AddComponent<CurseRoomEntryVisual>();
-            Color accentColor = _resolvedEntry != null && _resolvedEntry.ApplyRoomTint
+            curseRoomEntryVisual.Configure(
+                roomController,
+                ResolveSpecialTradeAccentColor(),
+                ResolveSpecialTradeLabel());
+            ConfigureSpecialTradeInventory();
+            _hasSpawnedEntryContent = true;
+        }
+
+        private bool ShouldSpawnSpecialTradeContent()
+        {
+            return _runtimeSpecialRoomRule != null
+                && _runtimeSpecialRoomRule.SpawnTradeOffers
+                && ResolveItemPoolOverride() != null;
+        }
+
+        private void ConfigureSpecialTradeInventory()
+        {
+            if (!ShouldSpawnSpecialTradeContent() || _spawnedEntryContent == null)
+            {
+                return;
+            }
+
+            ResolveSpawnedShopInventory();
+            if (_spawnedShopInventory == null)
+            {
+                _spawnedShopInventory = _spawnedEntryContent.AddComponent<ShopInventory>();
+            }
+
+            int configuredOfferCount = _spawnedShopInventory.ConfigureTradeOffersFromItemPool(
+                ResolveItemPoolOverride(),
+                _runtimeRoomType,
+                _runtimeSpecialRoomRule.DealType,
+                _runtimeSpecialRoomRule.RuleId,
+                _runtimeSpecialRoomRule.TradeCurrencyType,
+                _runtimeSpecialRoomRule.TradePriceMin,
+                _runtimeSpecialRoomRule.TradePriceMax,
+                _runtimeSpecialRoomRule.TradeOfferCount);
+
+            if (_spawnedEntryContent.TryGetComponent(out CurseRoomEntryVisual curseVisual))
+            {
+                curseVisual.Configure(roomController, ResolveSpecialTradeAccentColor(), ResolveSpecialTradeLabel());
+            }
+
+            NotifySpecialDealOfferedOnce(configuredOfferCount);
+        }
+
+        private void NotifySpecialDealOfferedOnce(int configuredOfferCount)
+        {
+            if (_specialTradeOfferNotified
+                || _runtimeSpecialRoomRule == null
+                || _runtimeSpecialRoomRule.DealType == SpecialRoomDealType.None
+                || configuredOfferCount <= 0)
+            {
+                return;
+            }
+
+            _specialTradeOfferNotified = true;
+            GameplayRuntimeEvents.RaiseSpecialRoomDealOffered(new SpecialRoomDealOfferedSignal(
+                roomController,
+                _runtimeSpecialRoomRule.DealType,
+                _runtimeRoomType,
+                _runtimeSpecialRoomRule.RuleId,
+                configuredOfferCount));
+        }
+
+        private Color ResolveSpecialTradeAccentColor()
+        {
+            if (_runtimeSpecialRoomRule != null && _runtimeSpecialRoomRule.SpawnTradeOffers)
+            {
+                return _runtimeSpecialRoomRule.DealAccentColor;
+            }
+
+            return _resolvedEntry != null && _resolvedEntry.ApplyRoomTint
                 ? _resolvedEntry.RoomTintColor
                 : new Color(0.72f, 0.16f, 0.28f, 1f);
-            curseRoomEntryVisual.Configure(roomController, accentColor);
-            _hasSpawnedEntryContent = true;
+        }
+
+        private string ResolveSpecialTradeLabel()
+        {
+            return _runtimeSpecialRoomRule != null && _runtimeSpecialRoomRule.SpawnTradeOffers
+                ? _runtimeSpecialRoomRule.DealDisplayName
+                : null;
         }
 
         private void ApplyRoomTint()

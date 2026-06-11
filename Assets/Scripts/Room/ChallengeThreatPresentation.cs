@@ -166,6 +166,10 @@ namespace CuteIssac.Room
 
     public static class ChallengeThreatPresentationResolver
     {
+        private const string ChallengeBadge = "Challenge";
+        private const string PaceBadge = "Timer Pace";
+        private const string EliteBadge = "Elite Warning";
+
         public static bool TryResolveStage(string title, string subtitle, out ChallengeThreatStage stage)
         {
             return TryResolveBannerCopy(title, subtitle, out _, out _, out stage);
@@ -187,84 +191,28 @@ namespace CuteIssac.Room
                 return false;
             }
 
-            if (TryResolvePaceBannerCopy(combined, out badgeLabel, out subtitleEyebrow, out stage))
+            string normalized = combined.ToLowerInvariant();
+            if (normalized.Contains("pace") || normalized.Contains("rank") || normalized.Contains("clear"))
             {
+                badgeLabel = PaceBadge;
+                subtitleEyebrow = normalized.Contains("danger") || normalized.Contains("warning") ? "Danger Window" : "Reward Pace";
+                stage = normalized.Contains("danger") || normalized.Contains("warning") ? ChallengeThreatStage.PromotionPressure : ChallengeThreatStage.Baseline;
                 return true;
             }
 
-            if (combined.Contains("엘리트 압박 경보") || combined.Contains("엘리트 압박"))
+            if (normalized.Contains("elite") || normalized.Contains("reinforcement") || normalized.Contains("pressure"))
             {
-                badgeLabel = "엘리트 경보";
-                subtitleEyebrow = "확정 위협";
-                stage = ChallengeThreatStage.ElitePressure;
+                badgeLabel = EliteBadge;
+                subtitleEyebrow = normalized.Contains("reinforcement") ? "Reinforcement" : "Pressure";
+                stage = normalized.Contains("reinforcement") ? ChallengeThreatStage.EliteReinforcement : ChallengeThreatStage.ElitePressure;
                 return true;
             }
 
-            if (combined.Contains("엘리트 증원 경보") || combined.Contains("엘리트 증원"))
+            if (normalized.Contains("challenge") || normalized.Contains("wave"))
             {
-                badgeLabel = "엘리트 경보";
-                subtitleEyebrow = "증원 경보";
-                stage = ChallengeThreatStage.EliteReinforcement;
-                return true;
-            }
-
-            if (combined.Contains("승격 압박 경보") || combined.Contains("승격 압박"))
-            {
-                badgeLabel = "엘리트 경보";
-                subtitleEyebrow = "압박 경보";
-                stage = ChallengeThreatStage.PromotionPressure;
-                return true;
-            }
-
-            if (combined.Contains("도전 웨이브") || combined.Contains("승격 +"))
-            {
-                badgeLabel = "챌린지";
-                subtitleEyebrow = combined.Contains("승격 +") ? "승격 예고" : "웨이브 예고";
+                badgeLabel = ChallengeBadge;
+                subtitleEyebrow = normalized.Contains("wave") ? "Wave Alert" : "Combat Trial";
                 stage = ChallengeThreatStage.Baseline;
-                return true;
-            }
-
-            badgeLabel = string.Empty;
-            subtitleEyebrow = string.Empty;
-            stage = ChallengeThreatStage.Baseline;
-            return false;
-        }
-
-        private static bool TryResolvePaceBannerCopy(
-            string combined,
-            out string badgeLabel,
-            out string subtitleEyebrow,
-            out ChallengeThreatStage stage)
-        {
-            if (combined.Contains("도전 페이스 상승") || combined.Contains("S 보상 구간 유지"))
-            {
-                badgeLabel = "도전 페이스";
-                subtitleEyebrow = "최상 구간";
-                stage = ChallengeThreatStage.Baseline;
-                return true;
-            }
-
-            if (combined.Contains("도전 페이스 회복") || combined.Contains("도전 전투 갱신"))
-            {
-                badgeLabel = "도전 페이스";
-                subtitleEyebrow = "회복 구간";
-                stage = ChallengeThreatStage.Baseline;
-                return true;
-            }
-
-            if (combined.Contains("도전 페이스 하락"))
-            {
-                badgeLabel = "도전 페이스";
-                subtitleEyebrow = "속도 경고";
-                stage = ChallengeThreatStage.PromotionPressure;
-                return true;
-            }
-
-            if (combined.Contains("도전 페이스 경고") || combined.Contains("도전 전투 경고"))
-            {
-                badgeLabel = "도전 페이스";
-                subtitleEyebrow = "위험 구간";
-                stage = ChallengeThreatStage.PromotionPressure;
                 return true;
             }
 
@@ -286,17 +234,17 @@ namespace CuteIssac.Room
 
         public static ChallengeBannerLayoutProfile ResolveBannerLayoutProfile(string badgeLabel)
         {
-            if (string.Equals(badgeLabel, "도전 페이스"))
+            if (string.Equals(badgeLabel, PaceBadge))
             {
                 return ChallengeBannerLayoutProfile.Pace;
             }
 
-            if (string.Equals(badgeLabel, "엘리트 경보"))
+            if (string.Equals(badgeLabel, EliteBadge))
             {
                 return ChallengeBannerLayoutProfile.EliteWarning;
             }
 
-            if (string.Equals(badgeLabel, "챌린지"))
+            if (string.Equals(badgeLabel, ChallengeBadge))
             {
                 return ChallengeBannerLayoutProfile.Baseline;
             }
@@ -328,18 +276,13 @@ namespace CuteIssac.Room
 
         public static float ResolveBannerScaleBoost(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseBoost = ResolveBannerScaleBoost(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
+            float value = ResolveBannerScaleBoost(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) switch
             {
-                return baseBoost * 0.88f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseBoost * 1.06f;
-            }
-
-            return baseBoost;
+                ChallengeBannerLayoutProfile.Pace => value * 1.06f,
+                ChallengeBannerLayoutProfile.Baseline => value * 0.88f,
+                _ => value
+            };
         }
 
         public static float ResolveBannerPulseCycles(ChallengeThreatStage stage)
@@ -348,79 +291,54 @@ namespace CuteIssac.Room
             {
                 ChallengeThreatStage.ElitePressure => 4.2f,
                 ChallengeThreatStage.EliteReinforcement => 3.4f,
-                ChallengeThreatStage.PromotionPressure => 2.6f,
-                _ => 2f
+                ChallengeThreatStage.PromotionPressure => 2.7f,
+                _ => 2.1f
             };
         }
 
         public static float ResolveBannerPulseCycles(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseCycles = ResolveBannerPulseCycles(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
+            float value = ResolveBannerPulseCycles(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) switch
             {
-                return Mathf.Max(1.6f, baseCycles * 0.88f);
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseCycles * 1.08f;
-            }
-
-            return baseCycles;
+                ChallengeBannerLayoutProfile.Pace => value * 1.08f,
+                ChallengeBannerLayoutProfile.Baseline => value * 0.86f,
+                _ => value
+            };
         }
 
         public static float ResolveBannerEntryOvershoot(ChallengeThreatStage stage)
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 0.072f,
-                ChallengeThreatStage.EliteReinforcement => 0.054f,
-                ChallengeThreatStage.PromotionPressure => 0.038f,
-                _ => 0.022f
+                ChallengeThreatStage.ElitePressure => 1.18f,
+                ChallengeThreatStage.EliteReinforcement => 1.13f,
+                ChallengeThreatStage.PromotionPressure => 1.08f,
+                _ => 1.04f
             };
         }
 
         public static float ResolveBannerEntryOvershoot(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseOvershoot = ResolveBannerEntryOvershoot(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return baseOvershoot * 0.84f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseOvershoot * 1.04f;
-            }
-
-            return baseOvershoot;
+            float value = ResolveBannerEntryOvershoot(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Pace ? value * 1.03f : value;
         }
 
         public static float ResolveBannerEntryDropDistance(ChallengeThreatStage stage)
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 34f,
-                ChallengeThreatStage.EliteReinforcement => 26f,
-                ChallengeThreatStage.PromotionPressure => 18f,
-                _ => 12f
+                ChallengeThreatStage.ElitePressure => 72f,
+                ChallengeThreatStage.EliteReinforcement => 60f,
+                ChallengeThreatStage.PromotionPressure => 50f,
+                _ => 42f
             };
         }
 
         public static float ResolveBannerEntryDropDistance(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseDropDistance = ResolveBannerEntryDropDistance(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return baseDropDistance * 0.82f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseDropDistance * 0.92f;
-            }
-
-            return baseDropDistance;
+            float value = ResolveBannerEntryDropDistance(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Baseline ? value * 0.82f : value;
         }
 
         public static float ResolveStatusThemeStrength(ChallengeThreatStage stage)
@@ -428,65 +346,43 @@ namespace CuteIssac.Room
             return stage switch
             {
                 ChallengeThreatStage.ElitePressure => 1.25f,
-                ChallengeThreatStage.EliteReinforcement => 1.12f,
-                ChallengeThreatStage.PromotionPressure => 1.04f,
-                _ => 0.92f
+                ChallengeThreatStage.EliteReinforcement => 1.16f,
+                ChallengeThreatStage.PromotionPressure => 1.08f,
+                _ => 0.98f
             };
         }
 
         public static float ResolveFeedbackPulseFrequencyScale(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseFrequency = stage switch
+            float value = stage switch
             {
-                ChallengeThreatStage.ElitePressure => 1.24f,
-                ChallengeThreatStage.EliteReinforcement => 1.12f,
-                ChallengeThreatStage.PromotionPressure => 1.02f,
-                _ => 0.94f
+                ChallengeThreatStage.ElitePressure => 1.35f,
+                ChallengeThreatStage.EliteReinforcement => 1.22f,
+                ChallengeThreatStage.PromotionPressure => 1.12f,
+                _ => 1f
             };
-
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return baseFrequency * 0.94f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseFrequency * 1.08f;
-            }
-
-            return baseFrequency;
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Pace ? value * 1.08f : value;
         }
 
         public static float ResolveFeedbackPulseAmplitudeScale(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseAmplitude = stage switch
+            float value = stage switch
             {
-                ChallengeThreatStage.ElitePressure => 1.28f,
-                ChallengeThreatStage.EliteReinforcement => 1.16f,
-                ChallengeThreatStage.PromotionPressure => 1.06f,
-                _ => 0.94f
+                ChallengeThreatStage.ElitePressure => 1.34f,
+                ChallengeThreatStage.EliteReinforcement => 1.18f,
+                ChallengeThreatStage.PromotionPressure => 1.1f,
+                _ => 1f
             };
-
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return baseAmplitude * 0.92f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseAmplitude * 1.04f;
-            }
-
-            return baseAmplitude;
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Baseline ? value * 0.9f : value;
         }
 
         public static float ResolveNodePulseScale(ChallengeThreatStage stage)
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 1.3f,
-                ChallengeThreatStage.EliteReinforcement => 1.16f,
-                ChallengeThreatStage.PromotionPressure => 1.08f,
+                ChallengeThreatStage.ElitePressure => 1.28f,
+                ChallengeThreatStage.EliteReinforcement => 1.18f,
+                ChallengeThreatStage.PromotionPressure => 1.1f,
                 _ => 1f
             };
         }
@@ -495,37 +391,27 @@ namespace CuteIssac.Room
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 0.22f,
-                ChallengeThreatStage.EliteReinforcement => 0.16f,
-                ChallengeThreatStage.PromotionPressure => 0.11f,
-                _ => 0.07f
+                ChallengeThreatStage.ElitePressure => 0.7f,
+                ChallengeThreatStage.EliteReinforcement => 0.55f,
+                ChallengeThreatStage.PromotionPressure => 0.42f,
+                _ => 0.28f
             };
         }
 
         public static float ResolveWarningFlashOpacity(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseOpacity = ResolveWarningFlashOpacity(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return baseOpacity * 0.82f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseOpacity * 0.9f;
-            }
-
-            return baseOpacity;
+            float value = ResolveWarningFlashOpacity(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Pace ? value * 0.86f : value;
         }
 
         public static float ResolveWarningFlashDuration(ChallengeThreatStage stage)
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 0.44f,
-                ChallengeThreatStage.EliteReinforcement => 0.38f,
-                ChallengeThreatStage.PromotionPressure => 0.32f,
-                _ => 0.26f
+                ChallengeThreatStage.ElitePressure => 0.7f,
+                ChallengeThreatStage.EliteReinforcement => 0.56f,
+                ChallengeThreatStage.PromotionPressure => 0.46f,
+                _ => 0.34f
             };
         }
 
@@ -533,8 +419,8 @@ namespace CuteIssac.Room
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 3,
-                ChallengeThreatStage.EliteReinforcement => 2,
+                ChallengeThreatStage.ElitePressure => 4,
+                ChallengeThreatStage.EliteReinforcement => 3,
                 ChallengeThreatStage.PromotionPressure => 2,
                 _ => 1
             };
@@ -544,104 +430,61 @@ namespace CuteIssac.Room
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 0.62f,
-                ChallengeThreatStage.EliteReinforcement => 0.46f,
-                ChallengeThreatStage.PromotionPressure => 0.3f,
-                _ => 0.18f
+                ChallengeThreatStage.ElitePressure => 1.35f,
+                ChallengeThreatStage.EliteReinforcement => 1.2f,
+                ChallengeThreatStage.PromotionPressure => 1.08f,
+                _ => 0.92f
             };
         }
 
         public static float ResolveWarningFlashPulseStrength(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseStrength = ResolveWarningFlashPulseStrength(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return baseStrength * 0.84f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseStrength * 0.92f;
-            }
-
-            return baseStrength;
+            float value = ResolveWarningFlashPulseStrength(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Baseline ? value * 0.86f : value;
         }
 
         public static float ResolveWarningFlashFrequencyScale(ChallengeThreatStage stage)
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 1.2f,
-                ChallengeThreatStage.EliteReinforcement => 1.08f,
-                ChallengeThreatStage.PromotionPressure => 0.96f,
-                _ => 0.88f
+                ChallengeThreatStage.ElitePressure => 1.35f,
+                ChallengeThreatStage.EliteReinforcement => 1.18f,
+                ChallengeThreatStage.PromotionPressure => 1.08f,
+                _ => 1f
             };
         }
 
         public static float ResolveWarningFlashFrequencyScale(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseFrequency = ResolveWarningFlashFrequencyScale(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return baseFrequency * 0.94f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseFrequency * 1.04f;
-            }
-
-            return baseFrequency;
+            float value = ResolveWarningFlashFrequencyScale(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Pace ? value * 1.08f : value;
         }
 
         public static float ResolveWarningFlashDecaySoftness(ChallengeThreatStage stage)
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 0.22f,
-                ChallengeThreatStage.EliteReinforcement => 0.3f,
-                ChallengeThreatStage.PromotionPressure => 0.42f,
-                _ => 0.56f
+                ChallengeThreatStage.ElitePressure => 0.64f,
+                ChallengeThreatStage.EliteReinforcement => 0.72f,
+                ChallengeThreatStage.PromotionPressure => 0.82f,
+                _ => 0.9f
             };
         }
 
         public static float ResolveWarningFlashDecaySoftness(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseSoftness = ResolveWarningFlashDecaySoftness(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return Mathf.Clamp01(baseSoftness + 0.12f);
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return Mathf.Clamp01(baseSoftness + 0.06f);
-            }
-
-            return baseSoftness;
+            float value = ResolveWarningFlashDecaySoftness(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Baseline ? Mathf.Min(1f, value + 0.06f) : value;
         }
 
         public static Color ResolveWarningFlashColor(string badgeLabel, Color accentColor)
         {
-            if (string.Equals(badgeLabel, "챌린지"))
+            return ResolveBannerLayoutProfile(badgeLabel) switch
             {
-                Color baseColor = new(1f, 0.76f, 0.3f, 1f);
-                return Color.Lerp(baseColor, accentColor, 0.18f);
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                Color baseColor = new(1f, 0.84f, 0.36f, 1f);
-                return Color.Lerp(baseColor, accentColor, 0.24f);
-            }
-
-            if (string.Equals(badgeLabel, "엘리트 경보"))
-            {
-                Color baseColor = new(1f, 0.46f, 0.18f, 1f);
-                return Color.Lerp(baseColor, accentColor, 0.42f);
-            }
-
-            return accentColor;
+                ChallengeBannerLayoutProfile.Pace => Color.Lerp(accentColor, new Color(1f, 0.84f, 0.3f, 1f), 0.35f),
+                ChallengeBannerLayoutProfile.EliteWarning => Color.Lerp(accentColor, new Color(1f, 0.2f, 0.16f, 1f), 0.45f),
+                _ => accentColor
+            };
         }
 
         public static GameAudioEventType ResolveWarningAudioEventType(ChallengeThreatStage stage)
@@ -649,24 +492,17 @@ namespace CuteIssac.Room
             return stage switch
             {
                 ChallengeThreatStage.ElitePressure => GameAudioEventType.BossAppeared,
-                ChallengeThreatStage.EliteReinforcement => GameAudioEventType.BossAppeared,
-                ChallengeThreatStage.PromotionPressure => GameAudioEventType.RewardSpawned,
+                ChallengeThreatStage.EliteReinforcement => GameAudioEventType.EnemyDied,
+                ChallengeThreatStage.PromotionPressure => GameAudioEventType.PlayerDamaged,
                 _ => GameAudioEventType.RewardSpawned
             };
         }
 
         public static GameAudioEventType ResolveWarningAudioEventType(string badgeLabel, ChallengeThreatStage stage)
         {
-            if (string.Equals(badgeLabel, "도전 페이스"))
+            if (ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Pace)
             {
                 return GameAudioEventType.RewardSpawned;
-            }
-
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return stage >= ChallengeThreatStage.PromotionPressure
-                    ? GameAudioEventType.RewardSpawned
-                    : GameAudioEventType.ItemCollected;
             }
 
             return ResolveWarningAudioEventType(stage);
@@ -676,8 +512,8 @@ namespace CuteIssac.Room
         {
             return stage switch
             {
-                ChallengeThreatStage.ElitePressure => 0.9f,
-                ChallengeThreatStage.EliteReinforcement => 0.72f,
+                ChallengeThreatStage.ElitePressure => 0.76f,
+                ChallengeThreatStage.EliteReinforcement => 0.66f,
                 ChallengeThreatStage.PromotionPressure => 0.58f,
                 _ => 0.44f
             };
@@ -685,18 +521,8 @@ namespace CuteIssac.Room
 
         public static float ResolveWarningAudioVolumeScale(string badgeLabel, ChallengeThreatStage stage)
         {
-            float baseVolume = ResolveWarningAudioVolumeScale(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return baseVolume * 0.82f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return baseVolume * 0.9f;
-            }
-
-            return baseVolume;
+            float value = ResolveWarningAudioVolumeScale(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Baseline ? value * 0.82f : value;
         }
 
         public static float ResolveWarningAudioPitchScale(ChallengeThreatStage stage)
@@ -712,57 +538,22 @@ namespace CuteIssac.Room
 
         public static float ResolveWarningAudioPitchScale(string badgeLabel, ChallengeThreatStage stage)
         {
-            float basePitch = ResolveWarningAudioPitchScale(stage);
-            if (string.Equals(badgeLabel, "챌린지"))
-            {
-                return basePitch * 1.04f;
-            }
-
-            if (string.Equals(badgeLabel, "도전 페이스"))
-            {
-                return basePitch * 1.08f;
-            }
-
-            return basePitch;
+            float value = ResolveWarningAudioPitchScale(stage);
+            return ResolveBannerLayoutProfile(badgeLabel) == ChallengeBannerLayoutProfile.Pace ? value * 1.08f : value;
         }
 
-        public static ChallengeRoomStatusPresentation BuildFallbackRoomStatusPresentation(
-            RoomState roomState,
-            bool hasRewardContent)
+        public static ChallengeRoomStatusPresentation BuildFallbackRoomStatusPresentation(RoomState roomState, bool hasRewardContent)
         {
-            string detail = ResolveSharedChallengeFallbackDetailCopy(roomState, hasRewardContent);
-            switch (roomState)
+            string headline = roomState switch
             {
-                case RoomState.Combat:
-                    return new ChallengeRoomStatusPresentation(
-                        "챌린지",
-                        "\uB3C4\uC804 \uC804\uD22C \uC9C4\uD589 \uC911",
-                        detail,
-                        new Color(1f, 0.58f, 0.24f, 1f),
-                        "梨뚮┛吏");
-                case RoomState.Rewarded when hasRewardContent:
-                    return new ChallengeRoomStatusPresentation(
-                        "챌린지",
-                        "\uB3C4\uC804\uBC29 \uD074\uB9AC\uC5B4",
-                        detail,
-                        new Color(1f, 0.82f, 0.3f, 1f),
-                        "梨뚮┛吏");
-                default:
-                    return new ChallengeRoomStatusPresentation(
-                        "챌린지",
-                        "\uB3C4\uC804\uBC29",
-                        detail,
-                        new Color(1f, 0.72f, 0.34f, 1f),
-                        "梨뚮┛吏");
-            }
+                RoomState.Combat => "Challenge combat active",
+                RoomState.Rewarded when hasRewardContent => "Challenge room cleared",
+                _ => "Challenge room"
+            };
+            return new ChallengeRoomStatusPresentation(ChallengeBadge, headline, ResolveSharedChallengeFallbackDetailCopy(roomState, hasRewardContent), new Color(1f, 0.72f, 0.34f, 1f), "Combat Trial");
         }
 
-        public static void BuildFallbackRoomStatus(
-            RoomState roomState,
-            bool hasRewardContent,
-            out string headline,
-            out string detail,
-            out Color accentColor)
+        public static void BuildFallbackRoomStatus(RoomState roomState, bool hasRewardContent, out string headline, out string detail, out Color accentColor)
         {
             ChallengeRoomStatusPresentation presentation = BuildFallbackRoomStatusPresentation(roomState, hasRewardContent);
             headline = presentation.Headline;
@@ -770,45 +561,12 @@ namespace CuteIssac.Room
             accentColor = presentation.AccentColor;
         }
 
-        public static ChallengeRoomStatusPresentation BuildProgressStatusPresentation(
-            ChallengeClearRank liveRank,
-            float elapsedSeconds,
-            ChallengeRewardSettings challengeRewardSettings)
+        public static ChallengeRoomStatusPresentation BuildProgressStatusPresentation(ChallengeClearRank liveRank, float elapsedSeconds, ChallengeRewardSettings challengeRewardSettings)
         {
-            string detail = ResolveSharedPaceDetailCopy(liveRank, challengeRewardSettings, elapsedSeconds);
-            switch (liveRank)
-            {
-                case ChallengeClearRank.S:
-                    return new ChallengeRoomStatusPresentation(
-                        "도전 페이스",
-                        "\uB3C4\uC804 S \uD398\uC774\uC2A4",
-                        detail,
-                        new Color(1f, 0.8f, 0.28f, 1f),
-                        "理쒖긽 援ш컙");
-                case ChallengeClearRank.A:
-                    return new ChallengeRoomStatusPresentation(
-                        "도전 페이스",
-                        "\uB3C4\uC804 A \uD398\uC774\uC2A4",
-                        detail,
-                        new Color(1f, 0.58f, 0.24f, 1f),
-                        "회복 구간");
-                default:
-                    return new ChallengeRoomStatusPresentation(
-                        "도전 페이스",
-                        "\uB3C4\uC804 B \uD398\uC774\uC2A4",
-                        detail,
-                        new Color(0.92f, 0.42f, 0.2f, 1f),
-                        "위험 구간");
-            }
+            return new ChallengeRoomStatusPresentation(PaceBadge, $"Challenge {ResolveRankLabel(liveRank)} pace", ResolveSharedPaceDetailCopy(liveRank, challengeRewardSettings, elapsedSeconds), ResolvePaceBannerAccent(liveRank), ResolvePaceBannerEyebrow(ChallengeClearRank.None, liveRank));
         }
 
-        public static void BuildProgressStatus(
-            ChallengeClearRank liveRank,
-            float elapsedSeconds,
-            ChallengeRewardSettings challengeRewardSettings,
-            out string headline,
-            out string detail,
-            out Color accentColor)
+        public static void BuildProgressStatus(ChallengeClearRank liveRank, float elapsedSeconds, ChallengeRewardSettings challengeRewardSettings, out string headline, out string detail, out Color accentColor)
         {
             ChallengeRoomStatusPresentation presentation = BuildProgressStatusPresentation(liveRank, elapsedSeconds, challengeRewardSettings);
             headline = presentation.Headline;
@@ -816,24 +574,12 @@ namespace CuteIssac.Room
             accentColor = presentation.AccentColor;
         }
 
-        public static ChallengeRoomStatusPresentation BuildCombatStatusPresentation(
-            float elapsedSeconds,
-            bool usePaceBadge = false)
+        public static ChallengeRoomStatusPresentation BuildCombatStatusPresentation(float elapsedSeconds, bool usePaceBadge = false)
         {
-            string detail = ResolveSharedChallengeCombatDetailCopy(elapsedSeconds);
-            return new ChallengeRoomStatusPresentation(
-                usePaceBadge ? "도전 페이스" : "챌린지",
-                "\uB3C4\uC804 \uC804\uD22C",
-                detail,
-                new Color(1f, 0.58f, 0.24f, 1f),
-                usePaceBadge ? "회복 구간" : "梨뚮┛吏");
+            return new ChallengeRoomStatusPresentation(usePaceBadge ? PaceBadge : ChallengeBadge, "Challenge combat", ResolveSharedChallengeCombatDetailCopy(elapsedSeconds), new Color(1f, 0.58f, 0.24f, 1f), usePaceBadge ? "Recovery Window" : "Combat Trial");
         }
 
-        public static void BuildCombatStatus(
-            float elapsedSeconds,
-            out string headline,
-            out string detail,
-            out Color accentColor)
+        public static void BuildCombatStatus(float elapsedSeconds, out string headline, out string detail, out Color accentColor)
         {
             ChallengeRoomStatusPresentation presentation = BuildCombatStatusPresentation(elapsedSeconds);
             headline = presentation.Headline;
@@ -841,38 +587,12 @@ namespace CuteIssac.Room
             accentColor = presentation.AccentColor;
         }
 
-        public static ChallengeRoomStatusPresentation BuildClearStatusPresentation(
-            ChallengeClearRank clearRank,
-            bool usePaceBadge = false)
+        public static ChallengeRoomStatusPresentation BuildClearStatusPresentation(ChallengeClearRank clearRank, bool usePaceBadge = false)
         {
-            string headline = clearRank switch
-            {
-                ChallengeClearRank.S => "\uB3C4\uC804\uBC29 \uD074\uB9AC\uC5B4 \u00b7 S",
-                ChallengeClearRank.A => "\uB3C4\uC804\uBC29 \uD074\uB9AC\uC5B4 \u00b7 A",
-                ChallengeClearRank.B => "\uB3C4\uC804\uBC29 \uD074\uB9AC\uC5B4 \u00b7 B",
-                _ => "\uB3C4\uC804\uBC29 \uD074\uB9AC\uC5B4"
-            };
-
-            string detail = ResolveSharedChallengeClearDetailCopy(clearRank);
-
-            Color accentColor = clearRank == ChallengeClearRank.S
-                ? new Color(1f, 0.84f, 0.34f, 1f)
-                : new Color(1f, 0.72f, 0.34f, 1f);
-            return new ChallengeRoomStatusPresentation(
-                usePaceBadge ? "도전 페이스" : "챌린지",
-                headline,
-                detail,
-                accentColor,
-                usePaceBadge
-                    ? clearRank == ChallengeClearRank.S ? "理쒖긽 援ш컙" : clearRank == ChallengeClearRank.A ? "회복 구간" : "위험 구간"
-                    : "梨뚮┛吏");
+            return new ChallengeRoomStatusPresentation(usePaceBadge ? PaceBadge : ChallengeBadge, $"Challenge clear - {ResolveRankLabel(clearRank)}", ResolveSharedChallengeClearDetailCopy(clearRank), ResolvePaceBannerAccent(clearRank), usePaceBadge ? ResolvePaceBannerEyebrow(ChallengeClearRank.None, clearRank) : "Combat Trial");
         }
 
-        public static void BuildClearStatus(
-            ChallengeClearRank clearRank,
-            out string headline,
-            out string detail,
-            out Color accentColor)
+        public static void BuildClearStatus(ChallengeClearRank clearRank, out string headline, out string detail, out Color accentColor)
         {
             ChallengeRoomStatusPresentation presentation = BuildClearStatusPresentation(clearRank);
             headline = presentation.Headline;
@@ -884,75 +604,55 @@ namespace CuteIssac.Room
         {
             if (currentRank > previousRank)
             {
-                return currentRank switch
-                {
-                    ChallengeClearRank.S => "\uB3C4\uC804 \uD398\uC774\uC2A4 \uC0C1\uC2B9",
-                    ChallengeClearRank.A => "\uB3C4\uC804 \uD398\uC774\uC2A4 \uD68C\uBCF5",
-                    _ => "\uB3C4\uC804 \uC804\uD22C \uAC31\uC2E0"
-                };
+                return "Challenge pace improved";
             }
 
-            return currentRank switch
-            {
-                ChallengeClearRank.A => "\uB3C4\uC804 \uD398\uC774\uC2A4 \uD558\uB77D",
-                ChallengeClearRank.B => "\uB3C4\uC804 \uD398\uC774\uC2A4 \uACBD\uACE0",
-                _ => "\uB3C4\uC804 \uC804\uD22C \uACBD\uACE0"
-            };
+            return "Challenge pace warning";
         }
 
-        public static string ResolvePaceBannerSubtitle(
-            ChallengeClearRank currentRank,
-            ChallengeRewardSettings challengeRewardSettings,
-            float elapsedSeconds)
+        public static string ResolvePaceBannerSubtitle(ChallengeClearRank previousRank, ChallengeClearRank currentRank, float elapsedSeconds, ChallengeRewardSettings challengeRewardSettings)
         {
-            return ResolveSharedPaceDetailCopy(currentRank, challengeRewardSettings, elapsedSeconds);
+            return $"{ResolveRankLabel(currentRank)} pace at {FormatSeconds(elapsedSeconds)}";
         }
 
-        private static string ResolveSharedPaceDetailCopy(
-            ChallengeClearRank currentRank,
-            ChallengeRewardSettings challengeRewardSettings,
-            float elapsedSeconds)
+        public static string ResolvePaceBannerSubtitle(ChallengeClearRank currentRank, ChallengeRewardSettings challengeRewardSettings, float elapsedSeconds)
         {
-            return currentRank switch
-            {
-                ChallengeClearRank.S => $"S \uBCF4\uC0C1 \uAD6C\uAC04 \uC720\uC9C0 \u00b7 \uC804\uD22C \uC2DC\uAC04 {elapsedSeconds:0.0}s",
-                ChallengeClearRank.A => $"S \uBAA9\uD45C \uCD08\uACFC \u00b7 A \uBAA9\uD45C {challengeRewardSettings.ARankTimeSeconds:0}s\uAE4C\uC9C0 \uCD94\uAC00 \uBCF4\uC0C1",
-                _ => $"A \uBAA9\uD45C \uCD08\uACFC \u00b7 \uC804\uD22C \uC2DC\uAC04 {elapsedSeconds:0.0}s / \uAE30\uBCF8 \uBCF4\uC0C1 \uAD6C\uAC04"
-            };
+            return ResolvePaceBannerSubtitle(ChallengeClearRank.None, currentRank, elapsedSeconds, challengeRewardSettings);
+        }
+
+        private static string ResolveSharedPaceDetailCopy(ChallengeClearRank liveRank, ChallengeRewardSettings challengeRewardSettings, float elapsedSeconds)
+        {
+            return $"Current pace: {ResolveRankLabel(liveRank)} / {FormatSeconds(elapsedSeconds)}";
         }
 
         private static string ResolveSharedChallengeFallbackDetailCopy(RoomState roomState, bool hasRewardContent)
         {
-            return roomState switch
+            if (roomState == RoomState.Combat)
             {
-                RoomState.Combat => "\uACC4\uC18D \uC774\uB3D9\uD558\uBA70 \uBE48\uD2C8 \uACBD\uB85C\uB97C \uB9CC\uB4DC\uC138\uC694.",
-                RoomState.Rewarded when hasRewardContent => "\uBC29 \uC548\uC5D0 \uBCF4\uC0C1\uC774 \uC5F4\uB824 \uC788\uC2B5\uB2C8\uB2E4.",
-                _ => "\uC804\uD22C\uAC00 \uC2DC\uC791\uB418\uBA74 \uAC15\uD55C \uC555\uBC15\uC774 \uB4E4\uC5B4\uC635\uB2C8\uB2E4."
-            };
+                return "Clear the challenge encounter.";
+            }
+
+            return hasRewardContent ? "Claim the challenge reward." : "Challenge room discovered.";
         }
 
         private static string ResolveSharedChallengeCombatDetailCopy(float elapsedSeconds)
         {
-            return $"\uC804\uD22C {elapsedSeconds:0.0}s \u00b7 \uACC4\uC18D \uBC84\uD2F0\uC138\uC694";
+            return $"Challenge timer: {FormatSeconds(elapsedSeconds)}";
         }
 
         private static string ResolveSharedChallengeClearDetailCopy(ChallengeClearRank clearRank)
         {
-            return clearRank switch
-            {
-                ChallengeClearRank.S => "\uCD5C\uC0C1\uC704 \uBCF4\uC0C1\uC744 \uD655\uBCF4\uD588\uC2B5\uB2C8\uB2E4",
-                ChallengeClearRank.A => "\uCD94\uAC00 \uBCF4\uC0C1\uC744 \uD655\uBCF4\uD588\uC2B5\uB2C8\uB2E4",
-                _ => "\uBCF4\uC0C1\uC774 \uC5F4\uB824 \uC788\uC2B5\uB2C8\uB2E4"
-            };
+            return $"Clear rank: {ResolveRankLabel(clearRank)}";
         }
 
         public static Color ResolvePaceBannerAccent(ChallengeClearRank currentRank)
         {
             return currentRank switch
             {
-                ChallengeClearRank.S => new Color(1f, 0.8f, 0.28f, 1f),
-                ChallengeClearRank.A => new Color(1f, 0.58f, 0.24f, 1f),
-                _ => new Color(0.92f, 0.42f, 0.2f, 1f)
+                ChallengeClearRank.S => new Color(1f, 0.84f, 0.34f, 1f),
+                ChallengeClearRank.A => new Color(1f, 0.62f, 0.28f, 1f),
+                ChallengeClearRank.B => new Color(0.92f, 0.42f, 0.2f, 1f),
+                _ => new Color(1f, 0.72f, 0.34f, 1f)
             };
         }
 
@@ -960,69 +660,39 @@ namespace CuteIssac.Room
         {
             return currentRank switch
             {
-                ChallengeClearRank.S => 1.65f,
-                ChallengeClearRank.A => 1.55f,
-                _ => 1.5f
+                ChallengeClearRank.S => 1.45f,
+                ChallengeClearRank.A => 1.25f,
+                _ => 1.1f
             };
         }
 
         public static string ResolvePaceBannerEyebrow(ChallengeClearRank previousRank, ChallengeClearRank currentRank)
         {
-            if (currentRank > previousRank)
-            {
-                return currentRank switch
-                {
-                    ChallengeClearRank.S => "최상 구간",
-                    ChallengeClearRank.A => "회복 구간",
-                    _ => "회복 구간"
-                };
-            }
-
             return currentRank switch
             {
-                ChallengeClearRank.A => "속도 경고",
-                ChallengeClearRank.B => "위험 구간",
-                _ => "위험 구간"
+                ChallengeClearRank.S => "Top Pace",
+                ChallengeClearRank.A => "Recovery Window",
+                ChallengeClearRank.B => "Danger Window",
+                _ => "Challenge Pace"
             };
         }
 
         public static ChallengeThreatStage ResolvePaceBannerStage(ChallengeClearRank previousRank, ChallengeClearRank currentRank)
         {
-            return currentRank > previousRank
-                ? ChallengeThreatStage.Baseline
-                : ChallengeThreatStage.PromotionPressure;
+            return currentRank >= ChallengeClearRank.A ? ChallengeThreatStage.Baseline : ChallengeThreatStage.PromotionPressure;
         }
 
         public static string ResolvePaceFloatingLabel(ChallengeClearRank previousRank, ChallengeClearRank currentRank)
         {
-            if (currentRank > previousRank)
-            {
-                return currentRank switch
-                {
-                    ChallengeClearRank.S => "최상 유지",
-                    ChallengeClearRank.A => "페이스 회복",
-                    _ => "전열 회복"
-                };
-            }
-
-            return currentRank switch
-            {
-                ChallengeClearRank.A => "속도 저하",
-                ChallengeClearRank.B => "위험 구간",
-                _ => "전투 경고"
-            };
+            return currentRank > previousRank ? "+Pace" : "Pace";
         }
 
-        public static ChallengePaceBannerPresentation BuildPaceBannerPresentation(
-            ChallengeClearRank previousRank,
-            ChallengeClearRank currentRank,
-            ChallengeRewardSettings challengeRewardSettings,
-            float elapsedSeconds)
+        public static ChallengePaceBannerPresentation BuildPaceBannerPresentation(ChallengeClearRank previousRank, ChallengeClearRank currentRank, float elapsedSeconds, ChallengeRewardSettings challengeRewardSettings)
         {
             return new ChallengePaceBannerPresentation(
                 ResolvePaceBannerTitle(previousRank, currentRank),
-                ResolvePaceBannerSubtitle(currentRank, challengeRewardSettings, elapsedSeconds),
-                "도전 페이스",
+                ResolvePaceBannerSubtitle(previousRank, currentRank, elapsedSeconds, challengeRewardSettings),
+                PaceBadge,
                 ResolvePaceBannerEyebrow(previousRank, currentRank),
                 ResolvePaceFloatingLabel(previousRank, currentRank),
                 ResolvePaceBannerStage(previousRank, currentRank),
@@ -1030,182 +700,117 @@ namespace CuteIssac.Room
                 ResolvePaceBannerDuration(currentRank));
         }
 
-        public static ChallengeThreatPresentation Build(
-            int currentWave,
-            int totalWaves,
-            int enemyCount,
-            int guaranteedChampionCount,
-            float championChanceBonus)
+        public static ChallengePaceBannerPresentation BuildPaceBannerPresentation(ChallengeClearRank previousRank, ChallengeClearRank currentRank, ChallengeRewardSettings challengeRewardSettings, float elapsedSeconds)
         {
-            string waveSegment = totalWaves > 1
-                ? $"웨이브 {currentWave}/{totalWaves}"
-                : $"웨이브 {currentWave}";
-
-            if (guaranteedChampionCount >= 2)
-            {
-                return new ChallengeThreatPresentation(
-                    "엘리트 경보",
-                    "엘리트 압박 경보",
-                    "엘리트 경보",
-                    $"W{currentWave} 엘리트 압박",
-                    "확정 위협",
-                    ResolveSharedThreatDetailCopy(
-                        ChallengeThreatStage.ElitePressure,
-                        waveSegment,
-                        enemyCount,
-                        guaranteedChampionCount,
-                        championChanceBonus),
-                    $"엘{guaranteedChampionCount}+",
-                    $"엘리트 {guaranteedChampionCount}+",
-                    ChallengeThreatStage.ElitePressure,
-                    new Color(1f, 0.38f, 0.2f, 1f),
-                    2.1f);
-            }
-
-            if (guaranteedChampionCount >= 1)
-            {
-                return new ChallengeThreatPresentation(
-                    "엘리트 경보",
-                    "엘리트 증원 경보",
-                    "엘리트 경보",
-                    $"W{currentWave} 엘리트 증원",
-                    "증원 경보",
-                    ResolveSharedThreatDetailCopy(
-                        ChallengeThreatStage.EliteReinforcement,
-                        waveSegment,
-                        enemyCount,
-                        guaranteedChampionCount,
-                        championChanceBonus),
-                    $"엘{guaranteedChampionCount}+",
-                    $"엘리트 {guaranteedChampionCount}+",
-                    ChallengeThreatStage.EliteReinforcement,
-                    new Color(1f, 0.54f, 0.24f, 1f),
-                    1.95f);
-            }
-
-            if (championChanceBonus >= 0.18f)
-            {
-                string bonusLabel = $"+{championChanceBonus * 100f:0}%";
-                return new ChallengeThreatPresentation(
-                    "엘리트 경보",
-                    "승격 압박 경보",
-                    "승격 경보",
-                    $"W{currentWave} 승격 압박",
-                    "압박 경보",
-                    ResolveSharedThreatDetailCopy(
-                        ChallengeThreatStage.PromotionPressure,
-                        waveSegment,
-                        enemyCount,
-                        guaranteedChampionCount,
-                        championChanceBonus),
-                    bonusLabel,
-                    $"승격 {bonusLabel}",
-                    ChallengeThreatStage.PromotionPressure,
-                    new Color(1f, 0.48f, 0.18f, 1f),
-                    1.8f);
-            }
-
-            if (championChanceBonus > 0f)
-            {
-                string bonusLabel = $"+{championChanceBonus * 100f:0}%";
-                return new ChallengeThreatPresentation(
-                    "챌린지",
-                    $"도전 웨이브 {currentWave}",
-                    "도전 현황",
-                    $"W{currentWave} {bonusLabel}",
-                    "승격 예고",
-                    ResolveSharedThreatDetailCopy(
-                        ChallengeThreatStage.Baseline,
-                        waveSegment,
-                        enemyCount,
-                        guaranteedChampionCount,
-                        championChanceBonus),
-                    bonusLabel,
-                    $"승격 {bonusLabel}",
-                    ChallengeThreatStage.Baseline,
-                    new Color(0.94f, 0.38f, 0.18f, 1f),
-                    1.65f);
-            }
-
-            return new ChallengeThreatPresentation(
-                "챌린지",
-                $"도전 웨이브 {currentWave}",
-                "도전 현황",
-                $"W{currentWave} 적{enemyCount}",
-                "웨이브 예고",
-                ResolveSharedThreatDetailCopy(
-                    ChallengeThreatStage.Baseline,
-                    waveSegment,
-                    enemyCount,
-                    guaranteedChampionCount,
-                    championChanceBonus),
-                $"적{enemyCount}",
-                "추가 증원",
-                ChallengeThreatStage.Baseline,
-                new Color(0.94f, 0.38f, 0.18f, 1f),
-                1.65f);
+            return BuildPaceBannerPresentation(previousRank, currentRank, elapsedSeconds, challengeRewardSettings);
         }
 
-        public static ChallengeWaveIntermissionPresentation BuildWaveIntermission(
-            int clearedWave,
-            int totalWaves,
-            int nextEnemyCount,
-            int nextGuaranteedChampionCount,
-            float nextChampionChanceBonus)
+        public static ChallengeThreatPresentation Build(ChallengePressureTier pressureTier, int waveIndex, int waveCount, int enemyCount, int guaranteedChampionCount, Color accentColor, float bannerDuration)
         {
-            string floatingLabel;
-            Color accentColor;
-            float duration;
-
-            if (nextGuaranteedChampionCount >= 2)
+            ChallengeThreatStage stage = pressureTier switch
             {
-                floatingLabel = $"W{clearedWave} 확보 · 엘리트 경계";
-                accentColor = new Color(1f, 0.78f, 0.38f, 1f);
-                duration = 0.98f;
-            }
-            else if (nextGuaranteedChampionCount >= 1 || nextChampionChanceBonus >= 0.18f)
-            {
-                floatingLabel = $"W{clearedWave} 확보 · 압박 상승";
-                accentColor = new Color(1f, 0.84f, 0.42f, 1f);
-                duration = 0.92f;
-            }
-            else if (clearedWave < totalWaves)
-            {
-                floatingLabel = $"W{clearedWave} 확보 · 다음 {nextEnemyCount}";
-                accentColor = new Color(0.72f, 1f, 0.82f, 1f);
-                duration = 0.86f;
-            }
-            else
-            {
-                floatingLabel = $"W{clearedWave} 확보";
-                accentColor = new Color(0.72f, 1f, 0.82f, 1f);
-                duration = 0.82f;
-            }
-
-            return new ChallengeWaveIntermissionPresentation(
-                floatingLabel,
-                accentColor,
-                duration,
-                GameAudioEventType.ItemCollected,
-                0.34f,
-                1.08f);
-        }
-
-        private static string ResolveSharedThreatDetailCopy(
-            ChallengeThreatStage stage,
-            string waveSegment,
-            int enemyCount,
-            int guaranteedChampionCount,
-            float championChanceBonus)
-        {
-            return stage switch
-            {
-                ChallengeThreatStage.ElitePressure => $"{waveSegment} · 적 {enemyCount} · 엘리트 {Mathf.Max(2, guaranteedChampionCount)}+ 확정",
-                ChallengeThreatStage.EliteReinforcement => $"{waveSegment} · 적 {enemyCount} · 엘리트 {Mathf.Max(1, guaranteedChampionCount)}+ 보장",
-                ChallengeThreatStage.PromotionPressure => $"{waveSegment} · 적 {enemyCount} · 승격 +{championChanceBonus * 100f:0}% · 압박 높음",
-                _ when championChanceBonus > 0f => $"{waveSegment} · 적 {enemyCount} · 승격 +{championChanceBonus * 100f:0}%",
-                _ => $"{waveSegment} · 적 {enemyCount} · 압박 증가"
+                ChallengePressureTier.Deadly => ChallengeThreatStage.ElitePressure,
+                ChallengePressureTier.Elite => ChallengeThreatStage.EliteReinforcement,
+                ChallengePressureTier.Reinforced => ChallengeThreatStage.PromotionPressure,
+                _ => ChallengeThreatStage.Baseline
             };
+            string badge = stage >= ChallengeThreatStage.EliteReinforcement ? EliteBadge : ChallengeBadge;
+            string wave = $"Wave {Mathf.Max(1, waveIndex)}/{Mathf.Max(1, waveCount)}";
+            string elite = guaranteedChampionCount > 0 ? $"Elite x{guaranteedChampionCount}" : "Standard wave";
+            return new ChallengeThreatPresentation(
+                badge,
+                stage == ChallengeThreatStage.Baseline ? "Challenge wave" : "Challenge pressure",
+                wave,
+                $"Enemies x{Mathf.Max(0, enemyCount)}",
+                elite,
+                ResolveSharedThreatDetailCopy(waveIndex, waveCount, enemyCount, guaranteedChampionCount),
+                pressureTier.ToString(),
+                stage == ChallengeThreatStage.Baseline ? "Wave" : "Warning",
+                stage,
+                accentColor,
+                bannerDuration);
+        }
+
+        public static ChallengeThreatPresentation Build(int waveIndex, int waveCount, int enemyCount, int guaranteedChampionCount, float championChanceBonus)
+        {
+            ChallengePressureTier pressureTier = ResolvePressureTier(enemyCount, guaranteedChampionCount, championChanceBonus);
+            Color accentColor = pressureTier switch
+            {
+                ChallengePressureTier.Deadly => new Color(1f, 0.22f, 0.16f, 1f),
+                ChallengePressureTier.Elite => new Color(1f, 0.42f, 0.18f, 1f),
+                ChallengePressureTier.Reinforced => new Color(1f, 0.62f, 0.26f, 1f),
+                _ => new Color(1f, 0.72f, 0.34f, 1f)
+            };
+            return Build(pressureTier, waveIndex, waveCount, enemyCount, guaranteedChampionCount, accentColor, 1.35f);
+        }
+
+        public static ChallengeWaveIntermissionPresentation BuildWaveIntermission(int waveIndex, int waveCount, float duration)
+        {
+            return new ChallengeWaveIntermissionPresentation(
+                $"Wave {Mathf.Max(1, waveIndex)}/{Mathf.Max(1, waveCount)}",
+                new Color(1f, 0.72f, 0.34f, 1f),
+                Mathf.Max(0.1f, duration),
+                GameAudioEventType.RewardSpawned,
+                0.45f,
+                1f);
+        }
+
+        public static ChallengeWaveIntermissionPresentation BuildWaveIntermission(int clearedWave, int totalWaves, int nextEnemyCount, int nextGuaranteedChampionCount, float nextChampionChanceBonus)
+        {
+            ChallengePressureTier pressureTier = ResolvePressureTier(nextEnemyCount, nextGuaranteedChampionCount, nextChampionChanceBonus);
+            Color accentColor = pressureTier >= ChallengePressureTier.Elite
+                ? new Color(1f, 0.42f, 0.18f, 1f)
+                : new Color(1f, 0.72f, 0.34f, 1f);
+            return new ChallengeWaveIntermissionPresentation(
+                $"Next wave {Mathf.Min(Mathf.Max(1, clearedWave + 1), Mathf.Max(1, totalWaves))}/{Mathf.Max(1, totalWaves)}",
+                accentColor,
+                0.9f,
+                GameAudioEventType.RewardSpawned,
+                0.45f,
+                pressureTier >= ChallengePressureTier.Elite ? 1.08f : 1f);
+        }
+
+        private static ChallengePressureTier ResolvePressureTier(int enemyCount, int guaranteedChampionCount, float championChanceBonus)
+        {
+            if (guaranteedChampionCount > 0 && championChanceBonus >= 0.5f)
+            {
+                return ChallengePressureTier.Deadly;
+            }
+
+            if (guaranteedChampionCount > 0)
+            {
+                return ChallengePressureTier.Elite;
+            }
+
+            if (championChanceBonus > 0f || enemyCount >= 6)
+            {
+                return ChallengePressureTier.Reinforced;
+            }
+
+            return ChallengePressureTier.None;
+        }
+
+        private static string ResolveSharedThreatDetailCopy(int waveIndex, int waveCount, int enemyCount, int guaranteedChampionCount)
+        {
+            string elite = guaranteedChampionCount > 0 ? $", elite x{guaranteedChampionCount}" : string.Empty;
+            return $"Wave {Mathf.Max(1, waveIndex)}/{Mathf.Max(1, waveCount)}, enemies x{Mathf.Max(0, enemyCount)}{elite}";
+        }
+
+        private static string ResolveRankLabel(ChallengeClearRank rank)
+        {
+            return rank switch
+            {
+                ChallengeClearRank.S => "S",
+                ChallengeClearRank.A => "A",
+                ChallengeClearRank.B => "B",
+                _ => "-"
+            };
+        }
+
+        private static string FormatSeconds(float seconds)
+        {
+            int totalSeconds = Mathf.Max(0, Mathf.RoundToInt(seconds));
+            return $"{totalSeconds / 60:00}:{totalSeconds % 60:00}";
         }
     }
 }

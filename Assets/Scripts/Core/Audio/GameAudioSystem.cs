@@ -81,11 +81,16 @@ namespace CuteIssac.Core.Audio
         [SerializeField] [Min(1)] private int initialOneShotPoolSize = 12;
         [SerializeField] [Min(1)] private int maximumOneShotSources = 32;
         [SerializeField] private bool logMissingCuesInEditor = true;
+        [SerializeField] private bool applyMusicVolumeToLoopingSources = true;
 
         private readonly Dictionary<GameAudioEventType, AudioCueData> _cueLookup = new();
         private readonly Dictionary<GameAudioEventType, AudioClip[]> _runtimeClipLookup = new();
         private readonly List<AudioSource> _oneShotSources = new();
         private readonly List<OneShotPlaybackState> _oneShotStates = new();
+        private readonly List<AudioSource> _musicSources = new();
+        private readonly List<float> _musicSourceBaseVolumes = new();
+        private float _musicVolume = 1f;
+        private float _sfxVolume = 1f;
 
         private struct OneShotPlaybackState
         {
@@ -98,12 +103,14 @@ namespace CuteIssac.Core.Audio
         {
             RebuildLookup();
             WarmOneShotPool();
+            ApplyGlobalVolumes(s_globalMusicVolume, s_globalSfxVolume);
         }
 
         private void OnEnable()
         {
             GameAudioEvents.Requested += HandleAudioRequested;
             GameAudioEvents.StopRequested += HandleAudioStopRequested;
+            ApplyGlobalVolumes(s_globalMusicVolume, s_globalSfxVolume);
         }
 
         private void OnDisable()
@@ -170,7 +177,7 @@ namespace CuteIssac.Core.Audio
             audioSource.transform.position = ResolvePlaybackPosition(cueData, request);
             audioSource.clip = clip;
             audioSource.outputAudioMixerGroup = cueData.OutputMixerGroup;
-            audioSource.volume = cueData.Volume * Mathf.Max(0f, request.VolumeScale);
+            audioSource.volume = cueData.Volume * Mathf.Max(0f, request.VolumeScale) * _sfxVolume;
             audioSource.pitch = Mathf.Max(0.05f, cueData.GetPitch() * request.PitchScale);
             audioSource.spatialBlend = cueData.PlayInWorldSpace && request.UseWorldPosition ? cueData.SpatialBlend : 0f;
             audioSource.minDistance = cueData.MinDistance;
@@ -205,7 +212,7 @@ namespace CuteIssac.Core.Audio
             audioSource.transform.position = ResolveRuntimePlaybackPosition(runtimeCue, request);
             audioSource.clip = clip;
             audioSource.outputAudioMixerGroup = null;
-            audioSource.volume = runtimeCue.Volume * Mathf.Max(0f, request.VolumeScale);
+            audioSource.volume = runtimeCue.Volume * Mathf.Max(0f, request.VolumeScale) * _sfxVolume;
             audioSource.pitch = Mathf.Max(0.05f, runtimeCue.GetPitch() * request.PitchScale);
             audioSource.spatialBlend = runtimeCue.PlayInWorldSpace && request.UseWorldPosition ? runtimeCue.SpatialBlend : 0f;
             audioSource.minDistance = 1f;
@@ -401,6 +408,70 @@ namespace CuteIssac.Core.Audio
                 }
 
                 _cueLookup[cueData.EventType] = cueData;
+            }
+        }
+
+        private static float s_globalMusicVolume = 1f;
+        private static float s_globalSfxVolume = 1f;
+
+        public static void SetGlobalVolumes(float musicVolume, float sfxVolume)
+        {
+            s_globalMusicVolume = Mathf.Clamp01(musicVolume);
+            s_globalSfxVolume = Mathf.Clamp01(sfxVolume);
+
+            GameAudioSystem[] systems = FindObjectsByType<GameAudioSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int index = 0; index < systems.Length; index++)
+            {
+                if (systems[index] != null)
+                {
+                    systems[index].ApplyGlobalVolumes(s_globalMusicVolume, s_globalSfxVolume);
+                }
+            }
+        }
+
+        private void ApplyGlobalVolumes(float musicVolume, float sfxVolume)
+        {
+            float previousMusicVolume = Mathf.Max(0.0001f, _musicVolume);
+            _musicVolume = Mathf.Clamp01(musicVolume);
+            _sfxVolume = Mathf.Clamp01(sfxVolume);
+            ApplyMusicVolume(previousMusicVolume);
+        }
+
+        private void ApplyMusicVolume(float previousMusicVolume)
+        {
+            if (!applyMusicVolumeToLoopingSources)
+            {
+                return;
+            }
+
+            RefreshMusicSources(previousMusicVolume);
+
+            for (int index = 0; index < _musicSources.Count; index++)
+            {
+                AudioSource source = _musicSources[index];
+                if (source != null)
+                {
+                    source.volume = _musicSourceBaseVolumes[index] * _musicVolume;
+                }
+            }
+        }
+
+        private void RefreshMusicSources(float previousMusicVolume)
+        {
+            _musicSources.Clear();
+            _musicSourceBaseVolumes.Clear();
+
+            AudioSource[] sources = FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int index = 0; index < sources.Length; index++)
+            {
+                AudioSource source = sources[index];
+                if (source == null || !source.loop || _oneShotSources.Contains(source))
+                {
+                    continue;
+                }
+
+                _musicSources.Add(source);
+                _musicSourceBaseVolumes.Add(Mathf.Clamp01(source.volume / Mathf.Max(0.0001f, previousMusicVolume)));
             }
         }
 

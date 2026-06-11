@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Save;
 using CuteIssac.Data.Dungeon;
@@ -20,7 +20,8 @@ namespace CuteIssac.Core.Run
         [Header("References")]
         [SerializeField] private GameSaveSystem gameSaveSystem;
         [SerializeField] private RunManager runManager;
-        [SerializeField] private StartingBuildManager startingBuildManager;
+        [SerializeField] private CharacterProfileManager characterProfileManager;
+        [SerializeField] private RunSaveSystem runSaveSystem;
         [SerializeField] private PlayerInventory playerInventory;
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private PlayerHealth playerHealth;
@@ -87,24 +88,31 @@ namespace CuteIssac.Core.Run
 
             if (gameSaveSystem == null || runManager == null)
             {
-                SetRestoreReportHeader("런 복원", "사용 불가");
+                SetRestoreReportHeader("Run Restore", "Unavailable");
                 return false;
             }
 
             if (!gameSaveSystem.TryLoadRunSnapshot(out RunSaveData saveData) || !IsRestorable(saveData))
             {
-                SetRestoreReportHeader("런 복원", "복원 가능한 저장이 없습니다");
+                SetRestoreReportHeader("Run Restore", "No restorable run save");
                 return false;
             }
 
-            startingBuildManager?.SuppressNextRunStartLoadout();
+            characterProfileManager?.SuppressNextRunStartProfile();
+            if (!string.IsNullOrWhiteSpace(saveData.SelectedCharacterId))
+            {
+                characterProfileManager?.TrySelectCharacter(saveData.SelectedCharacterId);
+            }
+
             _pendingRestoreSaveData = saveData;
-            SetRestoreReportHeader("런 복원", "복원 준비 중");
+            SetRestoreReportHeader("Run Restore", "Preparing restore");
             _lastRestoreReport.FloorIndex = saveData.CurrentFloorIndex;
             _lastRestoreReport.RoomId = saveData.CurrentRoomId;
             runManager.StartRestoredRun(saveData);
             ApplySavedPlayerState(saveData);
+            runSaveSystem?.SaveCurrentRunNow();
             return true;
+
         }
 
         private bool IsRestorable(RunSaveData saveData)
@@ -417,8 +425,8 @@ namespace CuteIssac.Core.Run
             if (ShouldAnnounceRunResume())
             {
                 GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                    "런 복원 완료",
-                    $"{Mathf.Max(1, floorIndex)}층",
+                    "Run Restored",
+                    $"Floor {Mathf.Max(1, floorIndex)}",
                     runResumeColor,
                     resumeDuration));
             }
@@ -431,8 +439,8 @@ namespace CuteIssac.Core.Run
             if (restartedEncounter)
             {
                 GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                    "전투 재시작",
-                    "현재 방",
+                    "Encounter Reset",
+                    "Current room",
                     currentRoomPolicyColor,
                     currentRoomPolicyDuration));
                 return;
@@ -441,16 +449,19 @@ namespace CuteIssac.Core.Run
             if (returnedToStartRoom)
             {
                 GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
-                    "안전 복귀",
-                    "시작 방",
+                    "Safe Return",
+                    "Start room",
                     runResumeColor,
                     currentRoomPolicyDuration));
             }
+
+            return;
+
         }
 
         private void UpdateLastRestoreSummary(int floorIndex, bool restartedEncounter, bool returnedToStartRoom)
         {
-            SetRestoreReportHeader("런 복원", "복원 완료");
+            SetRestoreReportHeader("Run Restore", "Restore complete");
             _lastRestoreReport.FloorIndex = Mathf.Max(1, floorIndex);
             _lastRestoreReport.RoomId = _pendingRestoreSaveData != null ? _pendingRestoreSaveData.CurrentRoomId : string.Empty;
             _lastRestoreReport.ActiveItemId = _pendingEquippedActiveItemId;
@@ -724,9 +735,14 @@ namespace CuteIssac.Core.Run
                 runManager = GetComponent<RunManager>();
             }
 
-            if (startingBuildManager == null)
+            if (characterProfileManager == null)
             {
-                startingBuildManager = GetComponent<StartingBuildManager>();
+                characterProfileManager = GetComponent<CharacterProfileManager>();
+            }
+
+            if (runSaveSystem == null)
+            {
+                runSaveSystem = GetComponent<RunSaveSystem>();
             }
 
             if (runItemPoolService == null)

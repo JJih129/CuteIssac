@@ -12,15 +12,15 @@ namespace CuteIssac.Core.Run
         [SerializeField] [Min(1)] private int recentOfferMemory = 8;
         [SerializeField] [Min(1)] private int recentCategoryMemory = 4;
 
-        private readonly HashSet<string> _ownedItemIds = new();
-        private readonly HashSet<string> _offeredItemIds = new();
-        private readonly HashSet<string> _recentOfferedItemIds = new();
+        private readonly HashSet<string> _ownedItemIds = new(System.StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _offeredItemIds = new(System.StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _recentOfferedItemIds = new(System.StringComparer.OrdinalIgnoreCase);
         private readonly Queue<string> _recentOfferedQueue = new();
-        private readonly Dictionary<string, int> _recentOfferedItemCounts = new();
+        private readonly Dictionary<string, int> _recentOfferedItemCounts = new(System.StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<ItemCategory> _recentOfferedCategories = new();
         private readonly Queue<ItemCategory> _recentOfferedCategoryQueue = new();
         private readonly Dictionary<ItemCategory, int> _recentOfferedCategoryCounts = new();
-        private readonly HashSet<string> _unlockedItemKeys = new();
+        private readonly HashSet<string> _unlockedItemKeys = new(System.StringComparer.OrdinalIgnoreCase);
 
         public ItemPoolSelectionContext BuildSelectionContext(RoomType roomType, IReadOnlyCollection<string> excludedItemIds = null)
         {
@@ -90,6 +90,11 @@ namespace CuteIssac.Core.Run
             {
                 _unlockedItemKeys.Add(unlockKey);
             }
+        }
+
+        public void ClearUnlocks()
+        {
+            _unlockedItemKeys.Clear();
         }
 
         private void Awake()

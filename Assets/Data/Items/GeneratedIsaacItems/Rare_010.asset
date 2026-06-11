@@ -30,8 +30,8 @@ MonoBehaviour:
   description: Shots gain laser properties. Raises base damage. Improves fire rate.
   icon: {fileID: 0}
   rarity: 2
-  unlockedByDefault: 1
-  unlockKey: 
+  unlockedByDefault: 0
+  unlockKey: unlock.item.challenge_cache
   itemTags: 0100000002000000
   statModifiers: []
   projectileModifiers: []

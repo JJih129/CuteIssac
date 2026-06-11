@@ -30,8 +30,8 @@ MonoBehaviour:
   description: Raises base damage.
   icon: {fileID: 0}
   rarity: 1
-  unlockedByDefault: 1
-  unlockKey: 
+  unlockedByDefault: 0
+  unlockKey: unlock.item.macaron_sweeper
   itemTags: 01000000
   statModifiers: []
   projectileModifiers: []

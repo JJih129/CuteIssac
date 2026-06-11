@@ -57,6 +57,11 @@ namespace CuteIssac.Dungeon
 
         public DungeonInstantiationResult GenerateAndInstantiateDungeon(FloorConfig overrideFloorConfig, int seed)
         {
+            return GenerateAndInstantiateDungeon(overrideFloorConfig, seed, null);
+        }
+
+        public DungeonInstantiationResult GenerateAndInstantiateDungeon(FloorConfig overrideFloorConfig, int seed, RunContext runContext)
+        {
             ResolveReferences();
 
             if (overrideFloorConfig == null)
@@ -80,7 +85,7 @@ namespace CuteIssac.Dungeon
             }
 
             RoomGraphBuilder builder = new();
-            LastGeneratedMap = builder.Build(overrideFloorConfig, seed);
+            LastGeneratedMap = builder.Build(overrideFloorConfig, seed, runContext);
 
             if (LastGeneratedMap == null)
             {

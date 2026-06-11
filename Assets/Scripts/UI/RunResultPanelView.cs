@@ -34,6 +34,8 @@ namespace CuteIssac.UI
         [SerializeField] private Text actionHintText;
         [SerializeField] private Button restartButton;
         [SerializeField] private Text restartButtonText;
+        [SerializeField] private Button mainMenuButton;
+        [SerializeField] private Text mainMenuButtonText;
 
         [Header("Theme")]
         [SerializeField] private Color dimColor = new(0f, 0f, 0f, 0.84f);
@@ -55,6 +57,7 @@ namespace CuteIssac.UI
         [SerializeField] [Min(1f)] private float selectedButtonScale = 1.03f;
 
         public Button RestartButton => restartButton;
+        public Button MainMenuButton => mainMenuButton;
 
         public void EnsureRuntimeBaseline(RectTransform parent, Font font)
         {
@@ -109,11 +112,12 @@ namespace CuteIssac.UI
             keysValueText = EnsureStatCard(detailGridRoot, "KeysCard", "\uC5F4\uC1E0", keysValueText, font, 18, 34);
             bombsValueText = EnsureStatCard(detailGridRoot, "BombsCard", "\uD3ED\uD0C4", bombsValueText, font, 18, 34);
 
-            RectTransform actionSection = EnsureSectionRoot(cardRoot, "ActionSection", out actionSectionImage, new Color(1f, 1f, 1f, 0.06f), 14f, new RectOffset(24, 24, 22, 24), 188f);
+            RectTransform actionSection = EnsureSectionRoot(cardRoot, "ActionSection", out actionSectionImage, new Color(1f, 1f, 1f, 0.06f), 14f, new RectOffset(24, 24, 22, 24), 318f);
             actionHeaderText = EnsureText(actionSection, "ActionHeader", actionHeaderText, font, 22, FontStyle.Bold, TextAnchor.MiddleCenter, 26f);
-            actionHintText = EnsureText(actionSection, "ActionHint", actionHintText, font, 24, FontStyle.Normal, TextAnchor.UpperCenter, 56f, true);
+            actionHintText = EnsureText(actionSection, "ActionHint", actionHintText, font, 22, FontStyle.Normal, TextAnchor.UpperCenter, 112f, true);
             actionHintText.lineSpacing = 1.08f;
             restartButton = EnsureButton(actionSection, "RestartButton", restartButton, ref restartButtonText, font);
+            mainMenuButton = EnsureButton(actionSection, "MainMenuButton", mainMenuButton, ref mainMenuButtonText, font);
 
             ApplyTextDefaults(font);
             Hide();
@@ -166,9 +170,7 @@ namespace CuteIssac.UI
             SetText(summaryHeaderText, "\uACB0\uACFC \uC694\uC57D", sectionHeaderColor);
             SetText(detailHeaderText, "\uC138\uBD80 \uAE30\uB85D", sectionHeaderColor);
             SetText(actionHeaderText, "\uB2E4\uC74C \uD589\uB3D9", sectionHeaderColor);
-            SetText(actionHintText, string.IsNullOrWhiteSpace(actionHint)
-                ? "\uC900\uBE44\uAC00 \uB418\uBA74 \uC0C8 \uB7F0\uC744 \uC2DC\uC791\uD558\uC138\uC694."
-                : actionHint, hintColor);
+            SetText(actionHintText, BuildResultDetailText(summary, actionHint), hintColor);
 
             SetStatValue(itemsValueText, summary.CollectedItemCount);
             SetStatValue(roomsValueText, summary.ClearedRoomCount);
@@ -184,20 +186,20 @@ namespace CuteIssac.UI
                 restartButtonText.color = buttonTextColor;
             }
 
+            if (mainMenuButtonText != null)
+            {
+                mainMenuButtonText.text = "MAIN MENU";
+                mainMenuButtonText.color = buttonTextColor;
+            }
+
             if (restartButton != null)
             {
-                if (restartButton.targetGraphic is Image buttonImage)
-                {
-                    buttonImage.color = buttonColor;
-                }
+                ApplyButtonColors(restartButton);
+            }
 
-                ColorBlock colors = restartButton.colors;
-                colors.normalColor = buttonColor;
-                colors.highlightedColor = new Color(0.31f, 0.25f, 0.19f, 0.98f);
-                colors.pressedColor = new Color(0.17f, 0.13f, 0.1f, 0.98f);
-                colors.selectedColor = selectedButtonColor;
-                colors.disabledColor = new Color(0.2f, 0.2f, 0.2f, 0.65f);
-                restartButton.colors = colors;
+            if (mainMenuButton != null)
+            {
+                ApplyButtonColors(mainMenuButton);
             }
 
             RefreshSelectionState(false);
@@ -223,6 +225,21 @@ namespace CuteIssac.UI
             if (restartAction != null)
             {
                 restartButton.onClick.AddListener(restartAction);
+            }
+        }
+
+        public void BindMainMenuAction(UnityAction mainMenuAction)
+        {
+            if (mainMenuButton == null)
+            {
+                return;
+            }
+
+            mainMenuButton.onClick.RemoveAllListeners();
+
+            if (mainMenuAction != null)
+            {
+                mainMenuButton.onClick.AddListener(mainMenuAction);
             }
         }
 
@@ -265,7 +282,7 @@ namespace CuteIssac.UI
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = new Vector2(1020f, 760f);
+            rect.sizeDelta = new Vector2(1040f, 1040f);
             rect.localScale = Vector3.one;
 
             frameImage = cardObject.GetComponent<Image>() ?? cardObject.AddComponent<Image>();
@@ -533,7 +550,8 @@ namespace CuteIssac.UI
                 keysValueText,
                 bombsValueText,
                 actionHintText,
-                restartButtonText
+                restartButtonText,
+                mainMenuButtonText
             };
 
             for (int index = 0; index < texts.Length; index++)
@@ -598,6 +616,46 @@ namespace CuteIssac.UI
                 RunEndReason.Abandoned => "\uB7F0 \uC911\uB2E8",
                 _ => "\uB7F0 \uACB0\uACFC"
             };
+        }
+
+        private static string BuildResultDetailText(RunResultSummary summary, string actionHint)
+        {
+            string character = string.IsNullOrWhiteSpace(summary.CharacterName) ? "Default" : summary.CharacterName;
+            int minutes = Mathf.FloorToInt(summary.RunSeconds / 60f);
+            int seconds = Mathf.FloorToInt(summary.RunSeconds % 60f);
+            string unlocks = string.IsNullOrWhiteSpace(summary.NewUnlocksText) ? "No new unlocks" : summary.NewUnlocksText;
+            string clearMarks = string.IsNullOrWhiteSpace(summary.NewClearMarksText) ? "No new clear marks" : summary.NewClearMarksText;
+            string items = string.IsNullOrWhiteSpace(summary.AcquiredItemsText) ? "None" : summary.AcquiredItemsText;
+            string achievements = string.IsNullOrWhiteSpace(summary.NewAchievementsText) ? "No new achievements" : summary.NewAchievementsText;
+            string challenge = string.IsNullOrWhiteSpace(summary.ChallengeSummaryText) ? "No challenge rank" : summary.ChallengeSummaryText;
+            string hint = string.IsNullOrWhiteSpace(actionHint) ? "Choose the next action." : actionHint;
+            string mode = summary.IsHardMode ? "Hard" : "Normal";
+            return $"{character}  {mode}  {minutes:00}:{seconds:00}  F{summary.ReachedFloor}  Rooms {summary.ClearedRoomCount}/{summary.ResolvedRoomCount}  Kills {summary.EnemyKillCount}  Coins {summary.Coins}  Keys {summary.Keys}  Bombs {summary.Bombs}\n" +
+                $"Meta: Runs {summary.TotalRuns}  Wins {summary.TotalWins}  Defeats {summary.TotalDefeats}  Best F{summary.BestFloor}  Streak {summary.CurrentWinStreak}/{summary.BestWinStreak}\n" +
+                $"Items: {items}\n" +
+                $"Challenge: {challenge}  Marks: {clearMarks}\n" +
+                $"Achievements: {achievements}  Unlocks: {unlocks}. Continue unavailable. {hint}";
+        }
+
+        private void ApplyButtonColors(Button button)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            if (button.targetGraphic is Image buttonImage)
+            {
+                buttonImage.color = buttonColor;
+            }
+
+            ColorBlock colors = button.colors;
+            colors.normalColor = buttonColor;
+            colors.highlightedColor = new Color(0.31f, 0.25f, 0.19f, 0.98f);
+            colors.pressedColor = new Color(0.17f, 0.13f, 0.1f, 0.98f);
+            colors.selectedColor = selectedButtonColor;
+            colors.disabledColor = new Color(0.2f, 0.2f, 0.2f, 0.65f);
+            button.colors = colors;
         }
 
         private static void StretchToParent(RectTransform rectTransform)
@@ -698,6 +756,8 @@ namespace CuteIssac.UI
             actionHintText = null;
             restartButton = null;
             restartButtonText = null;
+            mainMenuButton = null;
+            mainMenuButtonText = null;
         }
 
         private static void ClearChildren(RectTransform root)

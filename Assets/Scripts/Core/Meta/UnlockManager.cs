@@ -20,7 +20,9 @@ namespace CuteIssac.Core.Meta
         [Header("References")]
         [SerializeField] private RunManager runManager;
         [SerializeField] private RunItemPoolService runItemPoolService;
+        [SerializeField] private MetaProgressionManager metaProgressionManager;
         [SerializeField] private PlayerItemManager playerItemManager;
+        [SerializeField] private PlayerActiveItemController playerActiveItemController;
 
         [Header("Data")]
         [SerializeField] private string unlockResourcePath = "Unlocks";
@@ -99,6 +101,23 @@ namespace CuteIssac.Core.Meta
             return IsUnlockedInternal(unlockKey, false);
         }
 
+        public bool GrantUnlockKey(string unlockKey)
+        {
+            if (string.IsNullOrWhiteSpace(unlockKey))
+            {
+                return false;
+            }
+
+            if (!_unlockedKeys.Add(unlockKey))
+            {
+                return false;
+            }
+
+            SyncRuntimeUnlocks();
+            UnlockStateChanged?.Invoke();
+            return true;
+        }
+
         public UnlockSaveData ExportSaveData()
         {
             UnlockSaveData saveData = new();
@@ -138,6 +157,12 @@ namespace CuteIssac.Core.Meta
 
             GameplayRuntimeEvents.EnemyKilled -= HandleEnemyKilled;
             GameplayRuntimeEvents.EnemyKilled += HandleEnemyKilled;
+
+            if (metaProgressionManager != null)
+            {
+                metaProgressionManager.ProgressionChanged -= HandleProgressionChanged;
+                metaProgressionManager.ProgressionChanged += HandleProgressionChanged;
+            }
         }
 
         private void Unsubscribe()
@@ -149,6 +174,11 @@ namespace CuteIssac.Core.Meta
             }
 
             GameplayRuntimeEvents.EnemyKilled -= HandleEnemyKilled;
+
+            if (metaProgressionManager != null)
+            {
+                metaProgressionManager.ProgressionChanged -= HandleProgressionChanged;
+            }
         }
 
         private void HandleRunStarted(RunContext context)
@@ -170,7 +200,9 @@ namespace CuteIssac.Core.Meta
             {
                 UnlockData definition = _unlockDefinitions[index];
 
-                if (definition == null || definition.ConditionType != UnlockConditionType.BossKill)
+                if (definition == null ||
+                    (definition.ConditionType != UnlockConditionType.BossKill &&
+                     definition.ConditionType != UnlockConditionType.CumulativeEnemyKillCount))
                 {
                     continue;
                 }
@@ -180,7 +212,10 @@ namespace CuteIssac.Core.Meta
                     continue;
                 }
 
-                TryUnlock(definition, $"boss kill {signal.EnemyId}");
+                if (definition.ConditionType == UnlockConditionType.BossKill)
+                {
+                    TryUnlock(definition, $"enemy kill {signal.EnemyId}");
+                }
             }
         }
 
@@ -195,7 +230,9 @@ namespace CuteIssac.Core.Meta
             {
                 UnlockData definition = _unlockDefinitions[index];
 
-                if (definition == null || definition.ConditionType != UnlockConditionType.AcquireItem)
+                if (definition == null ||
+                    (definition.ConditionType != UnlockConditionType.AcquireItem &&
+                     definition.ConditionType != UnlockConditionType.ItemDiscovered))
                 {
                     continue;
                 }
@@ -206,6 +243,61 @@ namespace CuteIssac.Core.Meta
                 }
 
                 TryUnlock(definition, $"item acquired {itemData.ItemId}");
+            }
+        }
+
+        private void HandleActiveItemEquipped(ActiveItemData activeItemData)
+        {
+            if (activeItemData == null || string.IsNullOrWhiteSpace(activeItemData.ItemId))
+            {
+                return;
+            }
+
+            for (int index = 0; index < _unlockDefinitions.Count; index++)
+            {
+                UnlockData definition = _unlockDefinitions[index];
+
+                if (definition == null ||
+                    (definition.ConditionType != UnlockConditionType.AcquireItem &&
+                     definition.ConditionType != UnlockConditionType.ItemDiscovered))
+                {
+                    continue;
+                }
+
+                if (!string.Equals(definition.RequiredItemId, activeItemData.ItemId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                TryUnlock(definition, $"active item equipped {activeItemData.ItemId}");
+            }
+        }
+
+        public void EvaluateProgressionUnlocks(MetaProgressionSaveData progression)
+        {
+            if (progression == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < _unlockDefinitions.Count; index++)
+            {
+                UnlockData definition = _unlockDefinitions[index];
+
+                if (definition == null || !IsMetaConditionMet(definition, progression))
+                {
+                    continue;
+                }
+
+                TryUnlock(definition, $"meta condition {definition.ConditionType}");
+            }
+        }
+
+        private void HandleProgressionChanged()
+        {
+            if (metaProgressionManager != null)
+            {
+                EvaluateProgressionUnlocks(metaProgressionManager.Progression);
             }
         }
 
@@ -234,6 +326,11 @@ namespace CuteIssac.Core.Meta
             if (runManager != null && runManager.CurrentContext.HasActiveRun)
             {
                 EvaluateFloorReached(runManager.CurrentContext.CurrentFloorIndex);
+            }
+
+            if (metaProgressionManager != null)
+            {
+                EvaluateProgressionUnlocks(metaProgressionManager.Progression);
             }
         }
 
@@ -305,6 +402,11 @@ namespace CuteIssac.Core.Meta
             {
                 runItemPoolService = GetComponent<RunItemPoolService>();
             }
+
+            if (metaProgressionManager == null)
+            {
+                metaProgressionManager = GetComponent<MetaProgressionManager>();
+            }
         }
 
         private void TryBindPlayerItemManager()
@@ -314,13 +416,29 @@ namespace CuteIssac.Core.Meta
                 playerItemManager = FindFirstObjectByType<PlayerItemManager>(FindObjectsInactive.Exclude);
             }
 
-            if (playerItemManager == null)
+            if (playerItemManager != null)
+            {
+                playerItemManager.PassiveItemAcquired -= HandlePassiveItemAcquired;
+                playerItemManager.PassiveItemAcquired += HandlePassiveItemAcquired;
+            }
+
+            TryBindPlayerActiveItemController();
+        }
+
+        private void TryBindPlayerActiveItemController()
+        {
+            if (playerActiveItemController == null)
+            {
+                playerActiveItemController = FindFirstObjectByType<PlayerActiveItemController>(FindObjectsInactive.Exclude);
+            }
+
+            if (playerActiveItemController == null)
             {
                 return;
             }
 
-            playerItemManager.PassiveItemAcquired -= HandlePassiveItemAcquired;
-            playerItemManager.PassiveItemAcquired += HandlePassiveItemAcquired;
+            playerActiveItemController.ActiveItemEquipped -= HandleActiveItemEquipped;
+            playerActiveItemController.ActiveItemEquipped += HandleActiveItemEquipped;
         }
 
         private void UnbindPlayerItemManager()
@@ -328,6 +446,11 @@ namespace CuteIssac.Core.Meta
             if (playerItemManager != null)
             {
                 playerItemManager.PassiveItemAcquired -= HandlePassiveItemAcquired;
+            }
+
+            if (playerActiveItemController != null)
+            {
+                playerActiveItemController.ActiveItemEquipped -= HandleActiveItemEquipped;
             }
         }
 
@@ -359,21 +482,33 @@ namespace CuteIssac.Core.Meta
                 return;
             }
 
+            runItemPoolService.ClearUnlocks();
             _itemUnlockBuffer.Clear();
+
+            foreach (string unlockedKey in _unlockedKeys)
+            {
+                if (!string.IsNullOrWhiteSpace(unlockedKey))
+                {
+                    _itemUnlockBuffer.Add(unlockedKey);
+                }
+            }
 
             for (int index = 0; index < _unlockDefinitions.Count; index++)
             {
                 UnlockData definition = _unlockDefinitions[index];
 
                 if (definition == null ||
-                    definition.TargetType != UnlockTargetType.Item ||
+                    (definition.TargetType != UnlockTargetType.Item && definition.TargetType != UnlockTargetType.ShopItem) ||
                     string.IsNullOrWhiteSpace(definition.TargetKey) ||
                     !_unlockedKeys.Contains(definition.TargetKey))
                 {
                     continue;
                 }
 
-                _itemUnlockBuffer.Add(definition.TargetKey);
+                if (!_itemUnlockBuffer.Contains(definition.TargetKey))
+                {
+                    _itemUnlockBuffer.Add(definition.TargetKey);
+                }
             }
 
             for (int index = 0; index < _itemUnlockBuffer.Count; index++)
@@ -390,6 +525,88 @@ namespace CuteIssac.Core.Meta
             }
 
             return string.Equals(requiredEnemyId.Trim(), actualEnemyId.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsMetaConditionMet(UnlockData definition, MetaProgressionSaveData progression)
+        {
+            return definition.ConditionType switch
+            {
+                UnlockConditionType.CumulativeEnemyKillCount => GetCounterValue(progression.EnemyKillCounts, definition.RequiredEnemyId) >= definition.RequiredCount,
+                UnlockConditionType.CharacterClearMark => HasCharacterClearMark(progression, definition.RequiredCharacterId, definition.RequiredClearMark),
+                UnlockConditionType.ItemDiscovered => ContainsId(progression.DiscoveredItemIds, definition.RequiredItemId),
+                UnlockConditionType.RoomTypeClearCount => GetCounterValue(progression.RoomTypeClearCounts, definition.RequiredRoomType.ToString()) >= definition.RequiredCount,
+                UnlockConditionType.ReachFloor => progression.BestFloor >= definition.RequiredFloorIndex,
+                UnlockConditionType.AcquireItem => ContainsId(progression.DiscoveredItemIds, definition.RequiredItemId),
+                UnlockConditionType.TotalRuns => progression.TotalRuns >= definition.RequiredCount,
+                UnlockConditionType.TotalWins => progression.TotalWins >= definition.RequiredCount,
+                UnlockConditionType.TotalEnemyKills => progression.TotalEnemyKills >= definition.RequiredCount,
+                UnlockConditionType.CurrentWinStreak => progression.CurrentWinStreak >= definition.RequiredCount,
+                UnlockConditionType.BestWinStreak => progression.BestWinStreak >= definition.RequiredCount,
+                UnlockConditionType.AchievementCompleted => ContainsId(progression.CompletedAchievementIds, definition.RequiredAchievementId),
+                _ => false
+            };
+        }
+
+        private static int GetCounterValue(List<MetaProgressionCounterRecord> records, string id)
+        {
+            if (records == null || string.IsNullOrWhiteSpace(id))
+            {
+                return 0;
+            }
+
+            for (int index = 0; index < records.Count; index++)
+            {
+                MetaProgressionCounterRecord record = records[index];
+
+                if (record != null && string.Equals(record.Id, id, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Mathf.Max(0, record.Count);
+                }
+            }
+
+            return 0;
+        }
+
+        private static bool HasCharacterClearMark(MetaProgressionSaveData progression, string characterId, string clearMark)
+        {
+            if (progression?.CharacterRecords == null || string.IsNullOrWhiteSpace(characterId))
+            {
+                return false;
+            }
+
+            string resolvedClearMark = string.IsNullOrWhiteSpace(clearMark) ? "run_victory" : clearMark;
+
+            for (int index = 0; index < progression.CharacterRecords.Count; index++)
+            {
+                CharacterProgressionRecord record = progression.CharacterRecords[index];
+
+                if (record == null || !string.Equals(record.CharacterId, characterId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                return ContainsId(record.ClearMarks, resolvedClearMark);
+            }
+
+            return false;
+        }
+
+        private static bool ContainsId(List<string> values, string id)
+        {
+            if (values == null || string.IsNullOrWhiteSpace(id))
+            {
+                return false;
+            }
+
+            for (int index = 0; index < values.Count; index++)
+            {
+                if (string.Equals(values[index], id, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

@@ -170,6 +170,7 @@ MonoBehaviour:
     rareBonusChance: 0.18
     rareBonusRewardSelections: 1
     rareBonusItemRolls: 1
+  specialRoomRules: {fileID: 11400000, guid: b111c0de00114cde8c00000000000001, type: 2}
   normalRoomRewardPool: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c550101, type: 2}
   bossRoomRewardPool: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c560101, type: 2}
   treasureRoomRewardPool: {fileID: 0}

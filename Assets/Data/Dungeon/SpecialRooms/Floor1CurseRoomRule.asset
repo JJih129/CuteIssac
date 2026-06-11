@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f5e5f8855734aa3b5b7bed927ba1b1d, type: 3}
+  m_Name: Floor1CurseRoomRule
+  m_EditorClassIdentifier: 
+  ruleId: f1_curse_room
+  roomType: 9
+  minFloor: 1
+  maxFloor: 1
+  baseChance: 0.55
+  guaranteedCount: 0
+  requiresBossCleared: 0
+  entryCostType: 4
+  entryCostAmount: 1
+  rewardTable: {fileID: 11400000, guid: f6a0be0680db47e39b9f9a4cad0c8e6d, type: 2}
+  itemPool: {fileID: 11400000, guid: 7b3f7d7e0c6a4dd8b0257f66f55df401, type: 2}
+  rewardMultiplier: 1
+  dealType: 0
+  dealDisplayName: 
+  dealAccentColor: {r: 1, g: 1, b: 1, a: 1}
+  spawnTradeOffers: 0
+  tradeCurrencyType: 3
+  tradeOfferCount: 2
+  tradePriceMin: 1
+  tradePriceMax: 2
+  hiddenDoor: 0
+  postBossDealChance: 0
+  angelChanceBonusWithoutDevilDealAccepted: 0.25
+  angelChanceBonusPerDevilDealDeclined: 0.15
+  angelChanceMultiplierAfterDevilDealAccepted: 0.25

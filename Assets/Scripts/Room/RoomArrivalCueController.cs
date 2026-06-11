@@ -30,7 +30,7 @@ namespace CuteIssac.Room
                 return;
             }
 
-            CueProfile profile = BuildCueProfile(room.RoomType, guidedRoute, carriedPlan);
+            CueProfile profile = BuildCueProfile(room, guidedRoute, carriedPlan);
             if (!profile.ShowWorldCue)
             {
                 return;
@@ -92,10 +92,31 @@ namespace CuteIssac.Room
             return presentation;
         }
 
-        private static CueProfile BuildCueProfile(RoomType roomType, bool guidedRoute, bool carriedPlan)
+        private static CueProfile BuildCueProfile(RoomController room, bool guidedRoute, bool carriedPlan)
         {
+            RoomType roomType = room != null ? room.RoomType : RoomType.Normal;
             float guidedIntensityBonus = guidedRoute ? 0.12f : 0f;
             float planCarryBonus = carriedPlan ? 0.1f : 0f;
+
+            if (room != null
+                && room.TryGetComponent(out SpecialRoomRuntimeMetadata metadata)
+                && metadata.HasDealPresentation)
+            {
+                return new CueProfile(
+                    metadata.AccentColor,
+                    metadata.DisplayName.ToUpperInvariant(),
+                    ResolveDealArrivalSubtitle(metadata.DealType),
+                    true,
+                    true,
+                    1.86f,
+                    0.22f,
+                    0.44f,
+                    2,
+                    0.2f,
+                    1.02f,
+                    1.14f + guidedIntensityBonus + planCarryBonus);
+            }
+
             return roomType switch
             {
                 RoomType.Treasure => new CueProfile(
@@ -245,6 +266,17 @@ namespace CuteIssac.Room
                 RoomType.Trap => new Color(1f, 0.48f, 0.34f, 1f),
                 RoomType.Curse => new Color(0.86f, 0.36f, 0.68f, 1f),
                 _ => new Color(0.66f, 0.92f, 1f, 1f)
+            };
+        }
+
+        private static string ResolveDealArrivalSubtitle(SpecialRoomDealType dealType)
+        {
+            return dealType switch
+            {
+                SpecialRoomDealType.Devil => "Spend HP for power",
+                SpecialRoomDealType.Angel => "Sanctified trade offers",
+                SpecialRoomDealType.BlackMarket => "Rare stock is open",
+                _ => "Special trade offers"
             };
         }
 

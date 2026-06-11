@@ -15,5 +15,6 @@ namespace CuteIssac.Core.Save
         public string LastSavedUtc;
         public UnlockSaveData Unlocks = new();
         public GameOptionsData Options = new();
+        public MetaProgressionSaveData Progression = new();
     }
 }

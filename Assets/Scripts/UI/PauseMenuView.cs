@@ -322,7 +322,7 @@ namespace CuteIssac.UI
             RefreshSelectionState(resumeButton);
         }
 
-        public void ShowSettings(GameOptionsData options)
+        public void ShowSettings(GameOptionsData options, string selectedOptionLabel = "Master Volume")
         {
             if (overlayRoot != null)
             {
@@ -330,6 +330,9 @@ namespace CuteIssac.UI
             }
 
             options ??= new GameOptionsData();
+            selectedOptionLabel = string.IsNullOrWhiteSpace(selectedOptionLabel)
+                ? "Master Volume"
+                : selectedOptionLabel;
 
             if (dimmerImage != null)
             {
@@ -361,33 +364,33 @@ namespace CuteIssac.UI
             if (titleText != null)
             {
                 titleText.supportRichText = true;
-                titleText.text = "<size=18>ESC: 설정 닫기</size>\n<size=52><b>설정</b></size>";
+                titleText.text = "<size=18>ESC: Back to pause</size>\n<size=52><b>Options</b></size>";
                 titleText.color = titleColor;
             }
 
             if (statsHeaderText != null)
             {
                 statsHeaderText.supportRichText = true;
-                statsHeaderText.text = "<size=18>현재 옵션</size>\n<b>게임 설정</b>";
+                statsHeaderText.text = $"<size=18>Selected</size>\n<b>{selectedOptionLabel}</b>";
                 statsHeaderText.color = titleColor;
             }
 
             if (actionHeaderText != null)
             {
                 actionHeaderText.supportRichText = true;
-                actionHeaderText.text = "<size=18>볼륨 조정</size>\n<b>10% 단위</b>";
+                actionHeaderText.text = "<size=18>Volume Adjust</size>\n<b>10% Step</b>";
                 actionHeaderText.color = titleColor;
             }
 
-            SetInfoLine(0, "마스터 볼륨", $"{Mathf.RoundToInt(Mathf.Clamp01(options.MasterVolume) * 100f)}%");
-            SetInfoLine(1, "음악 볼륨", $"{Mathf.RoundToInt(Mathf.Clamp01(options.MusicVolume) * 100f)}%");
-            SetInfoLine(2, "효과음 볼륨", $"{Mathf.RoundToInt(Mathf.Clamp01(options.SfxVolume) * 100f)}%");
-            SetInfoLine(3, "전체 화면", options.Fullscreen ? "켜짐" : "꺼짐");
-            SetInfoLine(4, "피해 숫자", options.DamageNumbersEnabled ? "켜짐" : "꺼짐");
+            SetInfoLine(0, FormatOptionLabel("Master Volume", selectedOptionLabel), $"{Mathf.RoundToInt(Mathf.Clamp01(options.MasterVolume) * 100f)}%");
+            SetInfoLine(1, FormatOptionLabel("Music Volume", selectedOptionLabel), $"{Mathf.RoundToInt(Mathf.Clamp01(options.MusicVolume) * 100f)}%");
+            SetInfoLine(2, FormatOptionLabel("SFX Volume", selectedOptionLabel), $"{Mathf.RoundToInt(Mathf.Clamp01(options.SfxVolume) * 100f)}%");
+            SetInfoLine(3, "Fullscreen", options.Fullscreen ? "On" : "Off");
+            SetInfoLine(4, "Damage Numbers", options.DamageNumbersEnabled ? "On" : "Off");
 
-            SetButtonCopy(settingsButtonText, "<size=15>볼륨</size>\n<b>-10%</b>\n<size=13>낮추기</size>", enabledButtonTextColor);
-            SetButtonCopy(resumeButtonText, "<size=15>설정</size>\n<b>뒤로</b>\n<size=13>일시정지 메뉴</size>", enabledButtonTextColor);
-            SetButtonCopy(quitButtonText, "<size=15>볼륨</size>\n<b>+10%</b>\n<size=13>높이기</size>", enabledButtonTextColor);
+            SetButtonCopy(settingsButtonText, "<size=15>Value</size>\n<b>-10%</b>\n<size=13>Lower selected</size>", enabledButtonTextColor);
+            SetButtonCopy(resumeButtonText, "<size=15>Target</size>\n<b>Next</b>\n<size=13>Master/Music/SFX</size>", enabledButtonTextColor);
+            SetButtonCopy(quitButtonText, "<size=15>Value</size>\n<b>+10%</b>\n<size=13>Raise selected</size>", enabledButtonTextColor);
 
             ApplyButtonTheme(settingsButton, true);
             ApplyButtonTheme(resumeButton, true);
@@ -479,6 +482,13 @@ namespace CuteIssac.UI
             label.supportRichText = true;
             label.text = text;
             label.color = color;
+        }
+
+        private static string FormatOptionLabel(string label, string selectedOptionLabel)
+        {
+            return string.Equals(label, selectedOptionLabel, System.StringComparison.Ordinal)
+                ? $"> {label}"
+                : label;
         }
 
         public void RefreshSelectionState(Button selectedButton)

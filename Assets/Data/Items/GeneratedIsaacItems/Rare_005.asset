@@ -30,8 +30,8 @@ MonoBehaviour:
   description: Raises luck. Shots pierce targets.
   icon: {fileID: 0}
   rarity: 2
-  unlockedByDefault: 1
-  unlockKey: 
+  unlockedByDefault: 0
+  unlockKey: unlock.item.devil_accepted
   itemTags: 04000000
   statModifiers: []
   projectileModifiers: []
