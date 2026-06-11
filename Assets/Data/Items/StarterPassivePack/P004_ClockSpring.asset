@@ -18,7 +18,7 @@ MonoBehaviour:
   sourcePools: 0000000002000000
   eventFlags: 
   damageModifier: 0
-  tearsModifier: 0.5
+  tearsModifier: 0.42
   speedModifier: 0
   rangeModifier: 0
   shotSpeedModifier: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 
   itemId: P004
   displayName: Clock Spring
-  description: Major fire rate up.
+  description: Fire rate up. Room clears add active charge.
   icon: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1
@@ -35,4 +35,14 @@ MonoBehaviour:
   itemTags: 02000000
   statModifiers: []
   projectileModifiers: []
-  gameplayEventEffects: []
+  gameplayEventEffects:
+  - triggerType: 3
+    effectType: 5
+    requirePlayerSource: 1
+    requireCombatEncounter: 1
+    coinAmount: 0
+    activeChargeAmount: 1
+    timedEffectDuration: 8
+    feedbackLabel: CHARGE +1
+    statModifiers: []
+    projectileModifiers: []

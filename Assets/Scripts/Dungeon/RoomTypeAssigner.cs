@@ -630,9 +630,9 @@ namespace CuteIssac.Dungeon
                     return false;
                 }
 
-                for (int neighborIndex = 0; neighborIndex < candidate.Neighbors.Count; neighborIndex++)
+                for (int neighborIndex = 0; neighborIndex < candidate.NeighborCount; neighborIndex++)
                 {
-                    SecretNeighbor neighbor = candidate.Neighbors[neighborIndex];
+                    SecretNeighbor neighbor = candidate.GetNeighbor(neighborIndex);
                     dungeonMap.ConnectRooms(candidate.Position, neighbor.DirectionFromSecret, neighbor.Room.GridPosition);
                     dungeonMap.ConnectRooms(neighbor.Room.GridPosition, RoomDirectionUtility.Opposite(neighbor.DirectionFromSecret), candidate.Position);
                 }
@@ -699,7 +699,11 @@ namespace CuteIssac.Dungeon
                 ? Mathf.Clamp(dungeonMap.FloorConfig.MinimumSecretAdjacentRoomCount, 3, 4)
                 : 2;
             int minimumDistance = dungeonMap.FloorConfig.MinimumSecretDistanceFromStart;
-            List<SecretNeighbor> neighbors = new(4);
+            SecretNeighbor neighbor0 = default;
+            SecretNeighbor neighbor1 = default;
+            SecretNeighbor neighbor2 = default;
+            SecretNeighbor neighbor3 = default;
+            int neighborCount = 0;
             int bestDistance = int.MaxValue;
             int normalNeighborCount = 0;
             int branchNeighborCount = 0;
@@ -722,7 +726,13 @@ namespace CuteIssac.Dungeon
 
                 // `direction` already points from the secret candidate toward the adjacent room.
                 // Flipping it here inverts the actual door placement while the room grid position stays correct.
-                neighbors.Add(new SecretNeighbor(neighborRoom, direction));
+                AddSecretNeighbor(
+                    new SecretNeighbor(neighborRoom, direction),
+                    ref neighbor0,
+                    ref neighbor1,
+                    ref neighbor2,
+                    ref neighbor3,
+                    ref neighborCount);
                 bestDistance = Mathf.Min(bestDistance, neighborRoom.DistanceFromStart + 1);
 
                 if (neighborRoom.RoomType == RoomType.Normal)
@@ -740,8 +750,8 @@ namespace CuteIssac.Dungeon
                 }
             }
 
-            if (neighbors.Count < minimumNeighborCount
-                || neighbors.Count > 4
+            if (neighborCount < minimumNeighborCount
+                || neighborCount > 4
                 || bestDistance < minimumDistance
                 || normalNeighborCount < 2)
             {
@@ -754,13 +764,46 @@ namespace CuteIssac.Dungeon
             candidate = new SecretRoomCandidate(
                 candidatePosition,
                 bestDistance,
-                neighbors,
+                neighborCount,
+                neighbor0,
+                neighbor1,
+                neighbor2,
+                neighbor3,
                 normalNeighborCount,
                 branchNeighborCount,
                 specialNeighborCount,
                 preferredDistanceDelta,
                 centerOffset);
             return true;
+        }
+
+        private static void AddSecretNeighbor(
+            SecretNeighbor neighbor,
+            ref SecretNeighbor neighbor0,
+            ref SecretNeighbor neighbor1,
+            ref SecretNeighbor neighbor2,
+            ref SecretNeighbor neighbor3,
+            ref int neighborCount)
+        {
+            switch (neighborCount)
+            {
+                case 0:
+                    neighbor0 = neighbor;
+                    break;
+                case 1:
+                    neighbor1 = neighbor;
+                    break;
+                case 2:
+                    neighbor2 = neighbor;
+                    break;
+                case 3:
+                    neighbor3 = neighbor;
+                    break;
+                default:
+                    break;
+            }
+
+            neighborCount++;
         }
 
         private static int CompareSecretCandidates(SecretRoomCandidate left, SecretRoomCandidate right)
@@ -1107,7 +1150,11 @@ namespace CuteIssac.Dungeon
             public SecretRoomCandidate(
                 GridPosition position,
                 int distanceFromStart,
-                List<SecretNeighbor> neighbors,
+                int neighborCount,
+                SecretNeighbor neighbor0,
+                SecretNeighbor neighbor1,
+                SecretNeighbor neighbor2,
+                SecretNeighbor neighbor3,
                 int normalNeighborCount,
                 int branchNeighborCount,
                 int specialNeighborCount,
@@ -1116,7 +1163,11 @@ namespace CuteIssac.Dungeon
             {
                 Position = position;
                 DistanceFromStart = distanceFromStart;
-                Neighbors = neighbors;
+                NeighborCount = Mathf.Clamp(neighborCount, 0, 4);
+                _neighbor0 = neighbor0;
+                _neighbor1 = neighbor1;
+                _neighbor2 = neighbor2;
+                _neighbor3 = neighbor3;
                 NormalNeighborCount = normalNeighborCount;
                 BranchNeighborCount = branchNeighborCount;
                 SpecialNeighborCount = specialNeighborCount;
@@ -1126,14 +1177,30 @@ namespace CuteIssac.Dungeon
 
             public GridPosition Position { get; }
             public int DistanceFromStart { get; }
-            public List<SecretNeighbor> Neighbors { get; }
-            public int NeighborCount => Neighbors != null ? Neighbors.Count : 0;
+            public int NeighborCount { get; }
             public int NormalNeighborCount { get; }
             public int BranchNeighborCount { get; }
             public int SpecialNeighborCount { get; }
             public int PreferredDistanceDelta { get; }
             public float CenterOffset { get; }
-            public bool IsValid => Neighbors != null;
+            public bool IsValid => NeighborCount > 0;
+
+            private readonly SecretNeighbor _neighbor0;
+            private readonly SecretNeighbor _neighbor1;
+            private readonly SecretNeighbor _neighbor2;
+            private readonly SecretNeighbor _neighbor3;
+
+            public SecretNeighbor GetNeighbor(int index)
+            {
+                return index switch
+                {
+                    0 => _neighbor0,
+                    1 => _neighbor1,
+                    2 => _neighbor2,
+                    3 => _neighbor3,
+                    _ => default
+                };
+            }
         }
     }
 }

@@ -39,6 +39,8 @@ namespace CuteIssac.Combat
         private float _homingTurnRateDegrees;
         private bool _isInitialized;
         private bool _isDespawning;
+        private bool _isRegisteredActive;
+        private int _activeProjectileIndex = -1;
         private readonly List<Collider2D> _ignoredColliders = new();
 
         public Vector2 WorldPosition => transform.position;
@@ -59,10 +61,7 @@ namespace CuteIssac.Combat
 
         private void OnEnable()
         {
-            if (!ActiveProjectiles.Contains(this))
-            {
-                ActiveProjectiles.Add(this);
-            }
+            RegisterActiveProjectile();
         }
 
         private void Update()
@@ -117,7 +116,8 @@ namespace CuteIssac.Combat
 
         private void OnDisable()
         {
-            ActiveProjectiles.Remove(this);
+            UnregisterActiveProjectile();
+
             RestoreIgnoredCollisions();
 
             if (_rigidbody2D != null)
@@ -129,6 +129,47 @@ namespace CuteIssac.Combat
             _instigator = null;
             _isInitialized = false;
             _isDespawning = false;
+        }
+
+        private void RegisterActiveProjectile()
+        {
+            if (_isRegisteredActive)
+            {
+                return;
+            }
+
+            _activeProjectileIndex = ActiveProjectiles.Count;
+            ActiveProjectiles.Add(this);
+            _isRegisteredActive = true;
+        }
+
+        private void UnregisterActiveProjectile()
+        {
+            if (!_isRegisteredActive)
+            {
+                _activeProjectileIndex = -1;
+                return;
+            }
+
+            int lastIndex = ActiveProjectiles.Count - 1;
+            if (_activeProjectileIndex >= 0 && _activeProjectileIndex <= lastIndex)
+            {
+                EnemyProjectileLogic movedProjectile = ActiveProjectiles[lastIndex];
+                ActiveProjectiles[_activeProjectileIndex] = movedProjectile;
+                ActiveProjectiles.RemoveAt(lastIndex);
+
+                if (movedProjectile != null && movedProjectile != this)
+                {
+                    movedProjectile._activeProjectileIndex = _activeProjectileIndex;
+                }
+            }
+            else
+            {
+                ActiveProjectiles.Remove(this);
+            }
+
+            _activeProjectileIndex = -1;
+            _isRegisteredActive = false;
         }
 
         public static void CollectActiveProjectiles(List<EnemyProjectileLogic> buffer)
@@ -148,6 +189,33 @@ namespace CuteIssac.Combat
 
                 buffer.Add(projectile);
             }
+        }
+
+        public static int DissipateAllActive(ProjectileImpactType impactType = ProjectileImpactType.None)
+        {
+            int dissipatedCount = 0;
+
+            while (ActiveProjectiles.Count > 0)
+            {
+                int previousCount = ActiveProjectiles.Count;
+                EnemyProjectileLogic projectile = ActiveProjectiles[previousCount - 1];
+
+                if (projectile == null)
+                {
+                    ActiveProjectiles.RemoveAt(previousCount - 1);
+                    continue;
+                }
+
+                projectile.Despawn(impactType, projectile.transform.position);
+                dissipatedCount++;
+
+                if (ActiveProjectiles.Count == previousCount && projectile._isRegisteredActive)
+                {
+                    projectile.UnregisterActiveProjectile();
+                }
+            }
+
+            return dissipatedCount;
         }
 
         private void OnTriggerEnter2D(Collider2D other)
@@ -253,14 +321,14 @@ namespace CuteIssac.Combat
                 return;
             }
 
-            if (DamageableResolver.TryResolve(other, out IDamageable damageable))
+            if (DamageableResolver.TryResolveTarget(other, out DamageableResolver.ResolvedTarget target))
             {
-                if (other.GetComponentInParent<PlayerHealth>() == null)
+                if (!target.IsPlayer)
                 {
                     return;
                 }
 
-                damageable.ApplyDamage(new DamageInfo(_damage, _travelDirection, _instigator));
+                target.Damageable.ApplyDamage(new DamageInfo(_damage, _travelDirection, _instigator));
                 Despawn(ProjectileImpactType.Damageable, impactPosition);
                 return;
             }

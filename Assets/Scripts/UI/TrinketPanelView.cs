@@ -18,6 +18,7 @@ namespace CuteIssac.UI
         [Header("Skinnable Elements")]
         [SerializeField] private Image frameImage;
         [SerializeField] private Image iconImage;
+        [SerializeField] private Sprite emptyIconSprite;
         [SerializeField] private Text titleText;
         [SerializeField] private Text detailText;
 
@@ -107,8 +108,8 @@ namespace CuteIssac.UI
 
             if (iconImage != null)
             {
-                iconImage.enabled = false;
-                iconImage.sprite = null;
+                iconImage.enabled = emptyIconSprite != null;
+                iconImage.sprite = emptyIconSprite;
                 _currentIconBaseColor = Color.white;
                 iconImage.color = ResolveIconColor(Time.unscaledTime);
             }
@@ -154,7 +155,7 @@ namespace CuteIssac.UI
         {
             if (itemData == null)
             {
-                HidePanel();
+                ShowPlaceholder();
                 return;
             }
 

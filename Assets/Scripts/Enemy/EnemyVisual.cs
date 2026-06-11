@@ -175,6 +175,7 @@ namespace CuteIssac.Enemy
         private Vector3 _championMarkerBaseLocalPosition;
         private float _championMarkerPhaseOffset;
         private readonly System.Collections.Generic.List<ChampionBurst> _championBursts = new();
+        private readonly System.Collections.Generic.List<ChampionBurst> _championBurstPool = new();
         private bool _bulwarkGuardVisualActive;
 
         private void Awake()
@@ -1146,30 +1147,54 @@ namespace CuteIssac.Enemy
             Vector3 endScale,
             float rotationSpeed)
         {
-            GameObject burstObject = new(name);
-            burstObject.transform.SetParent(transform, false);
-            burstObject.transform.localPosition = _championMarkerBaseLocalPosition;
-            burstObject.transform.localRotation = Quaternion.Euler(0f, 0f, _championMarkerStyle == ChampionMarkerStyle.Bulwark ? 45f : 0f);
-            burstObject.transform.localScale = startScale;
-            burstObject.layer = gameObject.layer;
+            ChampionBurst burst = GetOrCreateChampionBurst(name);
+            Transform burstTransform = burst.Transform;
+            SpriteRenderer spriteRenderer = burst.Renderer;
 
-            SpriteRenderer spriteRenderer = burstObject.AddComponent<SpriteRenderer>();
+            burstTransform.gameObject.SetActive(true);
+            burstTransform.gameObject.name = name;
+            burstTransform.gameObject.layer = gameObject.layer;
+            burstTransform.SetParent(transform, false);
+            burstTransform.localPosition = _championMarkerBaseLocalPosition;
+            burstTransform.localRotation = Quaternion.Euler(0f, 0f, _championMarkerStyle == ChampionMarkerStyle.Bulwark ? 45f : 0f);
+            burstTransform.localScale = startScale;
             spriteRenderer.sprite = sprite;
             spriteRenderer.color = startColor;
             spriteRenderer.sortingOrder = 33;
 
-            _championBursts.Add(new ChampionBurst
+            burst.StartScale = startScale;
+            burst.EndScale = endScale;
+            burst.StartColor = startColor;
+            burst.EndColor = endColor;
+            burst.SpawnTime = Time.time;
+            burst.Lifetime = championBurstLifetime;
+            burst.RotationSpeed = rotationSpeed;
+            _championBursts.Add(burst);
+        }
+
+        private ChampionBurst GetOrCreateChampionBurst(string name)
+        {
+            for (int i = _championBurstPool.Count - 1; i >= 0; i--)
+            {
+                ChampionBurst pooledBurst = _championBurstPool[i];
+                _championBurstPool.RemoveAt(i);
+
+                if (pooledBurst.Transform != null && pooledBurst.Renderer != null)
+                {
+                    return pooledBurst;
+                }
+            }
+
+            GameObject burstObject = new(name);
+            burstObject.transform.SetParent(transform, false);
+            burstObject.layer = gameObject.layer;
+
+            SpriteRenderer spriteRenderer = burstObject.AddComponent<SpriteRenderer>();
+            return new ChampionBurst
             {
                 Transform = burstObject.transform,
-                Renderer = spriteRenderer,
-                StartScale = startScale,
-                EndScale = endScale,
-                StartColor = startColor,
-                EndColor = endColor,
-                SpawnTime = Time.time,
-                Lifetime = championBurstLifetime,
-                RotationSpeed = rotationSpeed
-            });
+                Renderer = spriteRenderer
+            };
         }
 
         private void UpdateChampionBursts()
@@ -1197,7 +1222,7 @@ namespace CuteIssac.Enemy
 
                 if (normalized >= 1f)
                 {
-                    Destroy(burst.Transform.gameObject);
+                    ReturnChampionBurst(burst);
                     _championBursts.RemoveAt(i);
                 }
             }
@@ -1207,13 +1232,21 @@ namespace CuteIssac.Enemy
         {
             for (int i = _championBursts.Count - 1; i >= 0; i--)
             {
-                if (_championBursts[i].Transform != null)
-                {
-                    Destroy(_championBursts[i].Transform.gameObject);
-                }
+                ReturnChampionBurst(_championBursts[i]);
             }
 
             _championBursts.Clear();
+        }
+
+        private void ReturnChampionBurst(ChampionBurst burst)
+        {
+            if (burst.Transform == null || burst.Renderer == null)
+            {
+                return;
+            }
+
+            burst.Transform.gameObject.SetActive(false);
+            _championBurstPool.Add(burst);
         }
 
         private void SetChampionMarkerVisible(bool visible)

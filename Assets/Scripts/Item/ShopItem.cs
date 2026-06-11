@@ -73,6 +73,7 @@ namespace CuteIssac.Item
                     && !playerItemManager.OwnsItem(offer.PassiveItem),
                 ShopOfferRewardType.Health => playerHealth != null && playerHealth.CurrentHealth < playerHealth.MaxHealth,
                 ShopOfferRewardType.Ammo => CanReceiveAmmo(playerInventory, playerItemManager, playerHealth),
+                ShopOfferRewardType.SpeedHeart => playerHealth != null && playerHealth.CanReceiveSpeedHeart(offer.ResourceAmount),
                 ShopOfferRewardType.Coins => true,
                 ShopOfferRewardType.Keys => true,
                 ShopOfferRewardType.Bombs => true,
@@ -152,6 +153,45 @@ namespace CuteIssac.Item
             shopItemView?.PlayPurchaseSuccess();
         }
 
+        public void PlayPurchaseFailureFeedback()
+        {
+            shopItemView?.PlayPurchaseFailure();
+        }
+
+        public bool IsBuyerWithinInteractionBounds(Vector3 buyerPosition, float fallbackDistance, float boundsPadding, out float distanceSqr)
+        {
+            if (shopItemView == null)
+            {
+                shopItemView = GetComponent<ShopItemView>();
+            }
+
+            if (shopItemView != null && shopItemView.TryGetInteractionDistanceSqr(buyerPosition, out distanceSqr))
+            {
+                float paddingSqr = boundsPadding * boundsPadding;
+                return distanceSqr <= paddingSqr;
+            }
+
+            distanceSqr = (transform.position - buyerPosition).sqrMagnitude;
+            float fallbackDistanceSqr = fallbackDistance * fallbackDistance;
+            return distanceSqr <= fallbackDistanceSqr;
+        }
+
+        public bool TryGetInteractionBounds(out Bounds bounds)
+        {
+            if (shopItemView == null)
+            {
+                shopItemView = GetComponent<ShopItemView>();
+            }
+
+            if (shopItemView != null && shopItemView.TryGetInteractionBounds(out bounds))
+            {
+                return true;
+            }
+
+            bounds = default;
+            return false;
+        }
+
         public ShopSlotState BuildSlotState(bool isHighlighted, PlayerInventory playerInventory, PlayerItemManager playerItemManager, PlayerHealth playerHealth)
         {
             bool isVisible = shopItemData != null;
@@ -199,6 +239,14 @@ namespace CuteIssac.Item
                 case ShopOfferRewardType.Ammo:
                     PlayerWeaponLoadout ammoLoadout = ResolveWeaponLoadout(playerInventory, playerHealth, playerItemManager);
                     return ammoLoadout != null && ammoLoadout.TryAddAmmo(offer.ResourceAmount);
+                case ShopOfferRewardType.SpeedHeart:
+                    return playerHealth != null && playerHealth.TryGrantSpeedHeart(
+                        offer.ResourceAmount,
+                        10f,
+                        1.2f,
+                        PlayerSpeedBuffState.DuplicateBuffPolicy.RefreshDuration,
+                        RuntimeShopIconFactory.GetSpeedCandySprite(),
+                        "Speed Heart");
                 case ShopOfferRewardType.Keys:
                     playerInventory.AddKeys(offer.ResourceAmount);
                     return true;
@@ -229,7 +277,7 @@ namespace CuteIssac.Item
 
             if (rewardSpawnReusePolicy == SpawnReusePolicy.Pooled)
             {
-                PrefabPoolService.Prewarm(pickupPrefab, Mathf.Max(1, 1 + rewardPrewarmBufferCount));
+                PrefabPoolService.EnsurePrewarmed(pickupPrefab, Mathf.Max(1, 1 + rewardPrewarmBufferCount));
             }
 
             Vector3 spawnPosition = rewardSpawnAnchor != null ? rewardSpawnAnchor.position : transform.position;
@@ -285,10 +333,11 @@ namespace CuteIssac.Item
 
             return offer.RewardType switch
             {
-                ShopOfferRewardType.PassiveItem when playerInventory != null && offer.PassiveItem != null && playerInventory.Contains(offer.PassiveItem) => "이미 보유",
+                ShopOfferRewardType.PassiveItem when playerItemManager != null && offer.PassiveItem != null && playerItemManager.OwnsItem(offer.PassiveItem) => "이미 보유",
                 ShopOfferRewardType.Health when playerHealth != null && playerHealth.CurrentHealth >= playerHealth.MaxHealth => "체력 가득",
                 ShopOfferRewardType.Ammo when ResolveWeaponLoadout(playerInventory, playerHealth, playerItemManager) == null => "무기 없음",
                 ShopOfferRewardType.Ammo when !CanReceiveAmmo(playerInventory, playerItemManager, playerHealth) => "탄약 가득",
+                ShopOfferRewardType.SpeedHeart when playerHealth != null && !playerHealth.CanReceiveSpeedHeart(offer.ResourceAmount) => "스피드 하트 가득",
                 _ => "구매 불가"
             };
         }
@@ -345,6 +394,11 @@ namespace CuteIssac.Item
 
         private static PlayerWeaponLoadout ResolveWeaponLoadout(PlayerInventory playerInventory, PlayerHealth playerHealth, PlayerItemManager playerItemManager)
         {
+            if (PlayerRegistry.TryResolveActiveWeaponLoadoutFor(playerInventory, playerHealth, playerItemManager, out PlayerWeaponLoadout activeWeaponLoadout))
+            {
+                return activeWeaponLoadout;
+            }
+
             if (playerItemManager != null && playerItemManager.TryGetComponent(out PlayerWeaponLoadout itemManagerLoadout))
             {
                 return itemManagerLoadout;

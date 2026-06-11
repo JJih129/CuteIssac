@@ -20,14 +20,14 @@ MonoBehaviour:
   damageModifier: 0
   tearsModifier: 0
   speedModifier: 0
-  rangeModifier: 0
-  shotSpeedModifier: 0
+  rangeModifier: 0.6
+  shotSpeedModifier: -0.05
   luckModifier: 0
   maxHealthModifier: 0
   projectileFlags: 01000000
   itemId: P015
   displayName: Guiding Candle
-  description: Shots home toward enemies.
+  description: Homing shots with extra range.
   icon: {fileID: 0}
   rarity: 2
   unlockedByDefault: 1

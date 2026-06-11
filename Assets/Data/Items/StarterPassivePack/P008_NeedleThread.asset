@@ -17,22 +17,22 @@ MonoBehaviour:
   flavorText: Thin line, sharp path.
   sourcePools: 0000000001000000
   eventFlags: 
-  damageModifier: 0
+  damageModifier: 0.25
   tearsModifier: 0
   speedModifier: 0
   rangeModifier: 0
-  shotSpeedModifier: 0.25
+  shotSpeedModifier: 0.22
   luckModifier: 0
   maxHealthModifier: 0
-  projectileFlags: 
+  projectileFlags: 00000000
   itemId: P008
   displayName: Needle Thread
-  description: Shot speed up.
+  description: Shot speed up. Shots pierce enemies.
   icon: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1
   unlockKey: 
-  itemTags: 
+  itemTags: 04000000
   statModifiers: []
   projectileModifiers: []
   gameplayEventEffects: []

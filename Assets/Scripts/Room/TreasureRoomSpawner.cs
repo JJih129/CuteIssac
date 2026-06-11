@@ -27,7 +27,9 @@ namespace CuteIssac.Room
         [SerializeField] private Transform spawnedContentParent;
 
         [Header("Treasure Choice")]
-        [Tooltip("How many treasure choices to present. Isaac-style rooms usually offer 2-3 options.")]
+        [Tooltip("Default Isaac-style item rooms present one pedestal. Disable this only for special choice rooms.")]
+        [SerializeField] private bool useIsaacStyleSinglePedestal = true;
+        [Tooltip("How many treasure choices to present when useIsaacStyleSinglePedestal is disabled.")]
         [SerializeField] [Range(1, 3)] private int choiceCount = 3;
         [Tooltip("Horizontal spacing between spawned treasure choices.")]
         [SerializeField] [Min(0.25f)] private float choiceSpacing = 1.7f;
@@ -35,6 +37,13 @@ namespace CuteIssac.Room
         [SerializeField] [Min(0f)] private float outerChoiceLift = 0.15f;
         [SerializeField] private SpawnReusePolicy spawnReusePolicy = SpawnReusePolicy.Pooled;
         [SerializeField] [Min(0)] private int prewarmBufferCount = 1;
+
+        [Header("Fallback Rewards")]
+        [SerializeField] private bool spawnFallbackResourcesWhenItemUnavailable = true;
+        [SerializeField] [Min(0)] private int fallbackCoinCount = 3;
+        [SerializeField] [Min(0)] private int fallbackKeyCount = 1;
+        [SerializeField] [Min(0)] private int fallbackBombCount;
+        [SerializeField] [Min(0.25f)] private float fallbackResourceSpacing = 0.72f;
 
         private RoomType _runtimeRoomType = RoomType.Normal;
         private RoomData _runtimeRoomData;
@@ -140,7 +149,7 @@ namespace CuteIssac.Room
 
             Transform anchor = contentSpawnAnchor != null ? contentSpawnAnchor : transform;
             focusPosition = anchor.position;
-            focusRadius = Mathf.Max(1.06f, 0.88f + (Mathf.Clamp(choiceCount, 1, 3) * 0.16f));
+            focusRadius = Mathf.Max(1.06f, 0.88f + (ResolveTreasureChoiceCount() * 0.16f));
             return true;
         }
 
@@ -273,12 +282,13 @@ namespace CuteIssac.Room
             if (!BuildTreasureChoices())
             {
                 Debug.LogWarning("TreasureRoomSpawner could not resolve any treasure choices from the configured item sources.", this);
+                _hasSpawnedTreasure = SpawnFallbackResourceRewards(anchor.position, parent) > 0;
                 return;
             }
 
             if (spawnReusePolicy == SpawnReusePolicy.Pooled)
             {
-                PrefabPoolService.Prewarm(
+                PrefabPoolService.EnsurePrewarmed(
                     pickupPrefab,
                     Mathf.Max(1, _choiceItemBuffer.Count + prewarmBufferCount));
             }
@@ -335,7 +345,8 @@ namespace CuteIssac.Room
                 }
             }
 
-            while (_choiceItemBuffer.Count < Mathf.Clamp(choiceCount, 1, 3))
+            int targetChoiceCount = ResolveTreasureChoiceCount();
+            while (_choiceItemBuffer.Count < targetChoiceCount)
             {
                 ItemPoolSelectionContext selectionContext = _runItemPoolService != null
                     ? _runItemPoolService.BuildSelectionContext(RoomType.Treasure, _selectedItemIds)
@@ -358,12 +369,98 @@ namespace CuteIssac.Room
             return _choiceItemBuffer.Count >= 1;
         }
 
+        private int SpawnFallbackResourceRewards(Vector3 anchorPosition, Transform parent)
+        {
+            if (!spawnFallbackResourcesWhenItemUnavailable)
+            {
+                return 0;
+            }
+
+            int spawnedCount = 0;
+            int totalCount = fallbackKeyCount + fallbackBombCount + fallbackCoinCount;
+
+            for (int keyIndex = 0; keyIndex < fallbackKeyCount; keyIndex++)
+            {
+                if (TrySpawnFallbackResource(ResourcePickupType.Key, anchorPosition, parent, spawnedCount, totalCount))
+                {
+                    spawnedCount++;
+                }
+            }
+
+            for (int bombIndex = 0; bombIndex < fallbackBombCount; bombIndex++)
+            {
+                if (TrySpawnFallbackResource(ResourcePickupType.Bomb, anchorPosition, parent, spawnedCount, totalCount))
+                {
+                    spawnedCount++;
+                }
+            }
+
+            for (int coinIndex = 0; coinIndex < fallbackCoinCount; coinIndex++)
+            {
+                if (TrySpawnFallbackResource(ResourcePickupType.Coin, anchorPosition, parent, spawnedCount, totalCount))
+                {
+                    spawnedCount++;
+                }
+            }
+
+            return spawnedCount;
+        }
+
+        private bool TrySpawnFallbackResource(
+            ResourcePickupType resourceType,
+            Vector3 anchorPosition,
+            Transform parent,
+            int spawnIndex,
+            int totalCount)
+        {
+            Vector3 spawnPosition = ResolveFallbackResourcePosition(anchorPosition, spawnIndex, totalCount);
+            GameObject pickupObject = RuntimePickupFactory.SpawnDefaultResourcePickup(
+                resourceType,
+                spawnPosition,
+                parent,
+                ResolveFallbackResourcePickupName(resourceType));
+
+            return pickupObject != null;
+        }
+
+        private static string ResolveFallbackResourcePickupName(ResourcePickupType resourceType)
+        {
+            return resourceType switch
+            {
+                ResourcePickupType.Key => "TreasureFallbackKey",
+                ResourcePickupType.Bomb => "TreasureFallbackBomb",
+                _ => "TreasureFallbackCoin"
+            };
+        }
+
+        private Vector3 ResolveFallbackResourcePosition(Vector3 anchorPosition, int spawnIndex, int totalCount)
+        {
+            if (totalCount <= 1)
+            {
+                return anchorPosition;
+            }
+
+            float centerOffset = (totalCount - 1) * 0.5f;
+            float xOffset = (spawnIndex - centerOffset) * fallbackResourceSpacing;
+            return anchorPosition + new Vector3(xOffset, 0f, 0f);
+        }
+
         private Vector3 ResolveChoiceSpawnPosition(Vector3 anchorPosition, int choiceIndex, int totalChoices)
         {
+            if (totalChoices <= 1)
+            {
+                return anchorPosition;
+            }
+
             float centerOffset = (totalChoices - 1) * 0.5f;
             float xOffset = (choiceIndex - centerOffset) * choiceSpacing;
             float yOffset = totalChoices > 2 && choiceIndex != 1 ? outerChoiceLift : 0f;
             return anchorPosition + new Vector3(xOffset, yOffset, 0f);
+        }
+
+        private int ResolveTreasureChoiceCount()
+        {
+            return useIsaacStyleSinglePedestal ? 1 : Mathf.Clamp(choiceCount, 1, 3);
         }
 
         private void HandleTreasureCollected(BasePickupLogic collectedPickup)

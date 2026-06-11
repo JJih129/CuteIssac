@@ -168,6 +168,7 @@ namespace CuteIssac.Player
         public event System.Action WeaponStateChanged;
 
         private readonly List<WeaponRuntimeSlot> _weaponSlots = new();
+        private readonly HashSet<string> _ownedWeaponItemIds = new(System.StringComparer.Ordinal);
         private int _equippedIndex;
         private float _reloadRemaining;
         private float _reloadDuration;
@@ -221,9 +222,20 @@ namespace CuteIssac.Player
             InitializeStarterWeapon();
         }
 
+        private void OnEnable()
+        {
+            PlayerRegistry.Register(this);
+        }
+
         private void OnDisable()
         {
+            PlayerRegistry.Unregister(this);
             CloseWeaponCarousel(commitSelection: false, restoreTimeScale: true);
+        }
+
+        private void OnDestroy()
+        {
+            PlayerRegistry.Unregister(this);
         }
 
         public void ProcessInput(PlayerGameplayInputState inputState, float deltaTime)
@@ -372,6 +384,7 @@ namespace CuteIssac.Player
 
             int removedIndex = Mathf.Clamp(_weaponCarouselPreviewIndex, 0, _weaponSlots.Count - 1);
             _weaponSlots.RemoveAt(removedIndex);
+            UnregisterWeaponSlot(selectedSlot);
 
             if (_weaponSlots.Count == 0)
             {
@@ -581,12 +594,15 @@ namespace CuteIssac.Player
                 }
 
                 replacedSlot = _weaponSlots[replacementIndex];
+                UnregisterWeaponSlot(replacedSlot);
                 _weaponSlots[replacementIndex] = newSlot;
+                RegisterWeaponSlot(newSlot);
                 EquipIndex(replacementIndex);
             }
             else
             {
                 _weaponSlots.Add(newSlot);
+                RegisterWeaponSlot(newSlot);
                 EquipIndex(_weaponSlots.Count - 1);
             }
 
@@ -629,6 +645,11 @@ namespace CuteIssac.Player
                 return false;
             }
 
+            if (!string.IsNullOrWhiteSpace(itemData.ItemId))
+            {
+                return _ownedWeaponItemIds.Contains(itemData.ItemId);
+            }
+
             for (int index = 0; index < _weaponSlots.Count; index++)
             {
                 ItemData sourceItem = _weaponSlots[index].SourceItem;
@@ -657,6 +678,37 @@ namespace CuteIssac.Player
             {
                 ItemData sourceItem = _weaponSlots[index].SourceItem;
                 if (sourceItem == null || destination.Contains(sourceItem))
+                {
+                    continue;
+                }
+
+                destination.Add(sourceItem);
+            }
+        }
+
+        public void AppendOwnedWeaponItems(List<ItemData> destination, ISet<string> itemIds)
+        {
+            if (destination == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < _weaponSlots.Count; index++)
+            {
+                ItemData sourceItem = _weaponSlots[index].SourceItem;
+                if (sourceItem == null)
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(sourceItem.ItemId))
+                {
+                    if (itemIds != null && !itemIds.Add(sourceItem.ItemId))
+                    {
+                        continue;
+                    }
+                }
+                else if (destination.Contains(sourceItem))
                 {
                     continue;
                 }
@@ -767,6 +819,7 @@ namespace CuteIssac.Player
             }
 
             _weaponSlots.RemoveAt(_equippedIndex);
+            UnregisterWeaponSlot(currentSlot);
 
             if (_weaponSlots.Count == 0)
             {
@@ -897,6 +950,11 @@ namespace CuteIssac.Player
                 return false;
             }
 
+            if (!string.IsNullOrWhiteSpace(itemData.ItemId) && !_ownedWeaponItemIds.Contains(itemData.ItemId))
+            {
+                return false;
+            }
+
             for (int slotIndex = 0; slotIndex < _weaponSlots.Count; slotIndex++)
             {
                 ItemData sourceItem = _weaponSlots[slotIndex].SourceItem;
@@ -913,6 +971,28 @@ namespace CuteIssac.Player
             }
 
             return false;
+        }
+
+        private void RegisterWeaponSlot(WeaponRuntimeSlot slot)
+        {
+            ItemData sourceItem = slot != null ? slot.SourceItem : null;
+            if (sourceItem == null || string.IsNullOrWhiteSpace(sourceItem.ItemId))
+            {
+                return;
+            }
+
+            _ownedWeaponItemIds.Add(sourceItem.ItemId);
+        }
+
+        private void UnregisterWeaponSlot(WeaponRuntimeSlot slot)
+        {
+            ItemData sourceItem = slot != null ? slot.SourceItem : null;
+            if (sourceItem == null || string.IsNullOrWhiteSpace(sourceItem.ItemId))
+            {
+                return;
+            }
+
+            _ownedWeaponItemIds.Remove(sourceItem.ItemId);
         }
 
         private int ResolveReplacementIndex()

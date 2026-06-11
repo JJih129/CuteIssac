@@ -17,6 +17,8 @@ namespace CuteIssac.Room
 
         [Header("Behavior")]
         [SerializeField] [Min(0.5f)] private float interactionDistance = 1.8f;
+        [SerializeField] private bool activateOnTouch = true;
+        [SerializeField] [Min(0f)] private float touchActivationDelay = 0.35f;
 
         public event Action<FloorExit> Activated;
 
@@ -26,6 +28,7 @@ namespace CuteIssac.Room
         private RunManager _runManager;
         private Transform _playerTransform;
         private bool _isActivated;
+        private float _activationReadyAt;
 
         private void Awake()
         {
@@ -34,7 +37,7 @@ namespace CuteIssac.Room
 
         private void Update()
         {
-            if (_isActivated || _inputReader == null)
+            if (_isActivated || (!activateOnTouch && _inputReader == null))
             {
                 floorExitVisual?.SetPromptVisible(false);
                 return;
@@ -46,8 +49,19 @@ namespace CuteIssac.Room
                 return;
             }
 
-            bool inRange = Vector2.Distance(_playerTransform.position, transform.position) <= interactionDistance;
-            floorExitVisual?.SetPromptVisible(inRange);
+            float interactionDistanceSqr = interactionDistance * interactionDistance;
+            bool inRange = ((Vector2)_playerTransform.position - (Vector2)transform.position).sqrMagnitude <= interactionDistanceSqr;
+            floorExitVisual?.SetPromptVisible(!activateOnTouch && inRange);
+
+            if (activateOnTouch)
+            {
+                if (inRange && Time.time >= _activationReadyAt)
+                {
+                    TryActivate();
+                }
+
+                return;
+            }
 
             if (!inRange || !_inputReader.ReadState().ActiveItemPressed)
             {
@@ -83,6 +97,8 @@ namespace CuteIssac.Room
             _runManager = runManager;
             TargetFloorIndex = targetFloorIndex;
             _isActivated = false;
+            _activationReadyAt = Time.time + touchActivationDelay;
+            _playerTransform = ResolveActivePlayerTransform();
             floorExitVisual?.SetWorldPromptEnabled(true);
             floorExitVisual?.Configure(targetFloorIndex, accentColor);
             floorExitVisual?.SetPromptVisible(false);
@@ -140,6 +156,11 @@ namespace CuteIssac.Room
             }
 
             _playerTransform = playerController.transform;
+
+            if (activateOnTouch && Time.time >= _activationReadyAt)
+            {
+                TryActivate();
+            }
         }
 
         private void TryActivate()
@@ -165,6 +186,15 @@ namespace CuteIssac.Room
             }
 
             return beacon;
+        }
+
+        private static Transform ResolveActivePlayerTransform()
+        {
+            Player.PlayerController playerController = Player.PlayerRegistry.ActiveController != null
+                ? Player.PlayerRegistry.ActiveController
+                : FindFirstObjectByType<Player.PlayerController>(FindObjectsInactive.Exclude);
+
+            return playerController != null ? playerController.transform : null;
         }
     }
 }

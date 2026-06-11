@@ -25,7 +25,7 @@ namespace CuteIssac.Player
 
         private float _remainingDuration;
         private float _activeDuration;
-        private string _activeDisplayName = "스피드 사탕";
+        private string _activeDisplayName = "스피드 하트";
         private Sprite _activeIcon;
         private int _speedBuffSourceKey;
 
@@ -66,7 +66,7 @@ namespace CuteIssac.Player
 
         public bool TryApplyBuff(float duration, float moveSpeedMultiplier, DuplicateBuffPolicy duplicatePolicy)
         {
-            return TryApplyBuff(duration, moveSpeedMultiplier, duplicatePolicy, null, "스피드 사탕");
+            return TryApplyBuff(duration, moveSpeedMultiplier, duplicatePolicy, null, "스피드 하트");
         }
 
         public bool TryApplyBuff(float duration, float moveSpeedMultiplier, DuplicateBuffPolicy duplicatePolicy, Sprite statusIcon, string displayName)
@@ -94,7 +94,7 @@ namespace CuteIssac.Player
             _remainingDuration = resolvedDuration;
             _activeDuration = resolvedDuration;
             _activeIcon = statusIcon;
-            _activeDisplayName = string.IsNullOrWhiteSpace(displayName) ? "스피드 사탕" : displayName;
+            _activeDisplayName = string.IsNullOrWhiteSpace(displayName) ? "스피드 하트" : displayName;
             playerStats.SetRuntimeObstacleMoveSpeedMultiplier(ResolveSourceKey(), resolvedMultiplier);
 
             if (logDebugMessages)

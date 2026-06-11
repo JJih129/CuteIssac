@@ -216,7 +216,7 @@ namespace CuteIssac.Enemy
 
             if (enemyData.MinePrewarmCount > 0)
             {
-                PrefabPoolService.Prewarm(enemyData.MinePrefab.gameObject, enemyData.MinePrewarmCount);
+                PrefabPoolService.EnsurePrewarmed(enemyData.MinePrefab.gameObject, enemyData.MinePrewarmCount);
             }
 
             _hasPrewarmedMine = true;

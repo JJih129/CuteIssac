@@ -17,8 +17,8 @@ MonoBehaviour:
   flavorText: Two shells. Two answers.
   sourcePools: 0000000002000000
   eventFlags: 
-  damageModifier: -0.35
-  tearsModifier: 0.6
+  damageModifier: -0.45
+  tearsModifier: 0.2
   speedModifier: 0
   rangeModifier: 0
   shotSpeedModifier: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 02000000
   itemId: P016
   displayName: Twin Shell
-  description: Extra shots fired.
+  description: Fires extra shots with lower per-shot damage.
   icon: {fileID: 0}
   rarity: 2
   unlockedByDefault: 1

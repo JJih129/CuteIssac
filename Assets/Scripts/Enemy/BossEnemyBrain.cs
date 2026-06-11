@@ -42,8 +42,10 @@ namespace CuteIssac.Enemy
         [SerializeField] private BossPhaseProfile bossPhaseProfile;
 
         [Header("Movement")]
-        [SerializeField] [Min(0.5f)] private float preferredOrbitRange = 4.4f;
-        [SerializeField] [Range(0f, 1f)] private float orbitBlend = 0.65f;
+        [SerializeField] [Min(0.5f)] private float preferredOrbitRange = 4.2f;
+        [SerializeField] [Min(0f)] private float orbitRangeTolerance = 0.65f;
+        [SerializeField] [Range(0f, 1f)] private float orbitBlend = 0.38f;
+        [SerializeField] [Min(0f)] private float neutralShotInterval = 1.45f;
 
         [Header("Burst Pattern")]
         [SerializeField] [Min(0.1f)] private float burstCooldown = 2.4f;
@@ -87,7 +89,7 @@ namespace CuteIssac.Enemy
         [Header("Fan Pattern")]
         [SerializeField] [Min(0.1f)] private float fanCooldown = 5.1f;
         [SerializeField] [Min(0.05f)] private float fanTelegraphDuration = 0.52f;
-        [SerializeField] [Min(2)] private int fanWaveCount = 3;
+        [SerializeField] [Min(1)] private int fanWaveCount = 1;
         [SerializeField] [Min(3)] private int fanProjectilesPerWave = 7;
         [SerializeField] [Min(0f)] private float fanSpreadAngle = 96f;
         [SerializeField] [Min(0f)] private float fanTurnAngle = 16f;
@@ -120,8 +122,13 @@ namespace CuteIssac.Enemy
         [SerializeField] [Range(1f, 4f)] private float globalPatternCooldownMultiplier = 2.6f;
         [SerializeField] [Range(1f, 3f)] private float globalTelegraphDurationMultiplier = 1.7f;
         [SerializeField] [Range(1f, 3f)] private float globalPatternCadenceMultiplier = 2.1f;
-        [SerializeField] [Range(0.2f, 1f)] private float globalProjectileSpeedMultiplier = 0.42f;
+        [SerializeField] [Range(0.2f, 1.25f)] private float globalProjectileSpeedMultiplier = 0.72f;
+        [SerializeField] [Range(0.2f, 3f)] private float globalProjectileLifetimeMultiplier = 2.4f;
         [SerializeField] [Range(0.2f, 1f)] private float globalChargeSpeedMultiplier = 0.58f;
+
+        [Header("Projectile Origin")]
+        [Tooltip("Optional muzzle transform. Move this child in the prefab to adjust where boss bullets are spawned.")]
+        [SerializeField] private Transform projectileFireOrigin;
 
         [Header("Authored Boss Pattern Set")]
         [Tooltip("Enable only when intentionally testing the broader legacy bullet-hell prototype pattern table.")]
@@ -152,6 +159,7 @@ namespace CuteIssac.Enemy
         private int _crossfireShotsRemaining;
         private BossPatternType? _telegraphedPattern;
         private float _phaseTransitionRemaining;
+        private float _neutralShotCooldownRemaining;
         private bool _isPhaseTransitionActive;
         private float _spiralCurrentAngle;
         private float _fanCurrentAngle;
@@ -196,13 +204,16 @@ namespace CuteIssac.Enemy
             _crossfireShotsRemaining = 0;
             _telegraphedPattern = null;
             _phaseTransitionRemaining = 0f;
+            _neutralShotCooldownRemaining = 0.4f;
             _isPhaseTransitionActive = false;
             _spiralCurrentAngle = 0f;
             _fanCurrentAngle = 0f;
             _shockwaveCurrentAngle = 0f;
             _crossfireCurrentAngle = 0f;
             Controller.SetMoveSpeedMultiplier(1f);
+            enemyCombat?.SetSpawnOrigin(projectileFireOrigin);
             enemyCombat?.SetProjectileSpeedMultiplier(globalProjectileSpeedMultiplier);
+            enemyCombat?.SetProjectileLifetimeMultiplier(globalProjectileLifetimeMultiplier);
             Controller.StopMovement();
             ClearTelegraph();
         }
@@ -225,7 +236,9 @@ namespace CuteIssac.Enemy
             _stateTimer = 0f;
             _state = BossBrainState.Neutral;
             Controller.SetMoveSpeedMultiplier(1f);
+            enemyCombat?.SetSpawnOrigin(projectileFireOrigin);
             enemyCombat?.SetProjectileSpeedMultiplier(globalProjectileSpeedMultiplier);
+            enemyCombat?.SetProjectileLifetimeMultiplier(globalProjectileLifetimeMultiplier);
             Controller.StopMovement();
             ClearTelegraph();
             SetPhaseTransitionState(false);
@@ -237,7 +250,9 @@ namespace CuteIssac.Enemy
             _stateTimer = Mathf.Max(0f, duration);
             _phaseTransitionRemaining = _stateTimer;
             Controller.SetMoveSpeedMultiplier(1f);
+            enemyCombat?.SetSpawnOrigin(projectileFireOrigin);
             enemyCombat?.SetProjectileSpeedMultiplier(globalProjectileSpeedMultiplier);
+            enemyCombat?.SetProjectileLifetimeMultiplier(globalProjectileLifetimeMultiplier);
             Controller.StopMovement();
             ClearTelegraph();
 
@@ -265,6 +280,7 @@ namespace CuteIssac.Enemy
             _fanCooldownRemaining = Mathf.Max(0f, _fanCooldownRemaining - fixedDeltaTime);
             _shockwaveCooldownRemaining = Mathf.Max(0f, _shockwaveCooldownRemaining - fixedDeltaTime);
             _crossfireCooldownRemaining = Mathf.Max(0f, _crossfireCooldownRemaining - fixedDeltaTime);
+            _neutralShotCooldownRemaining = Mathf.Max(0f, _neutralShotCooldownRemaining - fixedDeltaTime);
 
             if (_state == BossBrainState.PhaseTransition)
             {
@@ -366,7 +382,7 @@ namespace CuteIssac.Enemy
 
         private void TickNeutral(Vector2 aimDirection)
         {
-            Vector2 orbitDirection = ResolveOrbitDirection(aimDirection);
+            Vector2 orbitDirection = ResolveDistanceHoldDirection(aimDirection);
             Controller.SetMoveSpeedMultiplier(1f);
             Controller.SetDesiredMoveDirection(orbitDirection);
             BossPatternType nextPattern = ResolveNextPattern();
@@ -416,26 +432,46 @@ namespace CuteIssac.Enemy
             if (nextPattern == BossPatternType.Crossfire && _crossfireCooldownRemaining <= 0f && enemyCombat != null && enemyCombat.CanFire)
             {
                 StartCrossfireTelegraph();
+                return;
             }
+
+            TryFireNeutralShot(aimDirection);
         }
 
-        private Vector2 ResolveOrbitDirection(Vector2 aimDirection)
+        private Vector2 ResolveDistanceHoldDirection(Vector2 aimDirection)
         {
             float distance = Vector2.Distance(Controller.Position, Controller.TargetPosition);
-            Vector2 radialDirection = aimDirection;
+            float tolerance = Mathf.Max(0f, orbitRangeTolerance);
+            Vector2 radialDirection;
 
-            if (distance < preferredOrbitRange - 0.4f)
+            if (distance < preferredOrbitRange - tolerance)
             {
                 radialDirection = -aimDirection;
             }
-            else if (distance <= preferredOrbitRange + 0.8f)
+            else if (distance > preferredOrbitRange + tolerance)
+            {
+                radialDirection = aimDirection;
+            }
+            else
             {
                 radialDirection = Vector2.zero;
             }
 
             Vector2 tangent = new Vector2(-aimDirection.y, aimDirection.x);
             Vector2 moveDirection = (tangent * orbitBlend) + radialDirection;
-            return moveDirection.sqrMagnitude > 0.0001f ? moveDirection.normalized : tangent.normalized;
+            return moveDirection.sqrMagnitude > 0.0001f ? moveDirection.normalized : Vector2.zero;
+        }
+
+        private void TryFireNeutralShot(Vector2 aimDirection)
+        {
+            if (neutralShotInterval <= 0f || _neutralShotCooldownRemaining > 0f || enemyCombat == null || !enemyCombat.CanFire)
+            {
+                return;
+            }
+
+            enemyCombat.Fire(aimDirection);
+            bossVisual?.HandleAttack();
+            _neutralShotCooldownRemaining = neutralShotInterval;
         }
 
         private void StartBurstTelegraph()
@@ -570,6 +606,7 @@ namespace CuteIssac.Enemy
             _stateTimer = GetChargeTelegraphDuration();
             _chargeDirection = aimDirection;
             Controller.StopMovement();
+            bossVisual?.SetTelegraphDirection(_chargeDirection);
             SetTelegraph(BossPatternType.Charge);
         }
 
@@ -632,11 +669,12 @@ namespace CuteIssac.Enemy
         {
             _state = BossBrainState.FanTelegraph;
             _stateTimer = GetFanTelegraphDuration();
-            _fanShotsRemaining = Mathf.Max(2, Mathf.RoundToInt(fanWaveCount * GetFanCountMultiplier()));
+            _fanShotsRemaining = Mathf.Max(1, Mathf.RoundToInt(fanWaveCount * GetFanCountMultiplier()));
             _fanCurrentAngle = Vector2.SignedAngle(Vector2.right, _cachedAimDirection);
             PrewarmBossProjectiles(_fanShotsRemaining * Mathf.Max(3, fanProjectilesPerWave));
             Controller.SetMoveSpeedMultiplier(1f);
             Controller.StopMovement();
+            bossVisual?.SetTelegraphDirection(_cachedAimDirection);
             SetTelegraph(BossPatternType.Fan);
         }
 
@@ -797,9 +835,8 @@ namespace CuteIssac.Enemy
 
         private void TickFanFiring(float fixedDeltaTime)
         {
-            Vector2 retreatDirection = -_cachedAimDirection;
             Controller.SetMoveSpeedMultiplier(1f);
-            Controller.SetDesiredMoveDirection((_cachedAimDirection * (1f - fanMoveBlend)) + (retreatDirection * fanMoveBlend));
+            Controller.SetDesiredMoveDirection(ResolveDistanceHoldDirection(_cachedAimDirection) * Mathf.Max(0f, fanMoveBlend));
 
             _stateTimer -= fixedDeltaTime;
 
@@ -1320,6 +1357,16 @@ namespace CuteIssac.Enemy
             if (bossVisual == null)
             {
                 bossVisual = GetComponent<BossVisual>();
+            }
+
+            if (projectileFireOrigin == null)
+            {
+                Transform existingOrigin = transform.Find("BossProjectileMuzzle");
+
+                if (existingOrigin != null)
+                {
+                    projectileFireOrigin = existingOrigin;
+                }
             }
         }
     }

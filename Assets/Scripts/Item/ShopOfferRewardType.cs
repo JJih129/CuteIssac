@@ -10,6 +10,7 @@ namespace CuteIssac.Item
         Coins = 2,
         Keys = 3,
         Bombs = 4,
-        Ammo = 5
+        Ammo = 5,
+        SpeedHeart = 6
     }
 }

@@ -51,6 +51,7 @@ namespace CuteIssac.Room.Gimmicks
             ResolveColliderCache();
             ResolveVisualRenderers();
             ConfigureGameplayComponents(resetHealth: true);
+            PooledEffectSpawner.Prewarm(breakEffectPrefab, 1);
             SetActiveState(true);
         }
 

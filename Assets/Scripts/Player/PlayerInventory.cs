@@ -30,6 +30,7 @@ namespace CuteIssac.Player
         public PlayerResourceSnapshot Resources => new(Coins, Keys, Bombs);
 
         private readonly List<ItemData> _passiveItems = new();
+        private readonly HashSet<string> _passiveItemIds = new(StringComparer.Ordinal);
 
         private void Awake()
         {
@@ -39,21 +40,42 @@ namespace CuteIssac.Player
             InitializeStartingItems();
         }
 
+        private void OnEnable()
+        {
+            PlayerRegistry.Register(this);
+        }
+
+        private void OnDisable()
+        {
+            PlayerRegistry.Unregister(this);
+        }
+
+        private void OnDestroy()
+        {
+            PlayerRegistry.Unregister(this);
+        }
+
         public bool AddPassiveItem(ItemData itemData)
         {
-            if (itemData == null || _passiveItems.Contains(itemData))
+            if (!TryAddPassiveItemUnique(itemData))
             {
                 return false;
             }
 
-            _passiveItems.Add(itemData);
             InventoryChanged?.Invoke();
             return true;
         }
 
         public bool Contains(ItemData itemData)
         {
-            return itemData != null && _passiveItems.Contains(itemData);
+            if (itemData == null)
+            {
+                return false;
+            }
+
+            return !string.IsNullOrWhiteSpace(itemData.ItemId)
+                ? _passiveItemIds.Contains(itemData.ItemId)
+                : _passiveItems.Contains(itemData);
         }
 
         public void ApplyStartingLoadout(int coins, int keys, int bombs, IReadOnlyList<ItemData> passiveItems)
@@ -62,17 +84,13 @@ namespace CuteIssac.Player
             Keys = Mathf.Max(0, keys);
             Bombs = Mathf.Max(0, bombs);
             _passiveItems.Clear();
+            _passiveItemIds.Clear();
 
             if (passiveItems != null)
             {
                 for (int index = 0; index < passiveItems.Count; index++)
                 {
-                    ItemData itemData = passiveItems[index];
-
-                    if (itemData != null && !_passiveItems.Contains(itemData))
-                    {
-                        _passiveItems.Add(itemData);
-                    }
+                    TryAddPassiveItemUnique(passiveItems[index]);
                 }
             }
 
@@ -151,15 +169,36 @@ namespace CuteIssac.Player
 
         private void InitializeStartingItems()
         {
+            _passiveItems.Clear();
+            _passiveItemIds.Clear();
+
             for (int i = 0; i < startingPassiveItems.Count; i++)
             {
-                ItemData itemData = startingPassiveItems[i];
+                TryAddPassiveItemUnique(startingPassiveItems[i]);
+            }
+        }
 
-                if (itemData != null && !_passiveItems.Contains(itemData))
+        private bool TryAddPassiveItemUnique(ItemData itemData)
+        {
+            if (itemData == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(itemData.ItemId))
+            {
+                if (!_passiveItemIds.Add(itemData.ItemId))
                 {
-                    _passiveItems.Add(itemData);
+                    return false;
                 }
             }
+            else if (_passiveItems.Contains(itemData))
+            {
+                return false;
+            }
+
+            _passiveItems.Add(itemData);
+            return true;
         }
 
         private void NotifyResourcesChanged()

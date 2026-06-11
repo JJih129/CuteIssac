@@ -24,6 +24,10 @@ namespace CuteIssac.Core.Bootstrap
         [SerializeField] private bool bootstrapOnAwake = true;
         [SerializeField] private bool autoStartRunOnAwake = true;
         [SerializeField] private bool preferStartupBuildSelectionBeforeRunRestore = true;
+        [SerializeField] [Min(0)] private int prewarmCoinPickupCount = 48;
+        [SerializeField] [Min(0)] private int prewarmBombPickupCount = 8;
+        [SerializeField] [Min(0)] private int prewarmAmmoPickupCount = 12;
+        [SerializeField] [Min(0)] private int prewarmKeyPickupCount = 8;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         [SerializeField] private bool enableDevelopmentDebugController = true;
 #endif
@@ -56,7 +60,11 @@ namespace CuteIssac.Core.Bootstrap
 
             _hasBootstrapped = true;
             EnsureFloorTransitionController();
-            RuntimePickupFactory.PrewarmDefaultPickups();
+            RuntimePickupFactory.PrewarmDefaultPickups(
+                prewarmCoinPickupCount,
+                prewarmBombPickupCount,
+                prewarmAmmoPickupCount,
+                prewarmKeyPickupCount);
             runManager.Bootstrap(startupRunConfiguration);
 
             if (autoStartRunOnAwake)

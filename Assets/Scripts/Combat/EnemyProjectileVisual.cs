@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using CuteIssac.Core.Pooling;
 
@@ -11,8 +10,6 @@ namespace CuteIssac.Combat
     [DisallowMultipleComponent]
     public sealed class EnemyProjectileVisual : MonoBehaviour
     {
-        private static readonly HashSet<GameObject> PrewarmedEffectPrefabs = new();
-
         [Header("Visual References")]
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private TrailRenderer trailRenderer;
@@ -42,6 +39,13 @@ namespace CuteIssac.Combat
 
         private bool _warnedMissingVisuals;
         private SpriteRenderer _outlineRenderer;
+
+        private void Awake()
+        {
+            ResolveReferences();
+            TryPrewarmEffects();
+            SyncOutlineRenderer();
+        }
 
         public void HandleInitialized(Vector2 direction)
         {
@@ -105,12 +109,12 @@ namespace CuteIssac.Combat
 
         private void TryPrewarmEffect(GameObject effectPrefab)
         {
-            if (effectPrefab == null || !PrewarmedEffectPrefabs.Add(effectPrefab))
+            if (effectPrefab == null)
             {
                 return;
             }
 
-            PrefabPoolService.Prewarm(effectPrefab, effectPrewarmCount);
+            PrefabPoolService.EnsurePrewarmed(effectPrefab, effectPrewarmCount);
         }
 
         private void WarnIfFullyUnassigned()
@@ -133,11 +137,20 @@ namespace CuteIssac.Combat
 
         private void Reset()
         {
-            spriteRenderer = GetComponent<SpriteRenderer>();
-            trailRenderer = GetComponent<TrailRenderer>();
+            ResolveReferences();
         }
 
         private void OnValidate()
+        {
+            ResolveReferences();
+
+            if (Application.isPlaying)
+            {
+                SyncOutlineRenderer();
+            }
+        }
+
+        private void ResolveReferences()
         {
             if (spriteRenderer == null)
             {
@@ -147,11 +160,6 @@ namespace CuteIssac.Combat
             if (trailRenderer == null)
             {
                 trailRenderer = GetComponent<TrailRenderer>();
-            }
-
-            if (Application.isPlaying)
-            {
-                SyncOutlineRenderer();
             }
         }
 

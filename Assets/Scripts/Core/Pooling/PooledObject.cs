@@ -62,7 +62,7 @@ namespace CuteIssac.Core.Pooling
                 return;
             }
 
-            GetComponents(_lifecycleCallbacks);
+            GetComponentsInChildren(true, _lifecycleCallbacks);
             _hasScannedLifecycleCallbacks = true;
         }
     }

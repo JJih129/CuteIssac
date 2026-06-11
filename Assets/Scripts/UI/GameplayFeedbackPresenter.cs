@@ -63,6 +63,7 @@ namespace CuteIssac.UI
         [SerializeField] private bool suppressEventLabelFeedback = true;
         [SerializeField] private bool suppressNonFeedbackWorldText = true;
         [SerializeField] [Min(4)] private int pickupFeedbackMaxCharacters = 18;
+        [SerializeField] [Min(1)] private int maxEnemyDamagePopupsPerFrame = 18;
 
         [Header("Pool Warmup")]
         [SerializeField] [Min(0)] private int floatingFeedbackPrewarmCount = 32;
@@ -78,6 +79,8 @@ namespace CuteIssac.UI
         private RoomClearEffectView _runtimeRoomClearEffectTemplate;
         private ScreenThreatFlashView _runtimeThreatFlashTemplate;
         private bool _suppressPresentationForModal;
+        private int _floatingFeedbackFrame = -1;
+        private int _enemyDamagePopupsThisFrame;
 
         private void Awake()
         {
@@ -143,7 +146,7 @@ namespace CuteIssac.UI
 
             SpawnFloatingFeedback(new FloatingFeedbackRequest(
                 worldPosition + enemyDamageOffset,
-                Mathf.CeilToInt(amount).ToString(),
+                FloatingFeedbackTextCache.GetUnsignedCeil(amount),
                 enemyDamageColor,
                 0.44f,
                 0.54f,
@@ -165,7 +168,7 @@ namespace CuteIssac.UI
 
             SpawnFloatingFeedback(new FloatingFeedbackRequest(
                 worldPosition + playerDamageOffset,
-                $"-{Mathf.CeilToInt(amount)}",
+                FloatingFeedbackTextCache.GetNegativeCeil(amount),
                 playerDamageColor,
                 0.46f,
                 0.58f,
@@ -559,10 +562,37 @@ namespace CuteIssac.UI
                 return;
             }
 
+            if (ShouldSuppressFloatingFeedbackForBudget(request.VisualProfile))
+            {
+                return;
+            }
+
             FloatingFeedbackView feedbackTemplate = ResolveFloatingFeedbackTemplate();
             FloatingFeedbackView feedbackView = PrefabPoolService.Spawn(feedbackTemplate, request.WorldPosition, Quaternion.identity);
 
             feedbackView.Initialize(request);
+        }
+
+        private bool ShouldSuppressFloatingFeedbackForBudget(FloatingFeedbackVisualProfile visualProfile)
+        {
+            if (Time.frameCount != _floatingFeedbackFrame)
+            {
+                _floatingFeedbackFrame = Time.frameCount;
+                _enemyDamagePopupsThisFrame = 0;
+            }
+
+            if (visualProfile != FloatingFeedbackVisualProfile.EnemyDamage)
+            {
+                return false;
+            }
+
+            if (_enemyDamagePopupsThisFrame >= Mathf.Max(1, maxEnemyDamagePopupsPerFrame))
+            {
+                return true;
+            }
+
+            _enemyDamagePopupsThisFrame++;
+            return false;
         }
 
         private void SpawnBannerFeedback(BannerFeedbackRequest request)
@@ -860,7 +890,7 @@ namespace CuteIssac.UI
                 return;
             }
 
-            PrefabPoolService.Prewarm(template.gameObject, count);
+            PrefabPoolService.EnsurePrewarmed(template.gameObject, count);
         }
 
         private Color ResolveSecretRewardAccentColor()

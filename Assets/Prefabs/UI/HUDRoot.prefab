@@ -61,7 +61,14 @@ MonoBehaviour:
   bossHpPanelView: {fileID: 820000234}
   minimapPanelView: {fileID: 820000254}
   topHudBarView: {fileID: 820000104}
-  weaponAmmoUiSprite: {fileID: -5476636203795425448, guid: 386ef2e61084d6b4b8327118c13bad9d, type: 3}
+  weaponAmmoUiSprite: {fileID: 8766029622200758570, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  weaponPanelUiSprite: {fileID: -8825028299691005727, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  weaponNamePlateUiSprite: {fileID: 4561509497542768799, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  weaponAmmoBoxUiSprite: {fileID: -2923041028969560183, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  weaponStatusTagUiSprite: {fileID: -250819814189389502, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  weaponReloadTrackUiSprite: {fileID: 4925395011777349477, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  weaponReloadFillUiSprite: {fileID: -2436204984005785915, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  weaponActiveSlotUiSprite: {fileID: -2873731770067863720, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
 --- !u!114 &820000103
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -227,10 +234,12 @@ MonoBehaviour:
   heartSlotParent: {fileID: 820000151}
   heartSlotTemplate: {fileID: 820000163}
   slotSpacing: 8
-filledHeartSprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000f, type: 3}
-emptyHeartSprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000f, type: 3}
+  filledHeartSprite: {fileID: 8735823042220390117, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  emptyHeartSprite: {fileID: 134735002247928564, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  halfHeartSprite: {fileID: -3855594113995240100, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   filledHeartColor: {r: 0.95, g: 0.3, b: 0.3, a: 1}
   emptyHeartColor: {r: 0.3, g: 0.3, b: 0.3, a: 0.8}
+  speedHeartSprite: {fileID: -7394859691097160528, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
 --- !u!1 &820000140
 GameObject:
   m_ObjectHideFlags: 0
@@ -411,7 +420,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 8735823042220390117, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -590,7 +599,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000c, type: 3}
+  m_Sprite: {fileID: 7962475559329695631, guid: c223177c57c8a644d8c76b34ab495fd4, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -898,7 +907,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000e, type: 3}
+  m_Sprite: {fileID: 4498091695805093216, guid: ceb165fb37a3a4e4085dd50601542fe5, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1056,7 +1065,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: -4140679158150544103, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1081,6 +1090,7 @@ MonoBehaviour:
   panelRoot: {fileID: 820000210}
   frameImage: {fileID: 820000213}
   iconImage: {fileID: 820000218}
+  emptyIconSprite: {fileID: -5961827920145167281, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   chargeSlider: {fileID: 0}
   chargeFillImage: {fileID: 820000223}
   labelText: {fileID: 820000228}
@@ -1142,14 +1152,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.22}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10011, type: 3}
+  m_Sprite: {fileID: -5961827920145167281, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1659,8 +1669,11 @@ MonoBehaviour:
   contentRoot: {fileID: 820000256}
   placeholderText: {fileID: 820000263}
   nodeTemplate: {fileID: 0}
-  nodeSpacing: 34
-  fallbackNodeSize: {x: 32, y: 32}
+  nodeSpacing: {x: 42, y: 42}
+  baseNodeSize: {x: 32, y: 32}
+  connectionThickness: 12
+  currentRoomFocusOffset: {x: 0, y: 0}
+  hideHiddenRooms: 0
   currentNodeScaleMultiplier: 1.3
   hideUnknownRooms: 1
   unknownStateColor: {r: 1, g: 1, b: 1, a: 0.12}
@@ -1676,13 +1689,36 @@ MonoBehaviour:
   shopRoomColor: {r: 0.35, g: 0.95, b: 0.85, a: 1}
   secretRoomColor: {r: 0.82, g: 0.55, b: 1, a: 1}
   challengeRoomColor: {r: 1, g: 0.64, b: 0.22, a: 1}
-startRoomIcon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10001, type: 3}
-  normalRoomIcon: {fileID: 0}
-bossRoomIcon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000b, type: 3}
-treasureRoomIcon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10014, type: 3}
-shopRoomIcon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10013, type: 3}
-secretRoomIcon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000a, type: 3}
-challengeRoomIcon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10015, type: 3}
+  startRoomIcon: {fileID: 1435560553650173908, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  normalRoomIcon: {fileID: 8692006518550237604, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  bossRoomIcon: {fileID: 3981049317945334682, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  miniBossRoomIcon: {fileID: 4697225969664125362, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  treasureRoomIcon: {fileID: -5098267851782371956, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  shopRoomIcon: {fileID: -1629751284772450363, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  secretRoomIcon: {fileID: -8919816767522919903, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  challengeRoomIcon: {fileID: 4060924930900977660, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  trapRoomIcon: {fileID: -1107501060675568549, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  curseRoomIcon: {fileID: -1846042476809360852, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  clearedMarkerSprite: {fileID: -2660231808718720589, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  rewardMarkerSprite: {fileID: -1156519557425458381, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  collectedRewardMarkerSprite: {fileID: -2660231808718720589, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  connectionSprite: {fileID: 3176447770642006163, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  verticalConnectionSprite: {fileID: 4324988810662870124, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  secretConnectionSprite: {fileID: 6404084593555529036, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  hiddenRoomTileSprite: {fileID: -8919816767522919903, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  discoveredRoomTileSprite: {fileID: -6100505845046171094, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  visitedRoomTileSprite: {fileID: 3210145190399315609, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  clearedRoomTileSprite: {fileID: -7071030890474742978, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  currentRoomTileSprite: {fileID: 6824371469484470221, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  startRoomTileSprite: {fileID: 1435560553650173908, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  bossRoomTileSprite: {fileID: 3981049317945334682, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  miniBossRoomTileSprite: {fileID: 4697225969664125362, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  treasureRoomTileSprite: {fileID: -5098267851782371956, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  shopRoomTileSprite: {fileID: -1629751284772450363, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  secretRoomTileSprite: {fileID: -8919816767522919903, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  challengeRoomTileSprite: {fileID: 4060924930900977660, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  trapRoomTileSprite: {fileID: -1107501060675568549, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
+  curseRoomTileSprite: {fileID: -1846042476809360852, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
 --- !u!1 &820000270
 GameObject:
   m_ObjectHideFlags: 0
@@ -2317,7 +2353,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: -915197303499889579, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2342,6 +2378,7 @@ MonoBehaviour:
   panelRoot: {fileID: 820000310}
   frameImage: {fileID: 820000313}
   iconImage: {fileID: 820000318}
+  emptyIconSprite: {fileID: -4468961221353430322, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   titleText: {fileID: 820000323}
   detailText: {fileID: 820000328}
 --- !u!1 &820000315
@@ -2402,14 +2439,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.2}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: -4468961221353430322, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

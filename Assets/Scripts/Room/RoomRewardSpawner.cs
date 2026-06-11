@@ -34,6 +34,10 @@ namespace CuteIssac.Room
         [SerializeField] private RoomMomentumRewardController momentumRewardController;
         [Tooltip("Optional player item manager that can inject passive clear reward bonuses before rewards spawn.")]
         [SerializeField] private PlayerItemManager playerItemManager;
+        [Tooltip("Optional player inventory used for Isaac-style key economy assist.")]
+        [SerializeField] private PlayerInventory playerInventory;
+        [Tooltip("Optional player health used for Isaac-style adaptive room clear drops.")]
+        [SerializeField] private PlayerHealth playerHealth;
 
         [Header("Reward Rules")]
         [Tooltip("Current room category used to filter reward table entries. Dungeon generation can override this later.")]
@@ -45,9 +49,54 @@ namespace CuteIssac.Room
         [SerializeField] private SpawnReusePolicy rewardSpawnReusePolicy = SpawnReusePolicy.Pooled;
         [SerializeField] [Min(0)] private int rewardPrewarmBufferCount = 1;
 
+        [Header("Isaac-Style Reward Placement")]
+        [SerializeField] private bool useIsaacStyleRewardPlacement = true;
+        [SerializeField] private bool normalRewardsUseRoomCenter = true;
+        [SerializeField] [Min(0f)] private float clearRewardForwardOffset = 0.18f;
+        [SerializeField] [Min(0.1f)] private float clearRewardRingRadius = 0.58f;
+        [SerializeField] [Min(0f)] private float clearRewardRingRadiusStep = 0.18f;
+
+        [Header("Isaac-Style Clear Reward Odds")]
+        [SerializeField] private bool useIsaacStyleClearRewardOdds = true;
+        [SerializeField] [Range(0f, 1f)] private float normalClearRewardChance = 0.45f;
+        [SerializeField] [Range(0f, 1f)] private float challengeClearRewardChance = 1f;
+        [SerializeField] [Range(0f, 1f)] private float miniBossClearRewardChance = 1f;
+        [SerializeField] [Range(0f, 1f)] private float secretClearRewardChance = 1f;
+        [SerializeField] [Range(0f, 1f)] private float trapClearRewardChance = 0.35f;
+        [SerializeField] [Range(0f, 1f)] private float curseClearRewardChance = 0.55f;
+
+        [Header("Isaac-Style Key Economy Assist")]
+        [SerializeField] private bool enableLockedKeyDoorAssist = true;
+        [SerializeField] [Range(0f, 1f)] private float lockedKeyDoorAssistChanceWhenNoReward = 0.65f;
+        [SerializeField] [Range(0f, 1f)] private float lockedKeyDoorAssistChanceAfterReward = 0.22f;
+        [SerializeField] private bool enableHiddenSecretBombAssist = true;
+        [SerializeField] [Range(0f, 1f)] private float hiddenSecretBombAssistChanceWhenNoReward = 0.55f;
+        [SerializeField] [Range(0f, 1f)] private float hiddenSecretBombAssistChanceAfterReward = 0.18f;
+
+        [Header("Isaac-Style Adaptive Essentials")]
+        [SerializeField] private bool enableAdaptiveEssentialRewardWeights = true;
+        [SerializeField] [Min(1f)] private float lowHealthHeartWeightMultiplier = 2.35f;
+        [SerializeField] [Range(0f, 1f)] private float fullHealthHeartWeightMultiplier = 0.35f;
+        [SerializeField] [Min(1f)] private float noKeyWeightMultiplier = 1.75f;
+        [SerializeField] [Min(1f)] private float noBombWeightMultiplier = 1.6f;
+        [SerializeField] [Min(1f)] private float lowCoinWeightMultiplier = 1.35f;
+
         [Header("Boss Rewards")]
-        [Tooltip("How many normal enemy drop rolls the boss reward budget should emulate.")]
-        [SerializeField] [Min(0)] private int bossEquivalentEnemyDropRollCount = 15;
+        [Tooltip("Isaac-style boss rooms primarily drop one item pedestal. Resource sprays are optional bonuses.")]
+        [SerializeField] private bool spawnBossResourceBonus;
+        [SerializeField] [Range(0f, 1f)] private float bossResourceBonusChance = 0.25f;
+        [Tooltip("How many normal enemy drop rolls the optional boss resource bonus should emulate.")]
+        [SerializeField] [Min(0)] private int bossEquivalentEnemyDropRollCount = 3;
+        [SerializeField] private bool spawnBossFallbackResourcesWhenItemUnavailable = true;
+        [SerializeField] [Min(0)] private int bossFallbackCoinCount = 4;
+        [SerializeField] [Min(0)] private int bossFallbackKeyCount = 1;
+        [SerializeField] [Min(0)] private int bossFallbackBombCount = 1;
+
+        [Header("Item Reward Fallback")]
+        [SerializeField] private bool spawnItemFallbackResourcesWhenPoolUnavailable = true;
+        [SerializeField] [Min(0)] private int itemFallbackCoinCount = 3;
+        [SerializeField] [Min(0)] private int itemFallbackKeyCount = 1;
+        [SerializeField] [Min(0)] private int itemFallbackBombCount;
 
         [Header("Challenge Reveal Layout")]
         [SerializeField] [Min(0.2f)] private float challengeRevealPrimarySpacing = 1.05f;
@@ -80,6 +129,18 @@ namespace CuteIssac.Room
         private int _activeRewardLayoutCount;
 
         public bool HasSpawnedRewards => _hasSpawnedRewards;
+
+        public bool TryGetPrimaryRewardAnchorPosition(out Vector3 position)
+        {
+            if (rewardSpawnAnchor != null)
+            {
+                position = rewardSpawnAnchor.position;
+                return true;
+            }
+
+            position = transform.position;
+            return true;
+        }
 
         /// <summary>
         /// Generated rooms inject their resolved room type so reward filtering follows the generated content instead of the prefab default.
@@ -189,6 +250,16 @@ namespace CuteIssac.Room
                 playerItemManager = FindFirstObjectByType<PlayerItemManager>(FindObjectsInactive.Exclude);
             }
 
+            if (playerInventory == null)
+            {
+                playerInventory = FindFirstObjectByType<PlayerInventory>(FindObjectsInactive.Exclude);
+            }
+
+            if (playerHealth == null)
+            {
+                playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
+            }
+
             if (momentumRewardController == null)
             {
                 momentumRewardController = GetComponent<RoomMomentumRewardController>();
@@ -281,13 +352,15 @@ namespace CuteIssac.Room
                 bonusRewardSelections + pressureBonusRewardSelections + passiveBonusRewardSelections,
                 secretBonusRewardSelections,
                 bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls,
-                secretBonusItemRolls);
+                secretBonusItemRolls,
+                allowNonCombatRewards);
             int expectedRewardSpawnCount = EstimateRewardSpawnCount(
                 resolvedRewardTable,
                 bonusRewardSelections + pressureBonusRewardSelections + passiveBonusRewardSelections + momentumBonusRewardSelections,
                 secretBonusRewardSelections,
                 bonusItemRolls + pressureBonusItemRolls + passiveBonusItemRolls + momentumBonusItemRolls,
-                secretBonusItemRolls);
+                secretBonusItemRolls,
+                allowNonCombatRewards);
             _activeRewardPhaseSummary = new RoomRewardPhaseSummary(
                 expectedRewardSpawnCount,
                 challengeClearRank,
@@ -320,9 +393,10 @@ namespace CuteIssac.Room
                     _selectionPool.Clear();
                     _selectionPool.AddRange(_candidateEntries);
 
-                    int baseSelectionCount = resolvedRewardTable.AllowDuplicateSelections
-                        ? resolvedRewardTable.GetSelectionCount()
-                        : Mathf.Min(resolvedRewardTable.GetSelectionCount(), _selectionPool.Count);
+                    int baseSelectionCount = ResolveBaseRewardSelectionCount(
+                        resolvedRewardTable,
+                        _selectionPool.Count,
+                        allowNonCombatRewards);
                     int standardBonusSelectionCount = bonusRewardSelections
                         + pressureBonusRewardSelections
                         + passiveBonusRewardSelections
@@ -363,6 +437,14 @@ namespace CuteIssac.Room
                     momentumSpawnIndex: momentumSpawnIndex,
                     momentumAccentColor: momentumBonusAccentColor);
                 momentumSpawnIndex++;
+            }
+
+            int economyAssistCount = TrySpawnLockedKeyDoorAssist(resolvedRoom, spawnIndex, spawnIndex > 0);
+            spawnIndex += economyAssistCount;
+
+            if (economyAssistCount <= 0)
+            {
+                spawnIndex += TrySpawnHiddenSecretBombAssist(resolvedRoom, spawnIndex, spawnIndex > 0);
             }
 
             _hasSpawnedRewards = spawnIndex > 0;
@@ -421,7 +503,13 @@ namespace CuteIssac.Room
             int spawnedCount = 0;
             int spawnIndex = 0;
             spawnedCount += SpawnBossResourceBudget(ref spawnIndex);
-            spawnedCount += SpawnBossArtifactReward();
+            int artifactRewardCount = SpawnBossArtifactReward();
+            spawnedCount += artifactRewardCount;
+
+            if (artifactRewardCount <= 0)
+            {
+                spawnedCount += SpawnBossFallbackResourceReward(ref spawnIndex);
+            }
 
             _hasSpawnedRewards = spawnedCount > 0;
             _activeRewardPhaseSummary = new RoomRewardPhaseSummary(spawnedCount);
@@ -442,6 +530,11 @@ namespace CuteIssac.Room
 
         private int SpawnBossResourceBudget(ref int spawnIndex)
         {
+            if (!spawnBossResourceBonus || Random.value > bossResourceBonusChance)
+            {
+                return 0;
+            }
+
             int spawnedCount = 0;
             int rollCount = Mathf.Max(0, bossEquivalentEnemyDropRollCount);
 
@@ -451,6 +544,7 @@ namespace CuteIssac.Room
                     CuteIssac.Item.EnemyDropRules.CoinDropChance,
                     CuteIssac.Item.EnemyDropRules.AmmoDropChance,
                     CuteIssac.Item.EnemyDropRules.BombDropChance,
+                    CuteIssac.Item.EnemyDropRules.KeyDropChance,
                     CuteIssac.Item.EnemyDropRules.NoDropChance))
                 {
                     case EnemyDropKind.Coins:
@@ -473,7 +567,68 @@ namespace CuteIssac.Room
                             spawnedCount++;
                         }
                         break;
+                    case EnemyDropKind.Key:
+                        if (TrySpawnBossResourcePickup(EnemyDropKind.Key, spawnIndex + 1))
+                        {
+                            spawnIndex++;
+                            spawnedCount++;
+                        }
+                        break;
                 }
+            }
+
+            return spawnedCount;
+        }
+
+        private int SpawnBossFallbackResourceReward(ref int spawnIndex)
+        {
+            if (!spawnBossFallbackResourcesWhenItemUnavailable)
+            {
+                return 0;
+            }
+
+            int spawnedCount = 0;
+            int keyCount = playerInventory != null && playerInventory.Keys > 0
+                ? 0
+                : bossFallbackKeyCount;
+            int bombCount = playerInventory != null && playerInventory.Bombs > 0
+                ? 0
+                : bossFallbackBombCount;
+
+            for (int keyIndex = 0; keyIndex < keyCount; keyIndex++)
+            {
+                if (TrySpawnBossResourcePickup(EnemyDropKind.Key, spawnIndex + 1))
+                {
+                    spawnIndex++;
+                    spawnedCount++;
+                }
+            }
+
+            for (int bombIndex = 0; bombIndex < bombCount; bombIndex++)
+            {
+                if (TrySpawnBossResourcePickup(EnemyDropKind.Bomb, spawnIndex + 1))
+                {
+                    spawnIndex++;
+                    spawnedCount++;
+                }
+            }
+
+            for (int coinIndex = 0; coinIndex < bossFallbackCoinCount; coinIndex++)
+            {
+                if (TrySpawnBossResourcePickup(EnemyDropKind.Coins, spawnIndex + 1))
+                {
+                    spawnIndex++;
+                    spawnedCount++;
+                }
+            }
+
+            if (spawnedCount > 0)
+            {
+                GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
+                    "BOSS CACHE",
+                    "Item pool empty. Resource cache opened.",
+                    new Color(1f, 0.76f, 0.28f, 1f),
+                    1.85f));
             }
 
             return spawnedCount;
@@ -498,48 +653,124 @@ namespace CuteIssac.Room
 
         private bool TrySpawnBossResourcePickup(EnemyDropKind dropKind, int spawnIndex)
         {
-            Vector3 spawnPosition = ResolveBossRewardPosition(spawnIndex);
-            GameObject rewardObject = dropKind switch
-            {
-                EnemyDropKind.Coins => CuteIssac.Item.RuntimePickupFactory.SpawnCoinPickup(
-                    spawnPosition,
-                    spawnedRewardParent,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupScale,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupColliderRadius,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupSortingOrder,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultCoinPickupBaseColor,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultCoinPickupCollectedColor,
-                    "CandyCoinPickup"),
-                EnemyDropKind.Ammo => CuteIssac.Item.RuntimePickupFactory.SpawnAmmoPickup(
-                    spawnPosition,
-                    spawnedRewardParent,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupScale,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupColliderRadius,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupSortingOrder,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultAmmoPickupBaseColor,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultAmmoPickupCollectedColor,
-                    1,
-                    false,
-                    "AmmoPickup"),
-                EnemyDropKind.Bomb => CuteIssac.Item.RuntimePickupFactory.SpawnBombPickup(
-                    spawnPosition,
-                    spawnedRewardParent,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupScale,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupColliderRadius,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultPickupSortingOrder,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultBombPickupBaseColor,
-                    CuteIssac.Item.RuntimePickupFactory.DefaultBombPickupCollectedColor,
-                    "BombPickup"),
-                _ => null
-            };
+            return TrySpawnRuntimeResourcePickup(
+                dropKind,
+                ResolveBossRewardPosition(spawnIndex),
+                ResolveBossResourcePickupName(dropKind));
+        }
 
-            if (rewardObject == null)
+        private int TrySpawnLockedKeyDoorAssist(RoomController resolvedRoom, int spawnIndex, bool alreadySpawnedReward)
+        {
+            if (!enableLockedKeyDoorAssist
+                || roomTypeForRewards != RoomType.Normal
+                || resolvedRoom == null
+                || playerInventory == null
+                || playerInventory.Keys > 0
+                || !HasLockedKeyDoor(resolvedRoom, playerInventory.Keys))
+            {
+                return 0;
+            }
+
+            float chance = alreadySpawnedReward
+                ? lockedKeyDoorAssistChanceAfterReward
+                : lockedKeyDoorAssistChanceWhenNoReward;
+
+            if (chance <= 0f || Random.value > chance)
+            {
+                return 0;
+            }
+
+            return TrySpawnRuntimeResourcePickup(EnemyDropKind.Key, ResolveSpawnPosition(spawnIndex), "LockedDoorKeyAssist")
+                ? 1
+                : 0;
+        }
+
+        private int TrySpawnHiddenSecretBombAssist(RoomController resolvedRoom, int spawnIndex, bool alreadySpawnedReward)
+        {
+            if (!enableHiddenSecretBombAssist
+                || roomTypeForRewards != RoomType.Normal
+                || resolvedRoom == null
+                || playerInventory == null
+                || playerInventory.Bombs > 0
+                || !HasHiddenSecretDoor(resolvedRoom))
+            {
+                return 0;
+            }
+
+            float chance = alreadySpawnedReward
+                ? hiddenSecretBombAssistChanceAfterReward
+                : hiddenSecretBombAssistChanceWhenNoReward;
+
+            if (chance <= 0f || Random.value > chance)
+            {
+                return 0;
+            }
+
+            return TrySpawnRuntimeResourcePickup(EnemyDropKind.Bomb, ResolveSpawnPosition(spawnIndex), "HiddenSecretBombAssist")
+                ? 1
+                : 0;
+        }
+
+        private static bool HasLockedKeyDoor(RoomController room, int availableKeys)
+        {
+            if (room == null)
             {
                 return false;
             }
 
-            ConfigureRewardPickupTracking(rewardObject);
-            return true;
+            IReadOnlyList<RoomDoor> roomDoors = room.RoomDoors;
+            if (roomDoors == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < roomDoors.Count; i++)
+            {
+                RoomDoor roomDoor = roomDoors[i];
+                if (roomDoor == null || roomDoor.IsLocked || roomDoor.ConnectedRoom == null)
+                {
+                    continue;
+                }
+
+                int requiredKeys = roomDoor.RequiredKeysToEnter;
+                if (requiredKeys > 0 && availableKeys < requiredKeys)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool HasHiddenSecretDoor(RoomController room)
+        {
+            if (room == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<RoomDoor> roomDoors = room.RoomDoors;
+            if (roomDoors == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < roomDoors.Count; i++)
+            {
+                RoomDoor roomDoor = roomDoors[i];
+                if (roomDoor == null || !roomDoor.HasUnrevealedSecretAccess)
+                {
+                    continue;
+                }
+
+                RoomController connectedRoom = roomDoor.ConnectedRoom;
+                if (connectedRoom != null && connectedRoom.RoomType == RoomType.Secret)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private int SpawnBossArtifactReward()
@@ -653,7 +884,7 @@ namespace CuteIssac.Room
                     break;
                 }
 
-                int selectedIndex = SelectWeightedIndex(_selectionPool);
+                int selectedIndex = SelectWeightedIndex(_selectionPool, ResolveAdaptiveRewardWeightMultiplier);
 
                 if (selectedIndex < 0)
                 {
@@ -753,7 +984,7 @@ namespace CuteIssac.Room
 
             if (!_runtimeItemRewardPool.TrySelectRandomItem(selectionContext, out ItemData selectedItem) || selectedItem == null)
             {
-                return 0;
+                return SpawnItemRewardFallbackResources(spawnIndex, markMomentumBonus, momentumSpawnIndex);
             }
 
             PrewarmPickupIfNeeded(_runtimeItemRewardPickupPrefab, 1);
@@ -805,6 +1036,96 @@ namespace CuteIssac.Room
             Debug.LogWarning("RoomRewardSpawner item reward prefab is missing ItemPickupLogic.", rewardObject);
             PrefabPoolService.Return(rewardObject);
             return 0;
+        }
+
+        private int SpawnItemRewardFallbackResources(
+            int spawnIndex,
+            bool markMomentumBonus,
+            int momentumSpawnIndex)
+        {
+            if (!spawnItemFallbackResourcesWhenPoolUnavailable)
+            {
+                return 0;
+            }
+
+            int spawnedCount = 0;
+            spawnedCount += SpawnItemFallbackResourcePicks(EnemyDropKind.Key, itemFallbackKeyCount, spawnIndex + spawnedCount, markMomentumBonus, momentumSpawnIndex);
+            spawnedCount += SpawnItemFallbackResourcePicks(EnemyDropKind.Bomb, itemFallbackBombCount, spawnIndex + spawnedCount, markMomentumBonus, momentumSpawnIndex + spawnedCount);
+            spawnedCount += SpawnItemFallbackResourcePicks(EnemyDropKind.Coins, itemFallbackCoinCount, spawnIndex + spawnedCount, markMomentumBonus, momentumSpawnIndex + spawnedCount);
+
+            if (spawnedCount > 0)
+            {
+                GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
+                    "ITEM CACHE",
+                    "Item pool empty. Resource cache opened.",
+                    new Color(0.92f, 0.78f, 0.36f, 1f),
+                    1.65f));
+            }
+
+            return spawnedCount;
+        }
+
+        private int SpawnItemFallbackResourcePicks(
+            EnemyDropKind dropKind,
+            int count,
+            int startSpawnIndex,
+            bool markMomentumBonus,
+            int startMomentumSpawnIndex)
+        {
+            int spawnedCount = 0;
+
+            for (int index = 0; index < count; index++)
+            {
+                Vector3 spawnPosition = markMomentumBonus
+                    ? ResolveMomentumRewardSpawnPosition(startMomentumSpawnIndex + spawnedCount)
+                    : ResolveSpawnPosition(startSpawnIndex + spawnedCount);
+
+                if (TrySpawnRuntimeResourcePickup(dropKind, spawnPosition, ResolveItemFallbackPickupName(dropKind)))
+                {
+                    spawnedCount++;
+                }
+            }
+
+            return spawnedCount;
+        }
+
+        private bool TrySpawnRuntimeResourcePickup(EnemyDropKind dropKind, Vector3 spawnPosition, string objectName)
+        {
+            GameObject pickupObject = RuntimePickupFactory.SpawnDefaultEnemyDropPickup(
+                dropKind,
+                spawnPosition,
+                spawnedRewardParent,
+                objectName);
+
+            if (pickupObject == null)
+            {
+                return false;
+            }
+
+            ConfigureRewardPickupTracking(pickupObject);
+            return true;
+        }
+
+        private static string ResolveBossResourcePickupName(EnemyDropKind dropKind)
+        {
+            return dropKind switch
+            {
+                EnemyDropKind.Ammo => "AmmoPickup",
+                EnemyDropKind.Bomb => "BombPickup",
+                EnemyDropKind.Key => "KeyPickup",
+                _ => "CandyCoinPickup"
+            };
+        }
+
+        private static string ResolveItemFallbackPickupName(EnemyDropKind dropKind)
+        {
+            return dropKind switch
+            {
+                EnemyDropKind.Ammo => "ItemFallbackAmmo",
+                EnemyDropKind.Key => "ItemFallbackKey",
+                EnemyDropKind.Bomb => "ItemFallbackBomb",
+                _ => "ItemFallbackCoin"
+            };
         }
 
         private void ConfigureRewardPickupTracking(
@@ -864,23 +1185,23 @@ namespace CuteIssac.Room
                 return;
             }
 
-            PrefabPoolService.Prewarm(
+            PrefabPoolService.EnsurePrewarmed(
                 pickupPrefab,
                 Mathf.Max(1, expectedSpawnCount + rewardPrewarmBufferCount));
         }
 
         private Vector3 ResolveSpawnPosition(int spawnIndex)
         {
-            Vector3 center = rewardSpawnAnchor != null ? rewardSpawnAnchor.position : transform.position;
-
-            if (preferLastEnemyDeathPosition && roomController != null && roomController.TryGetLastEnemyDeathPosition(out Vector3 lastEnemyDeathPosition))
-            {
-                center = lastEnemyDeathPosition;
-            }
+            Vector3 center = ResolveClearRewardCenter();
 
             if (ShouldUseChallengeRevealLayout())
             {
                 return center + ResolveChallengeRevealOffset(spawnIndex);
+            }
+
+            if (useIsaacStyleRewardPlacement)
+            {
+                return center + ResolveIsaacStyleClearRewardOffset(spawnIndex);
             }
 
             if (scatterRadius <= 0f || spawnIndex <= 0)
@@ -892,6 +1213,37 @@ namespace CuteIssac.Room
             float radius = scatterRadius * Mathf.Clamp01(0.45f + (0.22f * spawnIndex));
             Vector2 offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
             return center + new Vector3(offset.x, offset.y, 0f);
+        }
+
+        private Vector3 ResolveClearRewardCenter()
+        {
+            if (useIsaacStyleRewardPlacement && normalRewardsUseRoomCenter && roomController != null)
+            {
+                return roomController.CameraFocusPosition + new Vector3(0f, clearRewardForwardOffset, 0f);
+            }
+
+            Vector3 center = rewardSpawnAnchor != null ? rewardSpawnAnchor.position : transform.position;
+
+            if (preferLastEnemyDeathPosition && roomController != null && roomController.TryGetLastEnemyDeathPosition(out Vector3 lastEnemyDeathPosition))
+            {
+                center = lastEnemyDeathPosition;
+            }
+
+            return center;
+        }
+
+        private Vector3 ResolveIsaacStyleClearRewardOffset(int spawnIndex)
+        {
+            if (spawnIndex <= 0)
+            {
+                return Vector3.zero;
+            }
+
+            int ringIndex = Mathf.Max(0, (spawnIndex - 1) / 6);
+            int slotIndex = (spawnIndex - 1) % 6;
+            float radius = clearRewardRingRadius + (clearRewardRingRadiusStep * ringIndex);
+            float angle = (90f + (slotIndex * 60f) + (ringIndex * 30f)) * Mathf.Deg2Rad;
+            return new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f);
         }
 
         private Vector3 ResolveMomentumRewardSpawnPosition(int momentumSpawnIndex)
@@ -967,7 +1319,8 @@ namespace CuteIssac.Room
             int bonusRewardSelections,
             int secretBonusRewardSelections,
             int bonusItemRolls,
-            int secretBonusItemRolls)
+            int secretBonusItemRolls,
+            bool allowNonCombatRewards)
         {
             int estimatedEntryCount = 0;
 
@@ -977,7 +1330,10 @@ namespace CuteIssac.Room
                 FilterRoomClearRewardCandidates(_candidateEntries);
                 if (_candidateEntries.Count > 0)
                 {
-                    int selectionCount = resolvedRewardTable.GetSelectionCount()
+                    int selectionCount = EstimateBaseRewardSelectionCount(
+                            resolvedRewardTable,
+                            _candidateEntries.Count,
+                            allowNonCombatRewards)
                         + Mathf.Max(0, bonusRewardSelections)
                         + Mathf.Max(0, secretBonusRewardSelections);
 
@@ -1009,13 +1365,16 @@ namespace CuteIssac.Room
             return estimatedEntryCount + estimatedItemCount;
         }
 
-        private static int SelectWeightedIndex(List<RoomRewardEntry> entries)
+        private delegate float RewardWeightMultiplierResolver(RoomRewardEntry entry);
+
+        private static int SelectWeightedIndex(List<RoomRewardEntry> entries, RewardWeightMultiplierResolver multiplierResolver = null)
         {
             float totalWeight = 0f;
 
             for (int i = 0; i < entries.Count; i++)
             {
-                totalWeight += entries[i].Weight;
+                RoomRewardEntry entry = entries[i];
+                totalWeight += entry.Weight * ResolveSelectionWeightMultiplier(entry, multiplierResolver);
             }
 
             if (totalWeight <= 0f)
@@ -1027,7 +1386,8 @@ namespace CuteIssac.Room
 
             for (int i = 0; i < entries.Count; i++)
             {
-                threshold -= entries[i].Weight;
+                RoomRewardEntry entry = entries[i];
+                threshold -= entry.Weight * ResolveSelectionWeightMultiplier(entry, multiplierResolver);
 
                 if (threshold <= 0f)
                 {
@@ -1036,6 +1396,68 @@ namespace CuteIssac.Room
             }
 
             return entries.Count - 1;
+        }
+
+        private static float ResolveSelectionWeightMultiplier(
+            RoomRewardEntry entry,
+            RewardWeightMultiplierResolver multiplierResolver)
+        {
+            return multiplierResolver != null ? Mathf.Max(0f, multiplierResolver(entry)) : 1f;
+        }
+
+        private float ResolveAdaptiveRewardWeightMultiplier(RoomRewardEntry entry)
+        {
+            if (!enableAdaptiveEssentialRewardWeights || !IsAdaptiveEssentialRewardRoom(roomTypeForRewards))
+            {
+                return 1f;
+            }
+
+            switch (entry.RewardType)
+            {
+                case RoomRewardType.Heart:
+                    return ResolveHeartRewardWeightMultiplier();
+                case RoomRewardType.Key:
+                    return playerInventory != null && playerInventory.Keys <= 0
+                        ? noKeyWeightMultiplier
+                        : 1f;
+                case RoomRewardType.Bomb:
+                    return playerInventory != null && playerInventory.Bombs <= 0
+                        ? noBombWeightMultiplier
+                        : 1f;
+                case RoomRewardType.Coin:
+                    return playerInventory != null && playerInventory.Coins < 5
+                        ? lowCoinWeightMultiplier
+                        : 1f;
+                default:
+                    return 1f;
+            }
+        }
+
+        private float ResolveHeartRewardWeightMultiplier()
+        {
+            if (playerHealth == null)
+            {
+                return 1f;
+            }
+
+            float maxHealth = Mathf.Max(1f, playerHealth.MaxHealth);
+            float healthRatio = Mathf.Clamp01(playerHealth.CurrentHealth / maxHealth);
+
+            if (healthRatio <= 0.45f)
+            {
+                return lowHealthHeartWeightMultiplier;
+            }
+
+            return healthRatio >= 0.98f ? fullHealthHeartWeightMultiplier : 1f;
+        }
+
+        private static bool IsAdaptiveEssentialRewardRoom(RoomType roomType)
+        {
+            return roomType == RoomType.Normal
+                || roomType == RoomType.Challenge
+                || roomType == RoomType.MiniBoss
+                || roomType == RoomType.Trap
+                || roomType == RoomType.Curse;
         }
 
         private static bool IsRewardEligibleRoomType(RoomType roomType)
@@ -1065,6 +1487,79 @@ namespace CuteIssac.Room
                 || roomTypeForRewards == RoomType.Curse;
         }
 
+        private int ResolveBaseRewardSelectionCount(RoomRewardTable resolvedRewardTable, int availableCandidateCount, bool allowNonCombatRewards)
+        {
+            if (resolvedRewardTable == null || availableCandidateCount <= 0)
+            {
+                return 0;
+            }
+
+            int selectionCount = resolvedRewardTable.GetSelectionCount();
+            if (!resolvedRewardTable.AllowDuplicateSelections)
+            {
+                selectionCount = Mathf.Min(selectionCount, availableCandidateCount);
+            }
+
+            if (selectionCount <= 0 || !useIsaacStyleClearRewardOdds)
+            {
+                return Mathf.Max(0, selectionCount);
+            }
+
+            float chance = ResolveClearRewardChance(allowNonCombatRewards);
+            if (chance >= 1f)
+            {
+                return selectionCount;
+            }
+
+            if (chance <= 0f)
+            {
+                return 0;
+            }
+
+            return Random.value <= chance ? selectionCount : 0;
+        }
+
+        private int EstimateBaseRewardSelectionCount(RoomRewardTable resolvedRewardTable, int availableCandidateCount, bool allowNonCombatRewards)
+        {
+            if (resolvedRewardTable == null || availableCandidateCount <= 0)
+            {
+                return 0;
+            }
+
+            float averageSelectionCount = (resolvedRewardTable.MinimumRewardSelections + resolvedRewardTable.MaximumRewardSelections) * 0.5f;
+            if (!resolvedRewardTable.AllowDuplicateSelections)
+            {
+                averageSelectionCount = Mathf.Min(averageSelectionCount, availableCandidateCount);
+            }
+
+            if (!useIsaacStyleClearRewardOdds)
+            {
+                return Mathf.Max(0, Mathf.RoundToInt(averageSelectionCount));
+            }
+
+            float expectedCount = averageSelectionCount * ResolveClearRewardChance(allowNonCombatRewards);
+            return expectedCount > 0f ? Mathf.Max(1, Mathf.RoundToInt(expectedCount)) : 0;
+        }
+
+        private float ResolveClearRewardChance(bool allowNonCombatRewards)
+        {
+            if (!useIsaacStyleClearRewardOdds)
+            {
+                return 1f;
+            }
+
+            return roomTypeForRewards switch
+            {
+                RoomType.Normal => normalClearRewardChance,
+                RoomType.Challenge => challengeClearRewardChance,
+                RoomType.MiniBoss => miniBossClearRewardChance,
+                RoomType.Secret => secretClearRewardChance,
+                RoomType.Trap => trapClearRewardChance,
+                RoomType.Curse => curseClearRewardChance,
+                _ => allowNonCombatRewards ? 1f : 1f
+            };
+        }
+
         private void FilterRoomClearRewardCandidates(List<RoomRewardEntry> candidates)
         {
             if (candidates == null || candidates.Count == 0)
@@ -1075,8 +1570,10 @@ namespace CuteIssac.Room
             bool allowPassiveItems = roomTypeForRewards != RoomType.Normal;
 
             candidates.RemoveAll(entry =>
-                entry.RewardType != RoomRewardType.Bomb &&
+                entry.RewardType != RoomRewardType.Coin &&
+                entry.RewardType != RoomRewardType.Heart &&
                 entry.RewardType != RoomRewardType.Key &&
+                entry.RewardType != RoomRewardType.Bomb &&
                 (entry.RewardType != RoomRewardType.PassiveItem || !allowPassiveItems));
         }
 

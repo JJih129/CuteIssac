@@ -19,7 +19,7 @@ MonoBehaviour:
   eventFlags: 
   damageModifier: 0
   tearsModifier: 0
-  speedModifier: 0
+  speedModifier: -0.08
   rangeModifier: 0
   shotSpeedModifier: 0
   luckModifier: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 
   itemId: P013
   displayName: Stone Rib
-  description: Major max health up.
+  description: Major max health up, slight speed down. Taking damage grants brief invulnerability.
   icon: {fileID: 0}
   rarity: 1
   unlockedByDefault: 1
@@ -35,4 +35,14 @@ MonoBehaviour:
   itemTags: 
   statModifiers: []
   projectileModifiers: []
-  gameplayEventEffects: []
+  gameplayEventEffects:
+  - triggerType: 0
+    effectType: 6
+    requirePlayerSource: 1
+    requireCombatEncounter: 0
+    internalCooldown: 6
+    invulnerabilityDuration: 1.2
+    timedEffectDuration: 8
+    feedbackLabel: RIB GUARD
+    statModifiers: []
+    projectileModifiers: []

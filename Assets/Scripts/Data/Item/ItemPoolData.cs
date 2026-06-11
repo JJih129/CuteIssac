@@ -14,6 +14,8 @@ namespace CuteIssac.Data.Item
         [SerializeField] private string poolId = "item_pool";
         [SerializeField] private ItemPoolType poolType = ItemPoolType.TreasurePool;
         [SerializeField] private bool preventDuplicateSelections = true;
+        [SerializeField] private bool preventOwnedItemSelections = true;
+        [SerializeField] private bool preferFreshOffers = true;
         [SerializeField] private bool requireUnlockedItems = true;
         [SerializeField] [Range(0f, 1f)] private float ownedDuplicateWeightMultiplier = 0.2f;
         [SerializeField] [Range(0f, 1f)] private float offeredDuplicateWeightMultiplier = 0.45f;
@@ -28,6 +30,8 @@ namespace CuteIssac.Data.Item
         public string PoolId => poolId;
         public ItemPoolType PoolType => poolType;
         public bool PreventDuplicateSelections => preventDuplicateSelections;
+        public bool PreventOwnedItemSelections => preventOwnedItemSelections;
+        public bool PreferFreshOffers => preferFreshOffers;
         public bool RequireUnlockedItems => requireUnlockedItems;
         public float OwnedDuplicateWeightMultiplier => ownedDuplicateWeightMultiplier;
         public float OfferedDuplicateWeightMultiplier => offeredDuplicateWeightMultiplier;
@@ -70,6 +74,31 @@ namespace CuteIssac.Data.Item
             bool weaponOnly = false,
             bool nonWeaponOnly = false)
         {
+            CollectCandidates(selectionContext, weaponOnly, nonWeaponOnly, suppressPriorOffers: preferFreshOffers);
+
+            if (_candidateBuffer.Count == 0 && preferFreshOffers)
+            {
+                CollectCandidates(selectionContext, weaponOnly, nonWeaponOnly, suppressPriorOffers: false);
+            }
+
+            int selectedIndex = SelectWeightedIndex(_candidateWeightBuffer);
+
+            if (selectedIndex < 0)
+            {
+                selectedItem = null;
+                return false;
+            }
+
+            selectedItem = _candidateBuffer[selectedIndex].ItemData;
+            return selectedItem != null;
+        }
+
+        private void CollectCandidates(
+            ItemPoolSelectionContext selectionContext,
+            bool weaponOnly,
+            bool nonWeaponOnly,
+            bool suppressPriorOffers)
+        {
             _candidateBuffer.Clear();
             _candidateWeightBuffer.Clear();
 
@@ -93,12 +122,22 @@ namespace CuteIssac.Data.Item
                     continue;
                 }
 
-                if (preventDuplicateSelections && selectionContext.IsExcluded(entry.ItemData))
+                if (preventDuplicateSelections && selectionContext.IsExcluded(itemData))
                 {
                     continue;
                 }
 
-                if (requireUnlockedItems && !selectionContext.IsUnlocked(entry.ItemData))
+                if (preventOwnedItemSelections && selectionContext.IsOwned(itemData))
+                {
+                    continue;
+                }
+
+                if (suppressPriorOffers && selectionContext.WasOffered(itemData))
+                {
+                    continue;
+                }
+
+                if (requireUnlockedItems && !selectionContext.IsUnlocked(itemData))
                 {
                     continue;
                 }
@@ -113,17 +152,6 @@ namespace CuteIssac.Data.Item
                 _candidateBuffer.Add(entry);
                 _candidateWeightBuffer.Add(effectiveWeight);
             }
-
-            int selectedIndex = SelectWeightedIndex(_candidateWeightBuffer);
-
-            if (selectedIndex < 0)
-            {
-                selectedItem = null;
-                return false;
-            }
-
-            selectedItem = _candidateBuffer[selectedIndex].ItemData;
-            return selectedItem != null;
         }
 
         private float ResolveEffectiveWeight(ItemPoolEntry entry, ItemPoolSelectionContext selectionContext)

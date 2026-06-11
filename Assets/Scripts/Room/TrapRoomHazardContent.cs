@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CuteIssac.Core.Pooling;
 using UnityEngine;
 
 namespace CuteIssac.Room
@@ -30,6 +31,11 @@ namespace CuteIssac.Room
             SpawnIfNeeded();
         }
 
+        private void OnDisable()
+        {
+            ClearSpawnedHazards();
+        }
+
         public void SpawnIfNeeded()
         {
             if (_hasSpawned)
@@ -50,7 +56,7 @@ namespace CuteIssac.Room
 
                 Vector3 worldPosition = parent.TransformPoint(entry.localPosition);
                 Quaternion rotation = parent.rotation * Quaternion.Euler(0f, 0f, entry.rotationZ);
-                GameObject spawnedHazard = Instantiate(entry.prefab, worldPosition, rotation, parent);
+                GameObject spawnedHazard = PrefabPoolService.Spawn(entry.prefab, worldPosition, rotation);
 
                 if (spawnedHazard != null)
                 {
@@ -59,6 +65,22 @@ namespace CuteIssac.Room
             }
 
             _hasSpawned = _spawnedHazards.Count > 0;
+        }
+
+        private void ClearSpawnedHazards()
+        {
+            for (int i = _spawnedHazards.Count - 1; i >= 0; i--)
+            {
+                GameObject spawnedHazard = _spawnedHazards[i];
+
+                if (spawnedHazard != null)
+                {
+                    PrefabPoolService.Return(spawnedHazard);
+                }
+            }
+
+            _spawnedHazards.Clear();
+            _hasSpawned = false;
         }
 
         public bool TryResolveHazardFocusTarget(out Vector3 focusPosition, out float focusRadius)

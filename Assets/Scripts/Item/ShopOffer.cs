@@ -58,5 +58,17 @@ namespace CuteIssac.Item
                 pickupPrefabOverride = null
             };
         }
+
+        public static ShopOffer CreateSpeedHeartOffer(int amount)
+        {
+            return new ShopOffer
+            {
+                rewardType = ShopOfferRewardType.SpeedHeart,
+                passiveItem = null,
+                resourceAmount = Mathf.Max(1, amount),
+                healthAmount = 1f,
+                pickupPrefabOverride = null
+            };
+        }
     }
 }

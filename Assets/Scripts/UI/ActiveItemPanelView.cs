@@ -21,6 +21,8 @@ namespace CuteIssac.UI
         [SerializeField] private Image frameImage;
         [Tooltip("Optional icon image for the active item itself.")]
         [SerializeField] private Image iconImage;
+        [Tooltip("Optional placeholder sprite shown while the active slot is empty.")]
+        [SerializeField] private Sprite emptyIconSprite;
         [Tooltip("Optional slider used by skins that prefer a fill bar for charge.")]
         [SerializeField] private Slider chargeSlider;
         [Tooltip("Optional image fill used by skins that prefer a radial or horizontal charge overlay.")]
@@ -107,7 +109,10 @@ namespace CuteIssac.UI
 
             if (iconImage != null)
             {
-                iconImage.enabled = false;
+                iconImage.enabled = emptyIconSprite != null;
+                iconImage.sprite = emptyIconSprite;
+                _currentIconBaseColor = Color.white;
+                iconImage.color = ResolveIconColor(Time.unscaledTime);
             }
 
             if (labelText != null)
@@ -138,11 +143,6 @@ namespace CuteIssac.UI
                 frameImage.color = ResolveFrameColor(Time.unscaledTime);
             }
 
-            if (iconImage != null)
-            {
-                _currentIconBaseColor = Color.white;
-            }
-
             ApplyThreatTheme(Time.unscaledTime);
         }
 
@@ -163,7 +163,7 @@ namespace CuteIssac.UI
 
             if (!slotState.HasConsumable && !slotState.HasActiveTimedEffect)
             {
-                HidePanel();
+                ShowPlaceholder();
                 return;
             }
 
@@ -217,7 +217,7 @@ namespace CuteIssac.UI
 
             if (!slotState.HasItem)
             {
-                HidePanel();
+                ShowPlaceholder();
                 return;
             }
 

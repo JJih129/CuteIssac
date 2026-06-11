@@ -19,7 +19,7 @@ MonoBehaviour:
   eventFlags: 
   damageModifier: 0
   tearsModifier: 0
-  speedModifier: 0.15
+  speedModifier: 0.18
   rangeModifier: 0
   shotSpeedModifier: 0
   luckModifier: 0

@@ -17,3 +17,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9d1b8f2406af4ec29c5858c9e19f0f3a, type: 2}
   - {fileID: 11400000, guid: d37ee3cba3e24cba95344dc31f8ec8d3, type: 2}
   - {fileID: 11400000, guid: 2c7cb021a53641d7ac85219bd88e43aa, type: 2}
+  testSpawnEnemyPrefabs:
+  - {fileID: 930000106, guid: d343facca3fd00941b50ccd6675a8571, type: 3}
+  - {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
+  - {fileID: 930000106, guid: 5a4f7dd499011d8489779b10eb1fe23c, type: 3}
+  - {fileID: 930000106, guid: 051a7ffa4ff96624ca215a8800d60ca8, type: 3}
+  - {fileID: 930000106, guid: b2e98ca5c9bddad40a106bf68ae83496, type: 3}
+  - {fileID: 930000106, guid: 6164d8f90a01454085ee67522da78076, type: 3}

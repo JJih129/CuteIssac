@@ -40,7 +40,8 @@ namespace CuteIssac.UI
 
                 if (textMesh == null
                     || textMesh.GetComponentInParent<FloatingFeedbackView>() != null
-                    || textMesh.GetComponentInParent<Room.FloorExitVisual>() != null)
+                    || textMesh.GetComponentInParent<Room.FloorExitVisual>() != null
+                    || textMesh.GetComponentInParent<CuteIssac.Item.ShopItemView>() != null)
                 {
                     continue;
                 }

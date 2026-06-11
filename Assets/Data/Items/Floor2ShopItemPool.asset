@@ -50,3 +50,73 @@ MonoBehaviour:
     minimumFloor: 2
     maximumFloor: 0
     allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: a88057182d32426c82b45734acd8cdfc, type: 2}
+    weight: 0.85
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: 557ea6ff76de454ba84edae2e74ff104, type: 2}
+    weight: 0.55
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: 4aa6b5363af64bcbbcde3fd422019f11, type: 2}
+    weight: 0.9
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: d7670893b770484283f5e2121eb4332c, type: 2}
+    weight: 0.78
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: 1f58517533c341a1b76597a4426e2b22, type: 2}
+    weight: 0.82
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: e820f2ccf8c44dd49f9e35f8c137ee30, type: 2}
+    weight: 0.75
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: 7f126db884dd425ab55e5ab84758df25, type: 2}
+    weight: 0.82
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: 9dfbb5aa85a14711bbaa3aa6be3b4d3e, type: 2}
+    weight: 0.65
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: e39692fcaa99438896f4f48675ce1e1d, type: 2}
+    weight: 0.8
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: e73f9c7a8f7f48f1b23db917c272ca26, type: 2}
+    weight: 0.75
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: 3b7469ca83d84b9888177e04bc7f96dc, type: 2}
+    weight: 0.7
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: c1682a53d9a94b54aaeee872a380167e, type: 2}
+    weight: 0.48
+    minimumFloor: 2
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: 0a4ee4e5633245d6980a4c5900376e57, type: 2}
+    weight: 0.5
+    minimumFloor: 2
+    maximumFloor: 0
+    allowedRoomTypes: []
+  - itemData: {fileID: 11400000, guid: 35506395c516415c852cd923765cee1d, type: 2}
+    weight: 0.42
+    minimumFloor: 2
+    maximumFloor: 0
+    allowedRoomTypes: []

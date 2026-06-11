@@ -41,7 +41,7 @@ namespace CuteIssac.UI
         [SerializeField] private Vector2 baseNodeSize = new(26f, 26f);
         [SerializeField] [Min(0f)] private float connectionThickness = 6f;
         [SerializeField] private Vector2 currentRoomFocusOffset;
-        [SerializeField] private bool hideHiddenRooms = true;
+        [SerializeField] private bool hideHiddenRooms = false;
 
         [Header("Top Bar Layout")]
         [SerializeField] private Vector2 compactNodeSpacing = new(22f, 22f);
@@ -217,6 +217,7 @@ namespace CuteIssac.UI
         [SerializeField] private Color curseBossRewardThemeColor = new(1f, 0.42f, 0.36f, 1f);
 
         [Header("State Colors")]
+        [SerializeField] private Color hiddenFrameColor = new(0.44f, 0.5f, 0.6f, 0.28f);
         [SerializeField] private Color hiddenFillColor = new(1f, 1f, 1f, 0f);
         [SerializeField] private Color discoveredFillColor = new(0.18f, 0.22f, 0.28f, 0.55f);
         [SerializeField] private Color visitedFillColor = new(0.32f, 0.38f, 0.48f, 0.88f);
@@ -274,6 +275,7 @@ namespace CuteIssac.UI
 
         [Header("Type Icons")]
         [SerializeField] private Sprite startRoomIcon;
+        [SerializeField] private Sprite normalRoomIcon;
         [SerializeField] private Sprite bossRoomIcon;
         [SerializeField] private Sprite miniBossRoomIcon;
         [SerializeField] private Sprite treasureRoomIcon;
@@ -288,6 +290,24 @@ namespace CuteIssac.UI
         [SerializeField] private Sprite rewardMarkerSprite;
         [SerializeField] private Sprite collectedRewardMarkerSprite;
         [SerializeField] private Sprite connectionSprite;
+        [SerializeField] private Sprite verticalConnectionSprite;
+        [SerializeField] private Sprite secretConnectionSprite;
+
+        [Header("Room Tile Sprites")]
+        [SerializeField] private Sprite hiddenRoomTileSprite;
+        [SerializeField] private Sprite discoveredRoomTileSprite;
+        [SerializeField] private Sprite visitedRoomTileSprite;
+        [SerializeField] private Sprite clearedRoomTileSprite;
+        [SerializeField] private Sprite currentRoomTileSprite;
+        [SerializeField] private Sprite startRoomTileSprite;
+        [SerializeField] private Sprite bossRoomTileSprite;
+        [SerializeField] private Sprite miniBossRoomTileSprite;
+        [SerializeField] private Sprite treasureRoomTileSprite;
+        [SerializeField] private Sprite shopRoomTileSprite;
+        [SerializeField] private Sprite secretRoomTileSprite;
+        [SerializeField] private Sprite challengeRoomTileSprite;
+        [SerializeField] private Sprite trapRoomTileSprite;
+        [SerializeField] private Sprite curseRoomTileSprite;
 
         private readonly List<MinimapNodeView> _spawnedNodes = new();
         private bool _isVisible = true;
@@ -1067,20 +1087,32 @@ namespace CuteIssac.UI
                         : pulseChallengeCompletionNode
                             ? challengeCompletedNodePulseScaleAmplitude
                         : secretLinkNodePulseScaleAmplitude;
-            Color resolvedFrameColor = isChallengeCompletionNode
-                ? Color.Lerp(challengeFrameColor, challengeCompletedNodePulseColor, 0.34f)
-                : GetTypeFrameColor(roomState.RoomType);
+            Color resolvedFrameColor = explorationState == RoomExplorationState.Hidden
+                ? hiddenFrameColor
+                : isChallengeCompletionNode
+                    ? Color.Lerp(challengeFrameColor, challengeCompletedNodePulseColor, 0.34f)
+                    : GetTypeFrameColor(roomState.RoomType);
             Color resolvedFillColor = isChallengeCompletionNode
                 ? Color.Lerp(GetStateFillColor(explorationState), challengeCompletedFillColor, 0.72f)
                 : GetStateFillColor(explorationState);
             Color resolvedClearedMarkColor = isChallengeCompletionNode
                 ? challengeCompletedClearedMarkerColor
                 : clearedMarkerColor;
+            Sprite roomTileSprite = GetRoomTileSprite(roomState.RoomType, explorationState, isChallengeCompletionNode);
+            bool useRoomTileSprite = roomTileSprite != null;
+            Color resolvedConnectionColor = connectionSprite != null || verticalConnectionSprite != null
+                ? Color.white
+                : GetConnectionColor(explorationState);
+            Color resolvedSecretConnectionColor = secretConnectionSprite != null
+                ? Color.white
+                : secretConnectionColor;
 
             return new MinimapNodeView.MinimapNodePresentation(
                 nodeSize,
                 connectionLength,
                 connectionThickness,
+                roomTileSprite,
+                null,
                 resolvedFrameColor,
                 resolvedFillColor,
                 pulseNode,
@@ -1088,12 +1120,14 @@ namespace CuteIssac.UI
                 nodePulseSpeed,
                 nodePulseTintStrength,
                 nodePulseScaleAmplitude,
-                GetConnectionColor(explorationState),
-                secretConnectionColor,
+                resolvedConnectionColor,
+                resolvedSecretConnectionColor,
                 connectionSprite,
-                GetSpecialIcon(roomState.RoomType, explorationState),
+                verticalConnectionSprite,
+                secretConnectionSprite,
+                useRoomTileSprite ? null : GetSpecialIcon(roomState.RoomType, explorationState),
                 resolvedFrameColor,
-                explorationState == RoomExplorationState.Current,
+                explorationState == RoomExplorationState.Current && currentRoomTileSprite == null,
                 currentMarkerColor,
                 true,
                 roomState.IsCleared,
@@ -1316,6 +1350,7 @@ namespace CuteIssac.UI
             return roomType switch
             {
                 RoomType.Start => startRoomIcon,
+                RoomType.Normal => normalRoomIcon,
                 RoomType.Boss => bossRoomIcon,
                 RoomType.MiniBoss => miniBossRoomIcon != null ? miniBossRoomIcon : bossRoomIcon,
                 RoomType.Treasure => treasureRoomIcon,
@@ -1324,6 +1359,51 @@ namespace CuteIssac.UI
                 RoomType.Challenge => challengeRoomIcon,
                 RoomType.Trap => trapRoomIcon,
                 RoomType.Curse => curseRoomIcon != null ? curseRoomIcon : secretRoomIcon,
+                _ => null
+            };
+        }
+
+        private Sprite GetRoomTileSprite(RoomType roomType, RoomExplorationState explorationState, bool isChallengeCompletionNode)
+        {
+            if (explorationState == RoomExplorationState.Hidden)
+            {
+                return hiddenRoomTileSprite;
+            }
+
+            if (explorationState == RoomExplorationState.Current && currentRoomTileSprite != null)
+            {
+                return currentRoomTileSprite;
+            }
+
+            Sprite typeTile = roomType switch
+            {
+                RoomType.Start => startRoomTileSprite,
+                RoomType.Boss => bossRoomTileSprite,
+                RoomType.MiniBoss => miniBossRoomTileSprite != null ? miniBossRoomTileSprite : bossRoomTileSprite,
+                RoomType.Treasure => treasureRoomTileSprite,
+                RoomType.Shop => shopRoomTileSprite,
+                RoomType.Secret => secretRoomTileSprite,
+                RoomType.Challenge => challengeRoomTileSprite,
+                RoomType.Trap => trapRoomTileSprite,
+                RoomType.Curse => curseRoomTileSprite,
+                _ => null
+            };
+
+            if (typeTile != null)
+            {
+                return typeTile;
+            }
+
+            if (isChallengeCompletionNode && clearedRoomTileSprite != null)
+            {
+                return clearedRoomTileSprite;
+            }
+
+            return explorationState switch
+            {
+                RoomExplorationState.Cleared => clearedRoomTileSprite,
+                RoomExplorationState.Visited => visitedRoomTileSprite,
+                RoomExplorationState.Discovered => discoveredRoomTileSprite,
                 _ => null
             };
         }

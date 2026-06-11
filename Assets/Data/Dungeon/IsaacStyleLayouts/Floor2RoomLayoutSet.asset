@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a50f33c8a54d72845a1c4fd0c8781145, type: 3}
+  m_Name: Floor2RoomLayoutSet
+  m_EditorClassIdentifier: Assembly-CSharp::CuteIssac.Data.Dungeon.RoomLayoutSet
+  layouts:
+  - {fileID: 11400000, guid: b45dff5c0a7bab742a4fb67a3f0f5762, type: 2}
+  - {fileID: 11400000, guid: a99c3940d040f4f47bdbe23ac2392f17, type: 2}
+  - {fileID: 11400000, guid: 8414a46eb7427e94b862969ef6f61b92, type: 2}
+  - {fileID: 11400000, guid: b4ad8af08f7394d41acc896d4abfcc98, type: 2}
+  - {fileID: 11400000, guid: 739479807b363234d8a3acb5c76075b8, type: 2}
+  - {fileID: 11400000, guid: ac4e8c934cec49d44b9f57a2fbea24a2, type: 2}

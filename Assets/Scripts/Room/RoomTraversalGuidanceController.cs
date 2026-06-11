@@ -50,7 +50,12 @@ namespace CuteIssac.Room
                 bool needsKeys,
                 bool needsBombs,
                 bool needsUtility,
-                bool readyForBoss)
+                bool readyForBoss,
+                bool hasLockedKeyDoor,
+                bool hasHiddenSecretDoor,
+                bool shopPoor,
+                bool shopReady,
+                bool hasAccessibleTreasure)
             {
                 HealthRatio = healthRatio;
                 LowHealth = lowHealth;
@@ -60,6 +65,11 @@ namespace CuteIssac.Room
                 NeedsBombs = needsBombs;
                 NeedsUtility = needsUtility;
                 ReadyForBoss = readyForBoss;
+                HasLockedKeyDoor = hasLockedKeyDoor;
+                HasHiddenSecretDoor = hasHiddenSecretDoor;
+                ShopPoor = shopPoor;
+                ShopReady = shopReady;
+                HasAccessibleTreasure = hasAccessibleTreasure;
             }
 
             public float HealthRatio { get; }
@@ -70,6 +80,11 @@ namespace CuteIssac.Room
             public bool NeedsBombs { get; }
             public bool NeedsUtility { get; }
             public bool ReadyForBoss { get; }
+            public bool HasLockedKeyDoor { get; }
+            public bool HasHiddenSecretDoor { get; }
+            public bool ShopPoor { get; }
+            public bool ShopReady { get; }
+            public bool HasAccessibleTreasure { get; }
         }
 
         private readonly struct DoorGuidanceDecision
@@ -637,7 +652,7 @@ namespace CuteIssac.Room
             bool hasMoveDirection = moveDirection.sqrMagnitude > 0.0001f;
             bool hasAimDirection = TryResolveTraversalAimDirection(out Vector2 aimDirection);
             IReadOnlyList<RoomDoor> roomDoors = room.RoomDoors;
-            RouteNeedContext needContext = BuildRouteNeedContext();
+            RouteNeedContext needContext = BuildRouteNeedContext(room);
 
             for (int i = 0; i < roomDoors.Count; i++)
             {
@@ -1050,7 +1065,20 @@ namespace CuteIssac.Room
 
         private bool CanAffordGuidedDoor(RoomDoor door)
         {
-            if (door == null || !door.HasUnpaidHealthEntryCost || playerHealth == null)
+            if (door == null)
+            {
+                return true;
+            }
+
+            int requiredKeyCost = door.RequiredKeysToEnter;
+
+            if (requiredKeyCost > 0
+                && (playerInventory == null || playerInventory.Keys < requiredKeyCost))
+            {
+                return false;
+            }
+
+            if (!door.HasUnpaidHealthEntryCost || playerHealth == null)
             {
                 return true;
             }
@@ -1058,24 +1086,31 @@ namespace CuteIssac.Room
             return playerHealth.CurrentHealth > door.RequiredHealthToEnter;
         }
 
-        private RouteNeedContext BuildRouteNeedContext()
+        private RouteNeedContext BuildRouteNeedContext(RoomController room)
         {
             float maxHealth = playerHealth != null ? Mathf.Max(1f, playerHealth.MaxHealth) : 6f;
             float currentHealth = playerHealth != null ? playerHealth.CurrentHealth : maxHealth;
             float healthRatio = Mathf.Clamp01(currentHealth / maxHealth);
+            int keyCount = playerInventory != null ? playerInventory.Keys : 0;
             int passiveItemCount = playerInventory != null && playerInventory.PassiveItems != null
                 ? playerInventory.PassiveItems.Count
                 : 0;
             float currentDamage = playerStats != null ? playerStats.CurrentDamage : 0f;
+            int coinCount = playerInventory != null ? playerInventory.Coins : 0;
             bool lowHealth = healthRatio <= 0.45f;
             bool needsPower = currentDamage < 5.25f || passiveItemCount < 3;
-            bool cashRich = playerInventory != null && playerInventory.Coins >= 10;
-            bool needsKeys = playerInventory != null && playerInventory.Keys <= 0;
+            bool cashRich = playerInventory != null && coinCount >= 10;
+            bool needsKeys = playerInventory != null && keyCount <= 0;
             bool needsBombs = playerInventory != null && playerInventory.Bombs <= 0;
             bool needsUtility = (playerActiveItemController == null || !playerActiveItemController.HasEquippedItem)
                 || (playerTrinketHolder == null || !playerTrinketHolder.HasTrinket)
                 || (playerConsumableHolder == null || playerConsumableHolder.HeldConsumable == null);
             bool readyForBoss = healthRatio >= 0.72f && currentDamage >= 6f && passiveItemCount >= 3;
+            bool hasLockedKeyDoor = HasLockedKeyDoor(room, keyCount);
+            bool hasHiddenSecretDoor = HasHiddenSecretDoor(room);
+            bool shopPoor = playerInventory != null && coinCount <= 2;
+            bool shopReady = playerInventory != null && coinCount >= 5;
+            bool hasAccessibleTreasure = HasAccessibleTreasureDoor(room, keyCount);
 
             return new RouteNeedContext(
                 healthRatio,
@@ -1085,7 +1120,111 @@ namespace CuteIssac.Room
                 needsKeys,
                 needsBombs,
                 needsUtility,
-                readyForBoss);
+                readyForBoss,
+                hasLockedKeyDoor,
+                hasHiddenSecretDoor,
+                shopPoor,
+                shopReady,
+                hasAccessibleTreasure);
+        }
+
+        private static bool HasLockedKeyDoor(RoomController room, int availableKeys)
+        {
+            if (room == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<RoomDoor> roomDoors = room.RoomDoors;
+            if (roomDoors == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < roomDoors.Count; i++)
+            {
+                RoomDoor door = roomDoors[i];
+                if (door == null || door.IsLocked || door.ConnectedRoom == null)
+                {
+                    continue;
+                }
+
+                int requiredKeys = door.RequiredKeysToEnter;
+                if (requiredKeys > 0 && availableKeys < requiredKeys)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool HasHiddenSecretDoor(RoomController room)
+        {
+            if (room == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<RoomDoor> roomDoors = room.RoomDoors;
+            if (roomDoors == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < roomDoors.Count; i++)
+            {
+                RoomDoor door = roomDoors[i];
+                if (door == null || !door.HasUnrevealedSecretAccess)
+                {
+                    continue;
+                }
+
+                RoomController connectedRoom = door.ConnectedRoom;
+                if (connectedRoom != null && connectedRoom.RoomType == RoomType.Secret)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool HasAccessibleTreasureDoor(RoomController room, int availableKeys)
+        {
+            if (room == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<RoomDoor> roomDoors = room.RoomDoors;
+            if (roomDoors == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < roomDoors.Count; i++)
+            {
+                RoomDoor door = roomDoors[i];
+                if (door == null || door.IsLocked || door.ConnectedRoom == null)
+                {
+                    continue;
+                }
+
+                RoomController connectedRoom = door.ConnectedRoom;
+                if (connectedRoom.RoomType != RoomType.Treasure || connectedRoom.HasResolvedRoom)
+                {
+                    continue;
+                }
+
+                int requiredKeys = door.RequiredKeysToEnter;
+                if (requiredKeys <= 0 || availableKeys >= requiredKeys)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private float ResolveRecentTraceDoorPriority(
@@ -1306,7 +1445,12 @@ namespace CuteIssac.Room
             switch (roomType)
             {
                 case RoomType.Shop:
-                    if (context.LowHealth && playerInventory != null && playerInventory.Coins >= 5)
+                    if (context.ShopPoor)
+                    {
+                        totalBonus -= 22f;
+                    }
+
+                    if (context.LowHealth && context.ShopReady)
                     {
                         AddReasonedBonus(26f, "PATCH HP");
                     }
@@ -1316,24 +1460,23 @@ namespace CuteIssac.Room
                         AddReasonedBonus(18f, "CASH OUT");
                     }
 
-                    if (context.NeedsKeys)
+                    if (context.NeedsKeys && context.ShopReady)
                     {
                         AddReasonedBonus(14f, "LOOK FOR KEYS");
                     }
 
-                    if (context.NeedsBombs)
+                    if (context.HasHiddenSecretDoor && context.NeedsBombs && context.ShopReady)
+                    {
+                        AddReasonedBonus(18f, "RESTOCK BOMBS");
+                    }
+                    else if (context.NeedsBombs && context.ShopReady)
                     {
                         AddReasonedBonus(10f, "RESTOCK BOMBS");
                     }
 
-                    if (context.NeedsUtility)
+                    if (context.NeedsUtility && context.ShopReady)
                     {
                         AddReasonedBonus(12f, "FILL SLOT");
-                    }
-
-                    if (playerInventory != null && playerInventory.Coins <= 2)
-                    {
-                        totalBonus -= 8f;
                     }
                     break;
                 case RoomType.Treasure:
@@ -1384,6 +1527,11 @@ namespace CuteIssac.Room
                     }
                     break;
                 case RoomType.Boss:
+                    if (context.HasAccessibleTreasure)
+                    {
+                        totalBonus -= 22f;
+                    }
+
                     if (context.ReadyForBoss)
                     {
                         AddReasonedBonus(18f, "PRESS BOSS");
@@ -1394,13 +1542,33 @@ namespace CuteIssac.Room
                     }
                     break;
                 case RoomType.Curse:
-                    totalBonus -= context.LowHealth ? 20f : 8f;
+                    if (context.LowHealth)
+                    {
+                        totalBonus -= 24f;
+                    }
+                    else if (context.HealthRatio >= 0.78f && !context.HasAccessibleTreasure && (context.NeedsPower || context.NeedsUtility))
+                    {
+                        totalBonus -= 4f;
+                        AddReasonedBonus(12f, "SPEND HP");
+                    }
+                    else
+                    {
+                        totalBonus -= context.HealthRatio < 0.62f ? 16f : 8f;
+                    }
                     break;
                 case RoomType.Trap:
                     totalBonus -= context.LowHealth ? 16f : 6f;
                     break;
                 case RoomType.Normal:
-                    if (context.LowHealth)
+                    if (context.HasLockedKeyDoor && context.NeedsKeys)
+                    {
+                        AddReasonedBonus(14f, "LOOK FOR KEYS");
+                    }
+                    else if (context.HasHiddenSecretDoor && context.NeedsBombs)
+                    {
+                        AddReasonedBonus(12f, "RESTOCK BOMBS");
+                    }
+                    else if (context.LowHealth)
                     {
                         AddReasonedBonus(6f, "PLAY SAFE");
                     }
@@ -1451,15 +1619,19 @@ namespace CuteIssac.Room
         {
             return roomType switch
             {
-                RoomType.Shop => context.CashRich ? "CASH OUT" : "SUPPLY RUN",
+                RoomType.Shop => context.ShopPoor ? "SCOUT" : context.CashRich ? "CASH OUT" : "SUPPLY RUN",
                 RoomType.Treasure => "POWER SPIKE",
                 RoomType.Secret => "SECRET LINE",
-                RoomType.Boss => context.ReadyForBoss ? "PRESS BOSS" : "HOLD LINE",
+                RoomType.Boss => context.HasAccessibleTreasure ? "HOLD LINE" : context.ReadyForBoss ? "PRESS BOSS" : "HOLD LINE",
                 RoomType.MiniBoss => "ELITE PUSH",
                 RoomType.Challenge => "TEST BUILD",
-                RoomType.Curse => "HIGH RISK",
+                RoomType.Curse => context.HealthRatio >= 0.78f && !context.HasAccessibleTreasure ? "SPEND HP" : "HIGH RISK",
                 RoomType.Trap => "WATCH STEP",
-                _ => "SCOUT"
+                _ => context.HasLockedKeyDoor && context.NeedsKeys
+                    ? "LOOK FOR KEYS"
+                    : context.HasHiddenSecretDoor && context.NeedsBombs
+                        ? "RESTOCK BOMBS"
+                        : "SCOUT"
             };
         }
 
@@ -1545,6 +1717,7 @@ namespace CuteIssac.Room
                 "PRESS BOSS" => $"{routeLabel} is live because health and damage are finally online.",
                 "PLAY SAFE" => $"{routeLabel} is the least punishing line until the build stabilizes.",
                 "SCOUT MORE" => $"{routeLabel} gives you one more room to round the build out.",
+                "SPEND HP" => $"{routeLabel} is worth the health cost while your current buffer can afford it.",
                 "HIGH RISK" => $"{routeLabel} is a high-risk line. Take it only if you want volatility.",
                 "WATCH STEP" => $"{routeLabel} is still risky. Respect the route before committing.",
                 "SPLASH ZONE" => $"{routeLabel} is still risky. The fountain spray will kill your pace if you rush it.",
@@ -1616,6 +1789,12 @@ namespace CuteIssac.Room
             string baseLabel = string.IsNullOrEmpty(directionLabel)
                 ? roomLabel
                 : $"{roomLabel} {directionLabel}";
+            int requiredKeyCost = door.RequiredKeysToEnter;
+
+            if (requiredKeyCost > 0)
+            {
+                baseLabel = $"{baseLabel} / KEY x{requiredKeyCost}";
+            }
 
             if (IsShotProfileCompareLabel(compareLabel))
             {

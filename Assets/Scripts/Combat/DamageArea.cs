@@ -80,17 +80,17 @@ namespace CuteIssac.Combat
 
         private void TryDamage(Collider2D hit, in BombExplosionInfo explosionInfo, ProjectileDamageTarget damageTarget)
         {
-            if (!CanDamage(hit, damageTarget))
+            if (!DamageableResolver.TryResolveTarget(hit, out DamageableResolver.ResolvedTarget target))
             {
                 return;
             }
 
-            if (!DamageableResolver.TryResolve(hit, out IDamageable damageable))
+            if (!CanDamage(in target, damageTarget))
             {
                 return;
             }
 
-            int targetId = ResolveObjectId(hit, damageable);
+            int targetId = target.TargetId;
 
             if (_processedDamageables.Contains(targetId))
             {
@@ -106,19 +106,19 @@ namespace CuteIssac.Combat
                 hitDirection = Vector2.up;
             }
 
-            damageable.ApplyDamage(new DamageInfo(
+            target.Damageable.ApplyDamage(new DamageInfo(
                 explosionInfo.Damage,
                 hitDirection.normalized,
                 explosionInfo.Source,
                 explosionInfo.KnockbackForce));
         }
 
-        private static bool CanDamage(Collider2D hit, ProjectileDamageTarget damageTarget)
+        private static bool CanDamage(in DamageableResolver.ResolvedTarget target, ProjectileDamageTarget damageTarget)
         {
             return damageTarget switch
             {
-                ProjectileDamageTarget.PlayerOnly => hit.GetComponentInParent<PlayerHealth>() != null,
-                ProjectileDamageTarget.EnemyOnly => hit.GetComponentInParent<EnemyHealth>() != null,
+                ProjectileDamageTarget.PlayerOnly => target.IsPlayer,
+                ProjectileDamageTarget.EnemyOnly => target.IsEnemy,
                 _ => true
             };
         }

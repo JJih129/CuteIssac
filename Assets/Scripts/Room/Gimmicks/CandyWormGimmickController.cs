@@ -77,6 +77,7 @@ namespace CuteIssac.Room.Gimmicks
             ResolveVisualRenderers();
             CacheVisualState();
             ConfigureGameplayComponents();
+            PrefabPoolService.EnsurePrewarmed(warningEffectPrefab, 1);
             SetGameplayEnabled(false);
             SetVisualHidden();
         }

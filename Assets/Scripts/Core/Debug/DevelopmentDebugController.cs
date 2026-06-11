@@ -26,8 +26,9 @@ namespace CuteIssac.Core.Debug
         [Header("Availability")]
         [SerializeField] private bool enableInEditor = true;
         [SerializeField] private bool enableInDevelopmentBuild = true;
-        [SerializeField] private Key toggleKey = Key.F9;
-        [SerializeField] private Key warpToBossRoomKey = Key.F11;
+        [SerializeField] private Key toggleKey = Key.F3;
+        [SerializeField] private Key warpToBossRoomKey = Key.F2;
+        [SerializeField] [Min(0.25f)] private float testEnemySpawnDistance = 1.35f;
 
         [Header("References")]
         [SerializeField] private RunManager runManager;
@@ -46,6 +47,18 @@ namespace CuteIssac.Core.Debug
         [SerializeField] private string balanceResourcesPath = "Balance/DefaultBalanceConfig";
 
         private readonly List<DebugPanelButtonModel> _buttonModels = new();
+        private static readonly Key[] TestEnemySpawnKeys =
+        {
+            Key.F4,
+            Key.F5,
+            Key.F6,
+            Key.F7,
+            Key.F8,
+            Key.F9,
+            Key.F10,
+            Key.F11,
+            Key.F12
+        };
 
         private void Awake()
         {
@@ -96,6 +109,8 @@ namespace CuteIssac.Core.Debug
             {
                 WarpToCurrentFloorBossRoom();
             }
+
+            HandleTestEnemySpawnKeys(Keyboard.current);
         }
 
         private void TogglePanel()
@@ -258,6 +273,105 @@ namespace CuteIssac.Core.Debug
             RefreshVisiblePanel();
         }
 
+        private void HandleTestEnemySpawnKeys(Keyboard keyboard)
+        {
+            if (debugCatalog == null || keyboard == null)
+            {
+                return;
+            }
+
+            IReadOnlyList<EnemyController> enemyPrefabs = debugCatalog.TestSpawnEnemyPrefabs;
+            int count = Mathf.Min(enemyPrefabs.Count, TestEnemySpawnKeys.Length);
+
+            for (int index = 0; index < count; index++)
+            {
+                if (!keyboard[TestEnemySpawnKeys[index]].wasPressedThisFrame)
+                {
+                    continue;
+                }
+
+                SpawnTestEnemy(enemyPrefabs[index], index);
+                return;
+            }
+        }
+
+        private void SpawnTestEnemy(EnemyController enemyPrefab, int spawnIndex)
+        {
+            if (enemyPrefab == null)
+            {
+                return;
+            }
+
+            PlayerController playerController = PlayerRegistry.ActiveController;
+
+            if (playerController == null)
+            {
+                playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            }
+
+            if (playerController == null)
+            {
+                UnityEngine.Debug.LogWarning("DevelopmentDebugController could not spawn test enemy because no active player was found.", this);
+                return;
+            }
+
+            RoomController currentRoom = roomNavigationController != null ? roomNavigationController.CurrentRoom : null;
+            Vector2 spawnDirection = ResolvePlayerForwardDirection(playerController);
+            Vector3 spawnPosition = playerController.transform.position + (Vector3)(spawnDirection * testEnemySpawnDistance);
+            Transform spawnParent = currentRoom != null && !currentRoom.HasResolvedRoom ? currentRoom.transform : null;
+            EnemyController spawnedEnemy = GameplaySpawnFactory.SpawnComponent(
+                enemyPrefab,
+                spawnPosition,
+                Quaternion.identity,
+                spawnParent,
+                SpawnReusePolicy.Instantiate);
+
+            if (spawnedEnemy == null)
+            {
+                return;
+            }
+
+            if (currentRoom != null && !currentRoom.HasResolvedRoom)
+            {
+                RoomEnemyMember enemyMember = spawnedEnemy.GetComponent<RoomEnemyMember>();
+
+                if (enemyMember == null)
+                {
+                    enemyMember = spawnedEnemy.gameObject.AddComponent<RoomEnemyMember>();
+                }
+
+                enemyMember.AssignRoom(currentRoom);
+                currentRoom.DebugBeginInjectedCombatState();
+            }
+
+            UnityEngine.Debug.Log(
+                $"Spawned test enemy F{spawnIndex + 4}: {spawnedEnemy.EnemyId}",
+                spawnedEnemy);
+            RefreshVisiblePanel();
+        }
+
+        private static Vector2 ResolvePlayerForwardDirection(PlayerController playerController)
+        {
+            PlayerMovement playerMovement = playerController.GetComponent<PlayerMovement>();
+
+            if (playerMovement != null)
+            {
+                Vector2 moveInput = playerMovement.MoveInput;
+                if (moveInput.sqrMagnitude > 0.0001f)
+                {
+                    return moveInput.normalized;
+                }
+
+                Vector2 velocity = playerMovement.CurrentVelocity;
+                if (velocity.sqrMagnitude > 0.0001f)
+                {
+                    return velocity.normalized;
+                }
+            }
+
+            return Vector2.up;
+        }
+
         private void ToggleInvincible()
         {
             if (playerHealth == null)
@@ -294,7 +408,7 @@ namespace CuteIssac.Core.Debug
             string roomLabel = roomNavigationController != null && roomNavigationController.CurrentRoom != null
                 ? roomNavigationController.CurrentRoom.RoomId
                 : "없음";
-            return $"{floor}층 · 방 {roomLabel} · F9 토글";
+            return $"{floor}층 · 방 {roomLabel} · F3 토글";
         }
 
         private string BuildBalanceSnapshot()

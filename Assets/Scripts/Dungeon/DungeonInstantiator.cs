@@ -176,8 +176,8 @@ namespace CuteIssac.Dungeon
 
                     sourceDoor.SetConnection(targetRoom, targetDoor);
                     sourceDoor.ConfigureEntryCost(
-                        targetNode.RoomData != null ? targetNode.RoomData.EntryKeyCost : 0,
-                        targetNode.RoomData != null && targetNode.RoomData.ConsumeEntryCostOnce);
+                        ResolveEntryKeyCost(dungeonMap, targetNode),
+                        ResolveConsumeEntryCostOnce(targetNode));
                     sourceDoor.ConfigureHealthEntryCost(
                         ShouldRequireCurseHealthEntryCost(roomNode, targetNode) ? 1f : 0f,
                         true,
@@ -276,6 +276,13 @@ namespace CuteIssac.Dungeon
                     roomNode.RoomData,
                     floorConfig != null ? floorConfig.GetItemPool(roomNode.RoomType) : null);
             }
+
+            RoomObstacleSpawner roomObstacleSpawner = roomInstance.GetComponent<RoomObstacleSpawner>();
+
+            if (roomObstacleSpawner != null)
+            {
+                roomObstacleSpawner.ConfigureObstacleLayout(roomNode.ResolvedLayout != null ? roomNode.ResolvedLayout.ObstacleLayout : null);
+            }
         }
 
         private static string BuildRoomName(DungeonRoomNode roomNode, RoomLayoutData layout)
@@ -335,6 +342,39 @@ namespace CuteIssac.Dungeon
             }
 
             return sourceNode.RoomType != RoomType.Curse && targetNode.RoomType == RoomType.Curse;
+        }
+
+        private static int ResolveEntryKeyCost(DungeonMap dungeonMap, DungeonRoomNode targetNode)
+        {
+            if (targetNode == null)
+            {
+                return 0;
+            }
+
+            int authoredCost = targetNode.RoomData != null ? targetNode.RoomData.EntryKeyCost : 0;
+
+            if (targetNode.RoomType != RoomType.Treasure)
+            {
+                return authoredCost;
+            }
+
+            int floorIndex = dungeonMap != null && dungeonMap.FloorConfig != null
+                ? dungeonMap.FloorConfig.FloorIndex
+                : 0;
+
+            if (floorIndex == 1)
+            {
+                return 0;
+            }
+
+            return floorIndex > 1 ? Mathf.Max(1, authoredCost) : authoredCost;
+        }
+
+        private static bool ResolveConsumeEntryCostOnce(DungeonRoomNode targetNode)
+        {
+            return targetNode != null
+                && targetNode.RoomData != null
+                && targetNode.RoomData.ConsumeEntryCostOnce;
         }
 
         private static bool IsPrimaryTreasureEntrance(DungeonMap dungeonMap, DungeonRoomNode treasureNode, GridPosition candidateNeighborPosition)

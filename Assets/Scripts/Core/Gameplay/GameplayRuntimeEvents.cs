@@ -21,6 +21,7 @@ namespace CuteIssac.Core.Gameplay
         public static event Action<PlayerLoadoutDeltaSignal> PlayerLoadoutDelta;
         public static event Action<PlayerInteractionOutcomeSignal> PlayerInteractionOutcome;
         public static event Action<ChoiceRouteResolvedSignal> ChoiceRouteResolved;
+        public static event Action<ShopPurchaseFailedSignal> ShopPurchaseFailed;
         public static event Action<EnemyHealth> EnemyDied;
 
         public static void RaisePlayerDamaged(PlayerDamagedSignal signal)
@@ -101,6 +102,11 @@ namespace CuteIssac.Core.Gameplay
         public static void RaiseChoiceRouteResolved(ChoiceRouteResolvedSignal signal)
         {
             ChoiceRouteResolved?.Invoke(signal);
+        }
+
+        public static void RaiseShopPurchaseFailed(ShopPurchaseFailedSignal signal)
+        {
+            ShopPurchaseFailed?.Invoke(signal);
         }
 
         public static void RaiseEnemyDied(EnemyHealth enemyHealth)

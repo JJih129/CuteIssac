@@ -466,6 +466,8 @@ namespace CuteIssac.Room
                     return BuildConsumableDetail(consumablePickup.ConsumableItemData);
                 case HeartPickupLogic heartPickup:
                     return $"RESTORES {heartPickup.HealAmount:0.#} HP";
+                case SpeedCandyPickupLogic speedHeartPickup:
+                    return $"STORES {speedHeartPickup.SpeedHeartAmount} SPEED HEART";
                 case ResourcePickupLogic resourcePickup:
                     return resourcePickup.ResourceType switch
                     {
@@ -645,6 +647,7 @@ namespace CuteIssac.Room
                 ActiveItemPickupLogic => 3.5f,
                 ConsumablePickupLogic consumablePickup when consumablePickup.ConsumableItemData != null && consumablePickup.ConsumableItemData.HasTimedEffect => 1.6f,
                 HeartPickupLogic heartPickup => Mathf.Clamp(heartPickup.HealAmount, 0.5f, 4f) * 0.45f,
+                SpeedCandyPickupLogic speedHeartPickup => Mathf.Clamp(speedHeartPickup.SpeedHeartAmount, 1, 3) * 1.25f,
                 ResourcePickupLogic resourcePickup => Mathf.Clamp(resourcePickup.Amount, 1, 8) * 0.28f,
                 _ => 0f
             };
@@ -1101,6 +1104,11 @@ namespace CuteIssac.Room
             PlayerHealth playerHealth,
             PlayerItemManager playerItemManager)
         {
+            if (PlayerRegistry.TryResolveActiveWeaponLoadoutFor(playerInventory, playerHealth, playerItemManager, out PlayerWeaponLoadout activeWeaponLoadout))
+            {
+                return activeWeaponLoadout;
+            }
+
             if (playerItemManager != null && playerItemManager.TryGetComponent(out PlayerWeaponLoadout itemManagerLoadout))
             {
                 return itemManagerLoadout;

@@ -17,17 +17,17 @@ MonoBehaviour:
   flavorText: Light never leaves as one piece.
   sourcePools: 0000000003000000
   eventFlags: 
-  damageModifier: 0
+  damageModifier: -0.15
   tearsModifier: 0
   speedModifier: 0
-  rangeModifier: 0
+  rangeModifier: 0.8
   shotSpeedModifier: 0
   luckModifier: 0
   maxHealthModifier: 0
   projectileFlags: 05000000
   itemId: P018
   displayName: Prism Lens
-  description: Shots split on impact.
+  description: Shots split on impact and travel farther.
   icon: {fileID: 0}
   rarity: 2
   unlockedByDefault: 1

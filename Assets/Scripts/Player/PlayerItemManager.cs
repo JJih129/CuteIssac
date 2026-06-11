@@ -40,6 +40,7 @@ namespace CuteIssac.Player
         private readonly Dictionary<ItemGameplayEventEffect, float> _eventEffectNextTriggerTimes = new();
         private readonly ModifierStack _pickupPreviewModifierStack = new();
         private readonly List<ItemData> _ownedItemsBuffer = new();
+        private readonly HashSet<string> _ownedItemIdBuffer = new(StringComparer.Ordinal);
 
         private void Awake()
         {
@@ -61,6 +62,16 @@ namespace CuteIssac.Player
             RecalculateStats();
             runItemPoolService?.SyncOwnedItems(_ownedItemsBuffer);
             RebuildEventEffectBindings();
+        }
+
+        private void OnEnable()
+        {
+            PlayerRegistry.Register(this);
+        }
+
+        private void OnDisable()
+        {
+            PlayerRegistry.Unregister(this);
         }
 
         private void Update()
@@ -95,6 +106,8 @@ namespace CuteIssac.Player
 
         private void OnDestroy()
         {
+            PlayerRegistry.Unregister(this);
+
             if (playerInventory != null)
             {
                 playerInventory.InventoryChanged -= HandleInventoryChanged;
@@ -303,6 +316,7 @@ namespace CuteIssac.Player
         private void BuildOwnedItemsBuffer()
         {
             _ownedItemsBuffer.Clear();
+            _ownedItemIdBuffer.Clear();
 
             if (playerInventory != null)
             {
@@ -310,21 +324,52 @@ namespace CuteIssac.Player
 
                 for (int index = 0; index < passiveItems.Count; index++)
                 {
-                    ItemData itemData = passiveItems[index];
-
-                    if (itemData != null && !_ownedItemsBuffer.Contains(itemData))
-                    {
-                        _ownedItemsBuffer.Add(itemData);
-                    }
+                    TryAddOwnedItemToBuffer(passiveItems[index]);
                 }
             }
 
-            playerWeaponLoadout?.AppendOwnedWeaponItems(_ownedItemsBuffer);
+            AppendOwnedWeaponItemsToBuffer();
 
-            if (playerTrinketHolder != null && playerTrinketHolder.EquippedTrinket != null && !_ownedItemsBuffer.Contains(playerTrinketHolder.EquippedTrinket))
+            if (playerTrinketHolder != null)
             {
-                _ownedItemsBuffer.Add(playerTrinketHolder.EquippedTrinket);
+                TryAddOwnedItemToBuffer(playerTrinketHolder.EquippedTrinket);
             }
+        }
+
+        private void AppendOwnedWeaponItemsToBuffer()
+        {
+            if (playerWeaponLoadout == null)
+            {
+                return;
+            }
+
+            playerWeaponLoadout.AppendOwnedWeaponItems(_ownedItemsBuffer, _ownedItemIdBuffer);
+        }
+
+        private bool TryAddOwnedItemToBuffer(ItemData itemData)
+        {
+            if (!TryRegisterOwnedItemId(itemData))
+            {
+                return false;
+            }
+
+            _ownedItemsBuffer.Add(itemData);
+            return true;
+        }
+
+        private bool TryRegisterOwnedItemId(ItemData itemData)
+        {
+            if (itemData == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(itemData.ItemId))
+            {
+                return _ownedItemIdBuffer.Add(itemData.ItemId);
+            }
+
+            return !_ownedItemsBuffer.Contains(itemData);
         }
 
         private void BindItemGameplayEffect(ItemGameplayEventEffect effect)

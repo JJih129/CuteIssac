@@ -223,7 +223,6 @@ MonoBehaviour:
   temporaryLowHealthDamagedColor: {r: 0.84, g: 0.16, b: 0.16, a: 1}
   temporaryLowHealthDeadColor: {r: 0.46, g: 0.08, b: 0.08, a: 0.55}
   temporaryLowHealthScaleMultiplier: 0.92
-  temporaryLowHealthBandageColor: {r: 1, g: 0.96, b: 0.88, a: 0.98}
   temporaryLowHealthSlashColor: {r: 0.58, g: 0.06, b: 0.06, a: 0.9}
 --- !u!114 &930000108
 MonoBehaviour:
@@ -244,6 +243,7 @@ MonoBehaviour:
   muzzleOffset: {x: 0.42, y: 0}
   prewarmCount: 12
   runtimeProjectileSpeedMultiplier: 1
+  runtimeProjectileLifetimeMultiplier: 1
 --- !u!114 &930000109
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -24,10 +24,10 @@ MonoBehaviour:
   shotSpeedModifier: 0
   luckModifier: 0
   maxHealthModifier: 0
-  projectileFlags: 07000000
+  projectileFlags: 0700000008000000
   itemId: P020
   displayName: Halo Wire
-  description: Creates an orbital helper.
+  description: Creates an orbital shield helper.
   icon: {fileID: 0}
   rarity: 2
   unlockedByDefault: 1

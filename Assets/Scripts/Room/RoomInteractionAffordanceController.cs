@@ -1595,7 +1595,7 @@ namespace CuteIssac.Room
                 "AMMO NOW" or "RESTOCK AMMO" or "AMMO FULL" => "CASH WINDOW",
                 "SHOP FUEL" => "CASH WINDOW",
                 "ACTIVE OPEN" or "TRINKET OPEN" or "ACTIVE SWAP" or "TRINKET SWAP" or "BUILD SHIFT" or "SHOT SHIFT" or "SUMMON TECH" or "ORBITAL" => "LOADOUT FIND",
-                "SPEED SPIKE" or "SPEED UP" => "SAFE UPGRADE",
+                "SPEED SPIKE" or "SPEED UP" or "SPEED HEART" => "SAFE UPGRADE",
                 _ => string.Empty
             };
         }
@@ -1903,7 +1903,7 @@ namespace CuteIssac.Room
                 "CLUTCH HEAL" => 18f,
                 "FULL HEAL" => 16f,
                 "HEAL NOW" => 13f,
-                "HP SPIKE" or "HP UP" or "SPEED SPIKE" or "SPEED UP" => 11f,
+                "HP SPIKE" or "HP UP" or "SPEED SPIKE" or "SPEED UP" or "SPEED HEART" => 11f,
                 "TRADE OFF" => -8f,
                 _ when IsHealthCandidate(candidate) => 9f,
                 _ => 0f

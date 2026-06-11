@@ -18,7 +18,7 @@ MonoBehaviour:
   sourcePools: 000000000400000002000000
   eventFlags: 
   damageModifier: 0
-  tearsModifier: -0.2
+  tearsModifier: -0.26
   speedModifier: 0
   rangeModifier: 0
   shotSpeedModifier: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 03000000
   itemId: P017
   displayName: Blast Seed
-  description: Shots explode on impact.
+  description: Explosive shots. Slower fire rate.
   icon: {fileID: 0}
   rarity: 2
   unlockedByDefault: 1

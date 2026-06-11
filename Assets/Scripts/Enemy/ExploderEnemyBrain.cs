@@ -25,6 +25,9 @@ namespace CuteIssac.Enemy
         private float _runtimeFirstAttackDelayBonus;
         private float _runtimeTelegraphDurationMultiplier = 1f;
 
+        public bool IsWindingUp => _windupRemaining > 0f && !_hasExploded;
+        public bool HasExploded => _hasExploded;
+
         protected override void HandleInitialized()
         {
             ResolveReferences();

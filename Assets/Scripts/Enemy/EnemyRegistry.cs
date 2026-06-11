@@ -5,7 +5,7 @@ namespace CuteIssac.Enemy
     public static class EnemyRegistry
     {
         private static readonly List<EnemyHealth> ActiveEnemies = new(64);
-        private static readonly HashSet<int> ActiveEnemyIds = new();
+        private static readonly Dictionary<int, int> ActiveEnemyIndicesById = new(64);
 
         public static int Count => ActiveEnemies.Count;
 
@@ -22,11 +22,12 @@ namespace CuteIssac.Enemy
             }
 
             int instanceId = enemyHealth.GetInstanceID();
-            if (!ActiveEnemyIds.Add(instanceId))
+            if (ActiveEnemyIndicesById.ContainsKey(instanceId))
             {
                 return;
             }
 
+            ActiveEnemyIndicesById.Add(instanceId, ActiveEnemies.Count);
             ActiveEnemies.Add(enemyHealth);
         }
 
@@ -38,23 +39,30 @@ namespace CuteIssac.Enemy
             }
 
             int instanceId = enemyHealth.GetInstanceID();
-            if (!ActiveEnemyIds.Remove(instanceId))
+            if (!ActiveEnemyIndicesById.TryGetValue(instanceId, out int index))
             {
                 return;
             }
 
-            for (int i = ActiveEnemies.Count - 1; i >= 0; i--)
+            int lastIndex = ActiveEnemies.Count - 1;
+            ActiveEnemyIndicesById.Remove(instanceId);
+
+            if (index < 0 || index > lastIndex)
             {
-                if (ActiveEnemies[i] != enemyHealth)
+                return;
+            }
+
+            if (index != lastIndex)
+            {
+                EnemyHealth movedEnemy = ActiveEnemies[lastIndex];
+                ActiveEnemies[index] = movedEnemy;
+                if (movedEnemy != null)
                 {
-                    continue;
+                    ActiveEnemyIndicesById[movedEnemy.GetInstanceID()] = index;
                 }
-
-                int lastIndex = ActiveEnemies.Count - 1;
-                ActiveEnemies[i] = ActiveEnemies[lastIndex];
-                ActiveEnemies.RemoveAt(lastIndex);
-                return;
             }
+
+            ActiveEnemies.RemoveAt(lastIndex);
         }
     }
 }

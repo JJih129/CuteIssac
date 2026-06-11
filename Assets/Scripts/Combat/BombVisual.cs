@@ -37,6 +37,13 @@ namespace CuteIssac.Combat
         private bool _cachedPulseScale;
         private bool _warnedMissingRenderer;
 
+        private void Awake()
+        {
+            ResolveReferences();
+            CachePulseScale();
+            PrewarmEffects();
+        }
+
         public void HandleArmed()
         {
             CachePulseScale();
@@ -63,11 +70,16 @@ namespace CuteIssac.Combat
 
         private void Reset()
         {
-            bodySpriteRenderer = GetComponent<SpriteRenderer>();
-            pulseRoot = transform;
+            ResolveReferences();
         }
 
         private void OnValidate()
+        {
+            ResolveReferences();
+            CachePulseScale();
+        }
+
+        private void ResolveReferences()
         {
             if (bodySpriteRenderer == null)
             {
@@ -78,8 +90,6 @@ namespace CuteIssac.Combat
             {
                 pulseRoot = transform;
             }
-
-            CachePulseScale();
         }
 
         private void CachePulseScale()
@@ -133,7 +143,7 @@ namespace CuteIssac.Combat
 
             Vector3 spawnPosition = effectAnchor != null ? effectAnchor.position : transform.position;
             Quaternion spawnRotation = effectAnchor != null ? effectAnchor.rotation : Quaternion.identity;
-            PrefabPoolService.Spawn(effectPrefab, spawnPosition, spawnRotation);
+            PooledEffectSpawner.Spawn(effectPrefab, spawnPosition, spawnRotation);
         }
 
         private void SpawnExplosionEffect(float explosionRadius)
@@ -150,6 +160,16 @@ namespace CuteIssac.Combat
             if (effectInstance != null)
             {
                 effectInstance.Configure(explosionRadius);
+            }
+        }
+
+        private void PrewarmEffects()
+        {
+            PooledEffectSpawner.Prewarm(armedEffectPrefab, 1);
+
+            if (explosionEffectPrefab != null)
+            {
+                PrefabPoolService.EnsurePrewarmed(explosionEffectPrefab.gameObject, 1);
             }
         }
     }

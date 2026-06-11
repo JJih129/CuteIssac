@@ -567,6 +567,17 @@ namespace CuteIssac.UI
 
         private string ResolveMinimalDisplayText(string text)
         {
+            if (_visualProfile != FloatingFeedbackVisualProfile.EnemyDamage
+                && _visualProfile != FloatingFeedbackVisualProfile.PlayerDamage)
+            {
+                return string.Empty;
+            }
+
+            if (TryResolveSimpleIntegerDamageText(text, out string simpleDamageText))
+            {
+                return simpleDamageText;
+            }
+
             string normalizedText = BuildPlainDisplayText(text);
 
             if (string.IsNullOrWhiteSpace(normalizedText))
@@ -574,15 +585,52 @@ namespace CuteIssac.UI
                 return string.Empty;
             }
 
-            if (_visualProfile != FloatingFeedbackVisualProfile.EnemyDamage
-                && _visualProfile != FloatingFeedbackVisualProfile.PlayerDamage)
-            {
-                return string.Empty;
-            }
-
             return TryNormalizeDamageText(normalizedText, out string damageText)
                 ? EnsureDamageSign(damageText)
                 : string.Empty;
+        }
+
+        private static bool TryResolveSimpleIntegerDamageText(string text, out string damageText)
+        {
+            damageText = string.Empty;
+
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+
+            int index = 0;
+            char firstCharacter = text[0];
+            if (firstCharacter == '-' || firstCharacter == '+')
+            {
+                index = 1;
+            }
+
+            if (index >= text.Length)
+            {
+                return false;
+            }
+
+            int value = 0;
+            for (; index < text.Length; index++)
+            {
+                char character = text[index];
+                if (character < '0' || character > '9')
+                {
+                    return false;
+                }
+
+                int digit = character - '0';
+                if (value > (int.MaxValue - digit) / 10)
+                {
+                    return false;
+                }
+
+                value = (value * 10) + digit;
+            }
+
+            damageText = FloatingFeedbackTextCache.GetNegativeCeil(value);
+            return true;
         }
 
         private string BuildPlainDisplayText(string text)

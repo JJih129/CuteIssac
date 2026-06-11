@@ -25,6 +25,7 @@ namespace CuteIssac.Dungeon
         [SerializeField] private bool snapCameraOnTransition = true;
         [SerializeField] private bool hideNonCurrentRooms = true;
         [SerializeField] [Min(0f)] private float transitionCooldown = 0.15f;
+        [SerializeField] [Min(0f)] private float arrivalInputLockDuration = 0.1f;
         [SerializeField] [Min(0f)] private float cameraLerpSpeed = 7.5f;
         [SerializeField] private bool constrainCameraToRoomBounds = true;
         [SerializeField] [Min(0f)] private float cameraTraversalHandoffDuration = 0.26f;
@@ -234,6 +235,7 @@ namespace CuteIssac.Dungeon
                 departureGuidanceBeacon.PlayCommitAccepted();
             }
 
+            PreparePlayerForTraversalArrival(player);
             SetCurrentRoom(nextRoom);
             player.transform.position = nextPosition;
             nextRoom.EnterRoom();
@@ -286,6 +288,31 @@ namespace CuteIssac.Dungeon
             GameAudioEvents.Raise(GameAudioEventType.DoorTraversed, nextRoom.CameraFocusPosition);
             _lastTransitionTime = Time.unscaledTime;
             return true;
+        }
+
+        private void PreparePlayerForTraversalArrival(PlayerController player)
+        {
+            if (player == null)
+            {
+                return;
+            }
+
+            PlayerMovement playerMovement = player.GetComponent<PlayerMovement>();
+            playerMovement?.Stop();
+
+            if (arrivalInputLockDuration <= 0f)
+            {
+                return;
+            }
+
+            PlayerMovementLockState movementLockState = player.GetComponent<PlayerMovementLockState>();
+            if (movementLockState == null)
+            {
+                movementLockState = player.gameObject.AddComponent<PlayerMovementLockState>();
+            }
+
+            playerMovement?.RefreshMovementLockState(movementLockState);
+            movementLockState.LockMovement(GetInstanceID(), arrivalInputLockDuration);
         }
 
         [ContextMenu("Go To Starting Room")]

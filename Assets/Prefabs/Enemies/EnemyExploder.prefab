@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 930000108}
   - component: {fileID: 930000109}
   - component: {fileID: 930000110}
+  - component: {fileID: 930000111}
   m_Layer: 0
   m_Name: EnemyExploder
   m_TagString: Untagged
@@ -223,7 +224,6 @@ MonoBehaviour:
   temporaryLowHealthDamagedColor: {r: 0.84, g: 0.16, b: 0.16, a: 1}
   temporaryLowHealthDeadColor: {r: 0.46, g: 0.08, b: 0.08, a: 0.55}
   temporaryLowHealthScaleMultiplier: 0.92
-  temporaryLowHealthBandageColor: {r: 1, g: 0.96, b: 0.88, a: 0.98}
   temporaryLowHealthSlashColor: {r: 0.58, g: 0.06, b: 0.06, a: 0.9}
 --- !u!114 &930000108
 MonoBehaviour:
@@ -274,6 +274,61 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   initialBufferSize: 24
+--- !u!114 &930000111
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44b83d6f1c9e4c3f8f87fd2c9a6c0d1e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enemyController: {fileID: 930000106}
+  enemyVisual: {fileID: 930000107}
+  exploderBrain: {fileID: 930000108}
+  bodySpriteRenderer: {fileID: 930000132}
+  walkDownFrames:
+  - {fileID: -5122416978897219397, guid: 9eebbb3271487074eb02b20ea4b42d8d, type: 3}
+  - {fileID: -8443076049492353822, guid: 15ee025404bc920428a3771cc32637ec, type: 3}
+  - {fileID: 189425797096132719, guid: 4b35836dc6f40bd42bd836657fbe8cb8, type: 3}
+  walkSideFrames:
+  - {fileID: 2034896589104832303, guid: cc038c086ff2d4148b45b114b437d090, type: 3}
+  - {fileID: -6428024022942918537, guid: e9ae11c1eeac6de48962153a10a023d3, type: 3}
+  - {fileID: 2279464431713280145, guid: e08f157d76050d64780675438916247a, type: 3}
+  walkUpFrames:
+  - {fileID: -3817372815766438217, guid: 2030422c7c4ab6946a7a2f783a19d9e5, type: 3}
+  - {fileID: -3418653582098433741, guid: dec311fdb50d1204a8fa0a293df9526f, type: 3}
+  - {fileID: 8655057458281400358, guid: 5f04e708f0d46244383d48e544386395, type: 3}
+  explosionFrontFrames:
+  - {fileID: -2543241962105506161, guid: 02f5f976871e520478875d93493c9046, type: 3}
+  - {fileID: 4341249059553909116, guid: 02f5f976871e520478875d93493c9046, type: 3}
+  - {fileID: 2683149661301232666, guid: 02f5f976871e520478875d93493c9046, type: 3}
+  - {fileID: -6894231884032508955, guid: 02f5f976871e520478875d93493c9046, type: 3}
+  - {fileID: 3608857871775591166, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  - {fileID: 5364733132671117370, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  - {fileID: -619008469339095280, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  - {fileID: -5518144719517660094, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  - {fileID: 2165599309901884749, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  - {fileID: 271675801157658693, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  - {fileID: -318816409938143691, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  - {fileID: 1451127936614802889, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  - {fileID: 7763240269082321790, guid: 3c08aeb3db52622408d3e2d7d8e2e319, type: 3}
+  explosionSideFrames:
+  - {fileID: 1255943588155061632, guid: c18359e017ec4944d964b2ed321e9995, type: 3}
+  - {fileID: 3699480500712166588, guid: c18359e017ec4944d964b2ed321e9995, type: 3}
+  - {fileID: 5075095351128518577, guid: c18359e017ec4944d964b2ed321e9995, type: 3}
+  - {fileID: 3959355923384152591, guid: c18359e017ec4944d964b2ed321e9995, type: 3}
+  walkFrameInterval: 0.1
+  explosionFrameInterval: 0.08
+  movingThreshold: 0.02
+  verticalBias: 1.05
+  movementWorldHeight: 0.72
+  windupWorldHeight: 0.88
+  minimumExplosionFrameWidthPixels: 96
+  minimumExplosionFrameHeightPixels: 96
 --- !u!1 &930000120
 GameObject:
   m_ObjectHideFlags: 0
@@ -392,7 +447,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10006, type: 3}
+  m_Sprite: {fileID: -5122416978897219397, guid: 9eebbb3271487074eb02b20ea4b42d8d, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0

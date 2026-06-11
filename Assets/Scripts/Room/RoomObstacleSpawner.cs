@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CuteIssac.Core.Pooling;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Dungeon;
 using UnityEngine;
@@ -40,6 +41,7 @@ namespace CuteIssac.Room
         private readonly List<GameObject> _spawnedObstacles = new();
         private readonly List<GameObject> _prefabPool = new();
         private readonly List<PlacedObstacle> _placedObstacles = new();
+        private RoomObstacleLayoutData _runtimeObstacleLayout;
         private bool _hasSpawned;
 
         private readonly struct PlacedObstacle
@@ -92,12 +94,22 @@ namespace CuteIssac.Room
             SpawnObstacles();
         }
 
+        public void ConfigureObstacleLayout(RoomObstacleLayoutData obstacleLayout)
+        {
+            _runtimeObstacleLayout = obstacleLayout;
+            PrewarmObstacleLayout(obstacleLayout);
+        }
+
         private void SpawnObstacles()
         {
             Transform parent = obstacleRoot != null ? obstacleRoot : transform;
             _placedObstacles.Clear();
 
-            if (useRandomizedPlacement && TryBuildPrefabPool())
+            if (_runtimeObstacleLayout != null)
+            {
+                SpawnTemplateObstacles(parent, _runtimeObstacleLayout);
+            }
+            else if (useRandomizedPlacement && TryBuildPrefabPool())
             {
                 SpawnRandomizedObstacles(parent);
             }
@@ -146,6 +158,11 @@ namespace CuteIssac.Room
 
             if (roomController.RoomType == RoomType.Treasure || roomController.RoomType == RoomType.Shop)
             {
+                return _runtimeObstacleLayout != null && _runtimeObstacleLayout.HasAuthoredObstacles;
+            }
+
+            if (_runtimeObstacleLayout != null && _runtimeObstacleLayout.DisablesObstacleSpawning)
+            {
                 return false;
             }
 
@@ -187,7 +204,33 @@ namespace CuteIssac.Room
 
                 Vector3 worldPosition = parent.TransformPoint(entry.localPosition);
                 Quaternion rotation = parent.rotation * Quaternion.Euler(0f, 0f, entry.rotationZ);
-                RegisterSpawnedObstacle(Instantiate(entry.prefab, worldPosition, rotation, parent));
+                GameObject spawnedObstacle = PrefabPoolService.Spawn(entry.prefab, worldPosition, rotation, parent);
+                RegisterSpawnedObstacle(spawnedObstacle, entry.prefab, 1f);
+            }
+        }
+
+        private void SpawnTemplateObstacles(Transform parent, RoomObstacleLayoutData obstacleLayout)
+        {
+            if (obstacleLayout == null || obstacleLayout.DisablesObstacleSpawning)
+            {
+                return;
+            }
+
+            IReadOnlyList<RoomObstacleLayoutData.ObstacleEntry> templateObstacles = obstacleLayout.Obstacles;
+
+            for (int i = 0; i < templateObstacles.Count; i++)
+            {
+                RoomObstacleLayoutData.ObstacleEntry entry = templateObstacles[i];
+
+                if (entry == null || entry.Prefab == null)
+                {
+                    continue;
+                }
+
+                Vector3 worldPosition = parent.TransformPoint(entry.LocalPosition);
+                Quaternion rotation = parent.rotation * Quaternion.Euler(0f, 0f, entry.RotationZ);
+                GameObject spawnedObstacle = PrefabPoolService.Spawn(entry.Prefab, worldPosition, rotation, parent);
+                RegisterSpawnedObstacle(spawnedObstacle, entry.Prefab, entry.ScaleMultiplier);
             }
         }
 
@@ -229,7 +272,7 @@ namespace CuteIssac.Room
                     }
 
                     float rotationZ = Mathf.Lerp(-18f, 18f, (float)random.NextDouble());
-                    GameObject spawnedObstacle = Instantiate(
+                    GameObject spawnedObstacle = PrefabPoolService.Spawn(
                         prefab,
                         worldPosition,
                         parent.rotation * Quaternion.Euler(0f, 0f, rotationZ),
@@ -240,7 +283,7 @@ namespace CuteIssac.Room
                         continue;
                     }
 
-                    RegisterSpawnedObstacle(spawnedObstacle);
+                    RegisterSpawnedObstacle(spawnedObstacle, prefab, 1f);
                     _placedObstacles.Add(new PlacedObstacle(worldPosition, obstacleRadius));
                     placed = true;
                     break;
@@ -373,14 +416,63 @@ namespace CuteIssac.Room
             };
         }
 
-        private void RegisterSpawnedObstacle(GameObject spawnedObstacle)
+        private void RegisterSpawnedObstacle(GameObject spawnedObstacle, GameObject sourcePrefab, float entryScaleMultiplier)
         {
             if (spawnedObstacle != null)
             {
-                float obstacleScale = ResolveObstacleScaleMultiplier();
-                spawnedObstacle.transform.localScale *= obstacleScale;
+                float obstacleScale = ResolveObstacleScaleMultiplier() * Mathf.Max(0.1f, entryScaleMultiplier);
+                Vector3 sourceScale = sourcePrefab != null ? sourcePrefab.transform.localScale : Vector3.one;
+                spawnedObstacle.transform.localScale = sourceScale * obstacleScale;
                 _spawnedObstacles.Add(spawnedObstacle);
             }
+        }
+
+        private static void PrewarmObstacleLayout(RoomObstacleLayoutData obstacleLayout)
+        {
+            if (obstacleLayout == null || obstacleLayout.DisablesObstacleSpawning)
+            {
+                return;
+            }
+
+            IReadOnlyList<RoomObstacleLayoutData.ObstacleEntry> templateObstacles = obstacleLayout.Obstacles;
+
+            for (int i = 0; i < templateObstacles.Count; i++)
+            {
+                RoomObstacleLayoutData.ObstacleEntry entry = templateObstacles[i];
+
+                if (entry == null || entry.Prefab == null)
+                {
+                    continue;
+                }
+
+                int requestedCount = CountTemplatePrefabOccurrences(templateObstacles, entry.Prefab);
+                PrewarmObstaclePrefab(entry.Prefab, requestedCount);
+            }
+        }
+
+        private static int CountTemplatePrefabOccurrences(IReadOnlyList<RoomObstacleLayoutData.ObstacleEntry> entries, GameObject prefab)
+        {
+            int count = 0;
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (entries[i] != null && entries[i].Prefab == prefab)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static void PrewarmObstaclePrefab(GameObject prefab, int requestedCount)
+        {
+            if (prefab == null || requestedCount <= 0)
+            {
+                return;
+            }
+
+            PrefabPoolService.EnsurePrewarmed(prefab, requestedCount);
         }
 
         private float ResolveObstacleScaleMultiplier()

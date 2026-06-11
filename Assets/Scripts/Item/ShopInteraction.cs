@@ -1,5 +1,6 @@
 using CuteIssac.Common.Input;
 using CuteIssac.Core.Feedback;
+using CuteIssac.Core.Gameplay;
 using CuteIssac.Player;
 using CuteIssac.UI;
 using UnityEngine;
@@ -25,12 +26,17 @@ namespace CuteIssac.Item
         [SerializeField] private TextMesh promptTextMesh;
         [SerializeField] private bool showWorldPromptText;
         [SerializeField] private bool showShopPanel;
+        [SerializeField] [Min(0f)] private float triggerBoundsPadding = 0.55f;
+        [SerializeField] [Min(0.05f)] private float triggerBoundsRefreshInterval = 0.5f;
 
         [Header("Behavior")]
         [SerializeField] [Min(0.25f)] private float purchaseDistance = 2.2f;
         [SerializeField] private bool autoPurchaseOnContact = true;
         [SerializeField] [Min(0.05f)] private float autoPurchaseDistance = 0.72f;
+        [SerializeField] [Min(0f)] private float autoPurchaseContactPadding = 0.18f;
         [SerializeField] [Min(0.05f)] private float autoPurchaseCooldown = 0.35f;
+        [SerializeField] [Min(0.05f)] private float failedAutoPurchaseCooldown = 0.85f;
+        [SerializeField] [Min(0f)] private float autoPurchaseActivationDelay = 0.18f;
         [SerializeField] private Color purchaseSuccessColor = new(0.48f, 1f, 0.72f, 1f);
         [SerializeField] private Color purchaseFailureColor = new(1f, 0.62f, 0.48f, 1f);
 
@@ -40,14 +46,22 @@ namespace CuteIssac.Item
         private PlayerHealth _currentPlayerHealth;
         private Transform _currentPlayerTransform;
         private float _nextAutoPurchaseTime;
+        private float _nextTriggerBoundsRefreshTime;
 
         private void Awake()
         {
             ResolveReferences();
+            FitInteractionTriggerToShopItems();
         }
 
         private void Update()
         {
+            if (Time.unscaledTime >= _nextTriggerBoundsRefreshTime)
+            {
+                FitInteractionTriggerToShopItems();
+                _nextTriggerBoundsRefreshTime = Time.unscaledTime + triggerBoundsRefreshInterval;
+            }
+
             if (_currentPlayerTransform == null || shopInventory == null)
             {
                 SetPromptVisible(false);
@@ -131,6 +145,55 @@ namespace CuteIssac.Item
             ResolveShopPanelView();
         }
 
+        private void FitInteractionTriggerToShopItems()
+        {
+            if (shopInventory == null || interactionTrigger is not BoxCollider2D boxCollider)
+            {
+                return;
+            }
+
+            if (!shopInventory.TryGetShopItemVisualBounds(out Bounds worldBounds))
+            {
+                return;
+            }
+
+            if (!TryConvertWorldBoundsToLocal(worldBounds, transform, out Bounds localBounds))
+            {
+                return;
+            }
+
+            float padding = Mathf.Max(0f, triggerBoundsPadding);
+            boxCollider.offset = new Vector2(localBounds.center.x, localBounds.center.y);
+            boxCollider.size = new Vector2(
+                Mathf.Max(0.05f, localBounds.size.x + (padding * 2f)),
+                Mathf.Max(0.05f, localBounds.size.y + (padding * 2f)));
+            boxCollider.isTrigger = true;
+        }
+
+        private static bool TryConvertWorldBoundsToLocal(Bounds worldBounds, Transform localRoot, out Bounds localBounds)
+        {
+            localBounds = default;
+
+            if (localRoot == null)
+            {
+                return false;
+            }
+
+            Vector3 min = worldBounds.min;
+            Vector3 max = worldBounds.max;
+            Vector3 center = worldBounds.center;
+            Vector3 localA = localRoot.InverseTransformPoint(new Vector3(min.x, min.y, center.z));
+            Vector3 localB = localRoot.InverseTransformPoint(new Vector3(min.x, max.y, center.z));
+            Vector3 localC = localRoot.InverseTransformPoint(new Vector3(max.x, min.y, center.z));
+            Vector3 localD = localRoot.InverseTransformPoint(new Vector3(max.x, max.y, center.z));
+
+            localBounds = new Bounds(localA, Vector3.zero);
+            localBounds.Encapsulate(localB);
+            localBounds.Encapsulate(localC);
+            localBounds.Encapsulate(localD);
+            return true;
+        }
+
         private void ResolveInputReader()
         {
             if (inputReaderSource == null)
@@ -143,19 +206,67 @@ namespace CuteIssac.Item
 
         private void TryBindCollector(Collider2D other)
         {
-            PlayerInventory playerInventory = other.GetComponentInParent<PlayerInventory>();
-            PlayerItemManager playerItemManager = other.GetComponentInParent<PlayerItemManager>();
-            PlayerHealth playerHealth = other.GetComponentInParent<PlayerHealth>();
+            bool resolvedActiveCollector = TryResolveActiveCollector(
+                other,
+                out PlayerInventory playerInventory,
+                out PlayerItemManager playerItemManager,
+                out PlayerHealth playerHealth,
+                out Transform playerTransform);
+
+            if (!resolvedActiveCollector || playerInventory == null || playerItemManager == null)
+            {
+                playerInventory = other.GetComponentInParent<PlayerInventory>();
+                playerItemManager = other.GetComponentInParent<PlayerItemManager>();
+                playerHealth = other.GetComponentInParent<PlayerHealth>();
+                playerTransform = playerInventory != null ? playerInventory.transform : null;
+            }
 
             if (playerInventory == null || playerItemManager == null)
             {
                 return;
             }
 
+            if (_currentPlayerTransform != playerTransform)
+            {
+                _nextAutoPurchaseTime = Time.unscaledTime + autoPurchaseActivationDelay;
+            }
+
             _currentPlayerInventory = playerInventory;
             _currentPlayerItemManager = playerItemManager;
             _currentPlayerHealth = playerHealth;
-            _currentPlayerTransform = playerInventory.transform;
+            _currentPlayerTransform = playerTransform;
+        }
+
+        private static bool TryResolveActiveCollector(
+            Collider2D other,
+            out PlayerInventory playerInventory,
+            out PlayerItemManager playerItemManager,
+            out PlayerHealth playerHealth,
+            out Transform playerTransform)
+        {
+            playerInventory = null;
+            playerItemManager = null;
+            playerHealth = null;
+            playerTransform = null;
+
+            PlayerController activeController = PlayerRegistry.ActiveController;
+            if (activeController == null || !PlayerRegistry.IsComponentUnderTransform(other, activeController.transform))
+            {
+                return false;
+            }
+
+            playerTransform = activeController.transform;
+            playerInventory = PlayerRegistry.IsComponentUnderTransform(PlayerRegistry.ActiveInventory, playerTransform)
+                ? PlayerRegistry.ActiveInventory
+                : activeController.GetComponent<PlayerInventory>();
+            playerItemManager = PlayerRegistry.IsComponentUnderTransform(PlayerRegistry.ActiveItemManager, playerTransform)
+                ? PlayerRegistry.ActiveItemManager
+                : activeController.GetComponent<PlayerItemManager>();
+            playerHealth = PlayerRegistry.IsComponentUnderTransform(PlayerRegistry.ActiveHealth, playerTransform)
+                ? PlayerRegistry.ActiveHealth
+                : activeController.GetComponent<PlayerHealth>();
+
+            return playerInventory != null || playerItemManager != null || playerHealth != null;
         }
 
         private void ClearCollector()
@@ -195,6 +306,11 @@ namespace CuteIssac.Item
             }
 
             ShopSlotState slotState = highlightedItem.BuildSlotState(true, _currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth);
+            if (TryBuildReadablePrompt(slotState, out string readablePrompt))
+            {
+                SetPromptText(readablePrompt);
+                return;
+            }
             SetPromptText(slotState.CanPurchase
                 ? $"구매 {slotState.DisplayName} · {slotState.PriceLabel}"
                 : $"{slotState.StatusLabel} · {slotState.PriceLabel}");
@@ -331,18 +447,17 @@ namespace CuteIssac.Item
                 return false;
             }
 
-            float autoPurchaseDistanceSqr = autoPurchaseDistance * autoPurchaseDistance;
-            if ((highlightedItem.transform.position - _currentPlayerTransform.position).sqrMagnitude > autoPurchaseDistanceSqr)
+            if (!highlightedItem.IsBuyerWithinInteractionBounds(
+                    _currentPlayerTransform.position,
+                    autoPurchaseDistance,
+                    autoPurchaseContactPadding,
+                    out _))
             {
                 return false;
             }
 
-            if (!highlightedItem.CanPurchase(_currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth))
-            {
-                return false;
-            }
-
-            _nextAutoPurchaseTime = now + autoPurchaseCooldown;
+            bool canPurchase = highlightedItem.CanPurchase(_currentPlayerInventory, _currentPlayerItemManager, _currentPlayerHealth);
+            _nextAutoPurchaseTime = now + (canPurchase ? autoPurchaseCooldown : failedAutoPurchaseCooldown);
             TryPurchaseHighlighted(highlightedItem);
             return true;
         }
@@ -355,6 +470,10 @@ namespace CuteIssac.Item
             if (purchased)
             {
                 highlightedItem.PlayPurchaseSuccessFeedback();
+            }
+            else
+            {
+                highlightedItem.PlayPurchaseFailureFeedback();
             }
 
             PresentPurchaseFeedback(highlightedSlotState, purchased);
@@ -383,6 +502,29 @@ namespace CuteIssac.Item
                 $"{slotState.StatusLabel} · {slotState.DisplayName}",
                 purchaseFailureColor,
                 1f));
+
+            if (IsResourceShortage(slotState.StatusLabel))
+            {
+                GameplayRuntimeEvents.RaiseShopPurchaseFailed(new ShopPurchaseFailedSignal(
+                    slotState.CurrencyType,
+                    slotState.StatusLabel,
+                    transform.position));
+            }
+        }
+
+        private static bool IsResourceShortage(string statusLabel)
+        {
+            return string.Equals(statusLabel, "코인 부족")
+                || string.Equals(statusLabel, "열쇠 부족")
+                || string.Equals(statusLabel, "폭탄 부족");
+        }
+
+        private static bool TryBuildReadablePrompt(ShopSlotState slotState, out string prompt)
+        {
+            prompt = slotState.CanPurchase
+                ? $"구매 {slotState.DisplayName} · {slotState.PriceLabel}"
+                : $"{slotState.StatusLabel} · {slotState.PriceLabel}";
+            return slotState.IsVisible;
         }
 
         private void Reset()

@@ -41,6 +41,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 930000121}
+  - {fileID: 2550126104058750263}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &930000102
@@ -225,7 +226,6 @@ MonoBehaviour:
   temporaryLowHealthDamagedColor: {r: 0.84, g: 0.16, b: 0.16, a: 1}
   temporaryLowHealthDeadColor: {r: 0.46, g: 0.08, b: 0.08, a: 0.55}
   temporaryLowHealthScaleMultiplier: 0.92
-  temporaryLowHealthBandageColor: {r: 1, g: 0.96, b: 0.88, a: 0.98}
   temporaryLowHealthSlashColor: {r: 0.58, g: 0.06, b: 0.06, a: 0.9}
 --- !u!114 &930000108
 MonoBehaviour:
@@ -241,11 +241,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enemyVisual: {fileID: 930000107}
   ownerCollider: {fileID: 930000103}
-  spawnOrigin: {fileID: 930000141}
+  spawnOrigin: {fileID: 2550126104058750263}
   projectileDefinition: {fileID: 11400000, guid: a6c963dbf3594d798ed4c1fcb1dd0f58, type: 2}
   muzzleOffset: {x: 0.56, y: 0}
   prewarmCount: 12
-  runtimeProjectileSpeedMultiplier: 1
+  runtimeProjectileSpeedMultiplier: 0.55
+  runtimeProjectileLifetimeMultiplier: 1.55
 --- !u!114 &930000109
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -261,8 +262,10 @@ MonoBehaviour:
   enemyCombat: {fileID: 930000108}
   bossVisual: {fileID: 930000111}
   bossPhaseProfile: {fileID: 0}
-  preferredOrbitRange: 4.8
-  orbitBlend: 0.72
+  preferredOrbitRange: 4.2
+  orbitRangeTolerance: 0.75
+  orbitBlend: 0.25
+  neutralShotInterval: 1.35
   burstCooldown: 2.3
   burstTelegraphDuration: 0.5
   burstProjectileCount: 10
@@ -299,7 +302,7 @@ MonoBehaviour:
   fanSpreadAngle: 96
   fanTurnAngle: 16
   fanShotInterval: 0.2
-  fanMoveBlend: 0.08
+  fanMoveBlend: 0.15
   shockwaveCooldown: 6
   shockwaveTelegraphDuration: 0.68
   shockwavePulseCount: 3
@@ -319,8 +322,12 @@ MonoBehaviour:
   globalPatternCooldownMultiplier: 2.6
   globalTelegraphDurationMultiplier: 1.7
   globalPatternCadenceMultiplier: 2.1
-  globalProjectileSpeedMultiplier: 0.42
+  globalProjectileSpeedMultiplier: 0.55
+  globalProjectileLifetimeMultiplier: 1.55
   globalChargeSpeedMultiplier: 0.58
+  projectileFireOrigin: {fileID: 2550126104058750263}
+  usePrototypeProjectilePatterns: 0
+  authoredPatternCycle: 0100000005000000
 --- !u!114 &930000110
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -340,6 +347,8 @@ MonoBehaviour:
   bossPhaseProfile: {fileID: 0}
   bossDisplayName: Warden Core
   enrageThreshold: 0.22
+  useHealthPhases: 0
+  useLowHealthEnrage: 0
 --- !u!114 &930000111
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -958,3 +967,34 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &7975374609395260463
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2550126104058750263}
+  m_Layer: 0
+  m_Name: BossProjectileMuzzle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2550126104058750263
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7975374609395260463}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.62, y: 0.12, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 930000101}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

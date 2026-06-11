@@ -104,9 +104,9 @@ namespace CuteIssac.Combat
 
         private void HandleHit(Collider2D other)
         {
-            if (DamageableResolver.TryResolve(other, out IDamageable damageable))
+            if (DamageableResolver.TryResolveTarget(other, out DamageableResolver.ResolvedTarget target))
             {
-                damageable.ApplyDamage(new DamageInfo(_damage, _travelDirection, _instigator));
+                target.Damageable.ApplyDamage(new DamageInfo(_damage, _travelDirection, _instigator));
                 Despawn();
                 return;
             }

@@ -37,6 +37,11 @@ namespace CuteIssac.Core.Pooling
             _isArmed = true;
         }
 
+        public void Prepare()
+        {
+            CacheParticleSystems();
+        }
+
         public void OnPoolSpawned()
         {
         }

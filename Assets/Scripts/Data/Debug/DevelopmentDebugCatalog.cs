@@ -13,8 +13,10 @@ namespace CuteIssac.Data.Debug
     {
         [SerializeField] private EnemyController bossPrefab;
         [SerializeField] private List<ItemData> grantableItems = new();
+        [SerializeField] private List<EnemyController> testSpawnEnemyPrefabs = new();
 
         public EnemyController BossPrefab => bossPrefab;
         public IReadOnlyList<ItemData> GrantableItems => grantableItems;
+        public IReadOnlyList<EnemyController> TestSpawnEnemyPrefabs => testSpawnEnemyPrefabs;
     }
 }

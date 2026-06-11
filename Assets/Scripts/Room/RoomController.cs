@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CuteIssac.Combat;
 using CuteIssac.Core.Audio;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Data.Dungeon;
@@ -35,6 +36,9 @@ namespace CuteIssac.Room
         [Header("Rewards")]
         [SerializeField] private RoomRewardSpawner roomRewardSpawner;
 
+        [Header("Clear Cleanup")]
+        [SerializeField] private bool clearEnemyProjectilesOnCombatClear = true;
+
         public event Action<RoomController> CombatStarted;
         public event Action<RoomController> RoomEntered;
         public event Action<RoomResolvedSignal> RoomResolved;
@@ -68,6 +72,7 @@ namespace CuteIssac.Room
             : new Bounds(transform.position, Vector3.zero);
 
         private readonly List<EnemyHealth> _registeredEnemies = new();
+        private readonly Dictionary<EnemyHealth, int> _registeredEnemyIndices = new();
         private Vector3 _lastEnemyDeathPosition;
         private bool _hasLastEnemyDeathPosition;
         private bool _isShuttingDown;
@@ -124,7 +129,7 @@ namespace CuteIssac.Room
                 return;
             }
 
-            PlayerController playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            PlayerController playerController = ResolveActivePlayerController();
 
             if (playerController != null && roomBoundsTrigger.OverlapPoint(playerController.transform.position))
             {
@@ -154,7 +159,7 @@ namespace CuteIssac.Room
                 return;
             }
 
-            if (other.GetComponentInParent<PlayerController>() == null)
+            if (!IsPlayerCollider(other))
             {
                 return;
             }
@@ -164,11 +169,12 @@ namespace CuteIssac.Room
 
         public void RegisterEnemy(EnemyHealth enemy)
         {
-            if (enemy == null || _registeredEnemies.Contains(enemy))
+            if (enemy == null || _registeredEnemyIndices.ContainsKey(enemy))
             {
                 return;
             }
 
+            _registeredEnemyIndices.Add(enemy, _registeredEnemies.Count);
             _registeredEnemies.Add(enemy);
             SubscribeEnemy(enemy);
 
@@ -185,14 +191,12 @@ namespace CuteIssac.Room
                 return;
             }
 
-            int index = _registeredEnemies.IndexOf(enemy);
-
-            if (index < 0)
+            if (!_registeredEnemyIndices.TryGetValue(enemy, out int index))
             {
                 return;
             }
 
-            _registeredEnemies.RemoveAt(index);
+            RemoveRegisteredEnemyAt(index);
             UnsubscribeEnemy(enemy);
 
             if (!enemy.IsDead && AliveEnemyCount > 0)
@@ -265,6 +269,7 @@ namespace CuteIssac.Room
             _hasCombatStartTimestamp = true;
             _lastCombatDuration = 0f;
             SetState(RoomState.Combat);
+            SetDoorsLocked(true);
             roomEnemySpawner.HandleCombatStarted(this);
 
             if (AliveEnemyCount <= 0)
@@ -273,7 +278,6 @@ namespace CuteIssac.Room
                 return;
             }
 
-            SetDoorsLocked(true);
             CombatStarted?.Invoke(this);
         }
 
@@ -288,6 +292,7 @@ namespace CuteIssac.Room
             FinalizeCombatDuration();
             SetState(RoomState.Resolved);
             SetDoorsLocked(false);
+            ClearEnemyProjectilesOnRoomClear();
             RoomRewardPhaseSummary rewardSummary = roomRewardSpawner != null
                 ? roomRewardSpawner.HandleRoomCleared(this)
                 : default;
@@ -343,6 +348,7 @@ namespace CuteIssac.Room
             _hasCombatStartTimestamp = true;
             _lastCombatDuration = 0f;
             SetState(RoomState.Combat);
+            SetDoorsLocked(true);
 
             if (roomEnemySpawner != null)
             {
@@ -355,6 +361,21 @@ namespace CuteIssac.Room
                 return;
             }
 
+            CombatStarted?.Invoke(this);
+        }
+
+        public void DebugBeginInjectedCombatState()
+        {
+            if (_isShuttingDown || State == RoomState.Combat || HasResolvedRoom)
+            {
+                return;
+            }
+
+            _hadCombatEncounter = true;
+            _combatStartedAt = Time.time;
+            _hasCombatStartTimestamp = true;
+            _lastCombatDuration = 0f;
+            SetState(RoomState.Combat);
             SetDoorsLocked(true);
             CombatStarted?.Invoke(this);
         }
@@ -478,6 +499,7 @@ namespace CuteIssac.Room
             }
 
             _registeredEnemies.Clear();
+            _registeredEnemyIndices.Clear();
             AliveEnemyCount = 0;
             SyncInitialEnemies();
         }
@@ -509,6 +531,47 @@ namespace CuteIssac.Room
             {
                 RegisterEnemy(initialEnemies[i]);
             }
+        }
+
+        private static PlayerController ResolveActivePlayerController()
+        {
+            return PlayerRegistry.ActiveController != null
+                ? PlayerRegistry.ActiveController
+                : FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+        }
+
+        private static bool IsPlayerCollider(Collider2D other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            PlayerController playerController = PlayerRegistry.ActiveController;
+            if (playerController == null)
+            {
+                return other.GetComponentInParent<PlayerController>() != null;
+            }
+
+            Transform playerTransform = playerController.transform;
+            Transform otherTransform = other.transform;
+            return otherTransform == playerTransform || otherTransform.IsChildOf(playerTransform);
+        }
+
+        private void RemoveRegisteredEnemyAt(int index)
+        {
+            int lastIndex = _registeredEnemies.Count - 1;
+            EnemyHealth removedEnemy = _registeredEnemies[index];
+            _registeredEnemyIndices.Remove(removedEnemy);
+
+            if (index != lastIndex)
+            {
+                EnemyHealth movedEnemy = _registeredEnemies[lastIndex];
+                _registeredEnemies[index] = movedEnemy;
+                _registeredEnemyIndices[movedEnemy] = index;
+            }
+
+            _registeredEnemies.RemoveAt(lastIndex);
         }
 
         private void SubscribeEnemy(EnemyHealth enemy)
@@ -644,6 +707,16 @@ namespace CuteIssac.Room
 
             _lastCombatDuration = Mathf.Max(0f, Time.time - _combatStartedAt);
             _hasCombatStartTimestamp = false;
+        }
+
+        private void ClearEnemyProjectilesOnRoomClear()
+        {
+            if (!clearEnemyProjectilesOnCombatClear || !_hadCombatEncounter)
+            {
+                return;
+            }
+
+            EnemyProjectileLogic.DissipateAllActive(ProjectileImpactType.None);
         }
 
         private void SetState(RoomState nextState)

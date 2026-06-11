@@ -110,7 +110,7 @@ namespace CuteIssac.Room.Gimmicks
                 return;
             }
 
-            PrefabPoolService.Prewarm(appleBombPrefab.gameObject, maxSimultaneousBombs);
+            PrefabPoolService.EnsurePrewarmed(appleBombPrefab.gameObject, maxSimultaneousBombs);
         }
 
         private Vector2 ResolveRandomTargetPosition()

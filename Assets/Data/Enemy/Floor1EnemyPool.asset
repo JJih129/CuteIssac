@@ -14,50 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   poolId: floor-1-enemy-pool
   normalEnemies:
-  - enemyId: floor1_chaser
-    enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
-    encounterTier: 0
-    selectionWeight: 1
-    difficultyCost: 1
-    unlockFloor: 1
-    unlockedByDefault: 1
-    unlockKey: 
-  - enemyId: floor1_shooter
-    enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
-    encounterTier: 0
-    selectionWeight: 1
-    difficultyCost: 2
-    unlockFloor: 1
-    unlockedByDefault: 1
-    unlockKey: 
-  - enemyId: floor1_spawner
-    enemyPrefab: {fileID: 930000106, guid: 2f67f9b2f0e4469b9ce5fba1c5ff8ec5, type: 3}
-    encounterTier: 0
-    selectionWeight: 0
-    difficultyCost: 4
-    unlockFloor: 2
-    unlockedByDefault: 0
-    unlockKey: unlock.enemy.floor1_spawner
-  - enemyId: floor1_gingerbread_cookie
-    enemyPrefab: {fileID: 930000106, guid: d343facca3fd00941b50ccd6675a8571, type: 3}
-    encounterTier: 0
-    selectionWeight: 5
-    difficultyCost: 1
-    unlockFloor: 1
-    unlockedByDefault: 1
-    unlockKey: 
   - enemyId: floor1_macaron_cat
     enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     encounterTier: 0
-    selectionWeight: 3
-    difficultyCost: 2
+    selectionWeight: 4
+    difficultyCost: 1
+    unlockFloor: 1
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor1_gingerbread_cookie
+    enemyPrefab: {fileID: 930000106, guid: d343facca3fd00941b50ccd6675a8571, type: 3}
+    encounterTier: 0
+    selectionWeight: 4
+    difficultyCost: 1
     unlockFloor: 1
     unlockedByDefault: 1
     unlockKey: 
   - enemyId: floor1_pudding_jellyfish
     enemyPrefab: {fileID: 930000106, guid: 5a4f7dd499011d8489779b10eb1fe23c, type: 3}
     encounterTier: 0
-    selectionWeight: 2
+    selectionWeight: 3
     difficultyCost: 2
     unlockFloor: 1
     unlockedByDefault: 1
@@ -71,11 +47,27 @@ MonoBehaviour:
     unlockedByDefault: 1
     unlockKey: 
   eliteEnemies:
-  - enemyId: floor1_dasher
+  - enemyId: floor1_elite_macaron_cat
     enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     encounterTier: 1
+    selectionWeight: 3
+    difficultyCost: 2
+    unlockFloor: 1
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor1_elite_jelly_bear
+    enemyPrefab: {fileID: 930000106, guid: 051a7ffa4ff96624ca215a8800d60ca8, type: 3}
+    encounterTier: 1
     selectionWeight: 2
-    difficultyCost: 3
+    difficultyCost: 2
+    unlockFloor: 1
+    unlockedByDefault: 1
+    unlockKey: 
+  - enemyId: floor1_elite_pudding_jellyfish
+    enemyPrefab: {fileID: 930000106, guid: 5a4f7dd499011d8489779b10eb1fe23c, type: 3}
+    encounterTier: 1
+    selectionWeight: 2
+    difficultyCost: 2
     unlockFloor: 1
     unlockedByDefault: 1
     unlockKey: 

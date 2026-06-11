@@ -111,7 +111,7 @@ namespace CuteIssac.Room.Gimmicks
                 return;
             }
 
-            PrefabPoolService.Prewarm(wormPrefab.gameObject, maxSimultaneousWorms);
+            PrefabPoolService.EnsurePrewarmed(wormPrefab.gameObject, maxSimultaneousWorms);
         }
 
         private Vector2 ResolveRandomTargetPosition()

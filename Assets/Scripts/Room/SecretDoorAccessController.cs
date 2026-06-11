@@ -84,19 +84,18 @@ namespace CuteIssac.Room
 
         private void Reveal()
         {
-            if (roomDoor == null)
+            if (roomDoor == null || !roomDoor.RevealSecretAccess())
             {
                 return;
             }
 
-            roomDoor.RevealSecretAccess();
             GameplayRuntimeEvents.RaiseSecretRoomRevealed(new SecretRoomRevealedSignal(
                 roomDoor.OwnerRoom,
                 roomDoor.ConnectedRoom,
                 roomDoor.DoorDirection));
             GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
                 "비밀방 발견",
-                "숨겨진 방이 지도에 드러났습니다.",
+                "숨겨진 통로가 열렸습니다.",
                 new Color(0.86f, 0.6f, 1f, 1f),
                 1.7f));
 

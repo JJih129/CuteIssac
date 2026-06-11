@@ -172,6 +172,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   projectileVisual: {fileID: 920000106}
+  projectileSpeedMultiplier: 0.72
   homingSearchRadius: 6
   homingTurnRateDegrees: 180
   explosiveDamageArea: {fileID: 0}

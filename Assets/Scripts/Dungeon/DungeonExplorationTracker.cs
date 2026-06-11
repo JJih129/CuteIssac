@@ -59,11 +59,6 @@ namespace CuteIssac.Dungeon
                 }
 
                 RoomExplorationRecord record = new(roomPair.Value, roomController);
-                if (roomPair.Value.RoomType != RoomType.Secret)
-                {
-                    record.ExplorationState = RoomExplorationState.Discovered;
-                }
-
                 _recordsByPosition.Add(roomPair.Key, record);
                 _positionByRoom.Add(roomController, roomPair.Key);
             }
@@ -269,11 +264,6 @@ namespace CuteIssac.Dungeon
             }
 
             if (!IsVisibleOnMinimap(adjacentRecord))
-            {
-                return false;
-            }
-
-            if (record.RoomNode.RoomType == RoomType.Treasure || adjacentRecord.RoomNode.RoomType == RoomType.Treasure)
             {
                 return false;
             }

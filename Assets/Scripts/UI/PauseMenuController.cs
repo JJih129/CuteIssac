@@ -1,4 +1,5 @@
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Settings;
 using CuteIssac.Player;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -18,6 +19,7 @@ namespace CuteIssac.UI
         [SerializeField] private PauseMenuView pauseMenuView;
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private RunManager runManager;
+        [SerializeField] private GameOptionsService gameOptionsService;
         [SerializeField] private RectTransform safeAreaRoot;
 
         [Header("Behavior")]
@@ -30,6 +32,7 @@ namespace CuteIssac.UI
         private Button _resumeButton;
         private Button _quitButton;
         private Button _lastSelectedButton;
+        private bool _isSettingsOpen;
 
         private void Awake()
         {
@@ -62,6 +65,14 @@ namespace CuteIssac.UI
                 return;
             }
 
+            if (_isPaused && _isSettingsOpen)
+            {
+                ShowOverviewPanel();
+                EnsureMenuSelection();
+                RefreshMenuSelectionVisuals();
+                return;
+            }
+
             TogglePause();
             EnsureMenuSelection();
             RefreshMenuSelectionVisuals();
@@ -72,6 +83,9 @@ namespace CuteIssac.UI
             pauseMenuView = runtimePauseMenuView;
             playerStats = runtimePlayerStats;
             runManager = runtimeRunManager;
+            gameOptionsService = gameOptionsService != null
+                ? gameOptionsService
+                : FindFirstObjectByType<GameOptionsService>(FindObjectsInactive.Exclude);
             safeAreaRoot = runtimeSafeAreaRoot;
             ResolveReferences();
             BindButtons();
@@ -93,6 +107,11 @@ namespace CuteIssac.UI
             if (runManager == null)
             {
                 runManager = FindFirstObjectByType<RunManager>(FindObjectsInactive.Exclude);
+            }
+
+            if (gameOptionsService == null)
+            {
+                gameOptionsService = FindFirstObjectByType<GameOptionsService>(FindObjectsInactive.Exclude);
             }
 
             if (safeAreaRoot == null)
@@ -134,6 +153,11 @@ namespace CuteIssac.UI
                 _resumeButton.onClick.AddListener(HandleResumeClicked);
             }
 
+            if (_settingsButton != null)
+            {
+                _settingsButton.onClick.AddListener(HandleSettingsClicked);
+            }
+
             if (_quitButton != null)
             {
                 _quitButton.onClick.AddListener(HandleQuitClicked);
@@ -145,6 +169,11 @@ namespace CuteIssac.UI
             if (_resumeButton != null)
             {
                 _resumeButton.onClick.RemoveListener(HandleResumeClicked);
+            }
+
+            if (_settingsButton != null)
+            {
+                _settingsButton.onClick.RemoveListener(HandleSettingsClicked);
             }
 
             if (_quitButton != null)
@@ -160,11 +189,34 @@ namespace CuteIssac.UI
 
         private void HandleResumeClicked()
         {
+            if (_isSettingsOpen)
+            {
+                ShowOverviewPanel();
+                return;
+            }
+
             ApplyPause(false);
+        }
+
+        private void HandleSettingsClicked()
+        {
+            if (_isSettingsOpen)
+            {
+                AdjustMasterVolume(-0.1f);
+                return;
+            }
+
+            ShowSettingsPanel();
         }
 
         private void HandleQuitClicked()
         {
+            if (_isSettingsOpen)
+            {
+                AdjustMasterVolume(0.1f);
+                return;
+            }
+
             ApplyPause(false);
 
             if (runManager != null)
@@ -191,6 +243,7 @@ namespace CuteIssac.UI
 
             if (paused)
             {
+                _isSettingsOpen = false;
                 _cachedTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
                 Time.timeScale = 0f;
 
@@ -199,7 +252,7 @@ namespace CuteIssac.UI
                     AudioListener.pause = true;
                 }
 
-                pauseMenuView?.Show(playerStats != null ? playerStats.CurrentStats : default);
+                ShowOverviewPanel();
 
                 if (_resumeButton != null && EventSystem.current != null)
                 {
@@ -213,6 +266,7 @@ namespace CuteIssac.UI
                 return;
             }
 
+            _isSettingsOpen = false;
             Time.timeScale = Mathf.Max(0.01f, _cachedTimeScale);
 
             if (pauseAudioListener)
@@ -221,6 +275,54 @@ namespace CuteIssac.UI
             }
 
             pauseMenuView?.Hide();
+        }
+
+        private void ShowOverviewPanel()
+        {
+            _isSettingsOpen = false;
+            pauseMenuView?.Show(playerStats != null ? playerStats.CurrentStats : default);
+            _lastSelectedButton = _resumeButton != null && _resumeButton.interactable
+                ? _resumeButton
+                : ResolveDefaultSelection();
+        }
+
+        private void ShowSettingsPanel()
+        {
+            _isSettingsOpen = true;
+            pauseMenuView?.ShowSettings(ResolveCurrentOptions());
+            _lastSelectedButton = _resumeButton != null && _resumeButton.interactable
+                ? _resumeButton
+                : ResolveDefaultSelection();
+
+            if (_lastSelectedButton != null && EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(_lastSelectedButton.gameObject);
+            }
+        }
+
+        private GameOptionsData ResolveCurrentOptions()
+        {
+            return gameOptionsService != null
+                ? gameOptionsService.Export()
+                : new GameOptionsData { MasterVolume = AudioListener.volume, Fullscreen = Screen.fullScreen };
+        }
+
+        private void AdjustMasterVolume(float delta)
+        {
+            GameOptionsData nextOptions = ResolveCurrentOptions();
+            nextOptions.MasterVolume = Mathf.Clamp01(nextOptions.MasterVolume + delta);
+
+            if (gameOptionsService != null)
+            {
+                gameOptionsService.Import(nextOptions);
+            }
+            else
+            {
+                AudioListener.volume = nextOptions.MasterVolume;
+            }
+
+            pauseMenuView?.ShowSettings(nextOptions);
+            RefreshMenuSelectionVisuals();
         }
 
         private void RefreshMenuSelectionVisuals()

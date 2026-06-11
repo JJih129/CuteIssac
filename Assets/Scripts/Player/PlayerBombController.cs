@@ -110,7 +110,7 @@ namespace CuteIssac.Player
                 return;
             }
 
-            PrefabPoolService.Prewarm(bombPrefab.gameObject, count);
+            PrefabPoolService.EnsurePrewarmed(bombPrefab.gameObject, count);
         }
 
         private Vector3 ResolveSpawnPosition()

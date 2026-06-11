@@ -97,6 +97,7 @@ namespace CuteIssac.Enemy
         private Color _currentTelegraphColor;
         private Vector3 _currentTelegraphScale = Vector3.one;
         private Quaternion _telegraphBaseRotation = Quaternion.identity;
+        private Vector2 _telegraphDirection = Vector2.right;
         private float _phaseTransitionRemaining;
         private float _phaseTransitionDuration;
         private SpriteRenderer _telegraphOutlineRenderer;
@@ -234,11 +235,28 @@ namespace CuteIssac.Enemy
                     break;
             }
 
-            _telegraphBaseRotation = Quaternion.identity;
+            _telegraphBaseRotation = ResolveTelegraphRotation();
             telegraphRenderer.color = _currentTelegraphColor;
             telegraphRenderer.transform.localScale = _currentTelegraphScale;
             telegraphRenderer.transform.localRotation = _telegraphBaseRotation;
             SyncTelegraphOutlineRenderer();
+        }
+
+        public void SetTelegraphDirection(Vector2 direction)
+        {
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            _telegraphDirection = direction.normalized;
+            _telegraphBaseRotation = ResolveTelegraphRotation();
+
+            if (_telegraphActive && telegraphRenderer != null)
+            {
+                telegraphRenderer.transform.localRotation = _telegraphBaseRotation;
+                SyncTelegraphOutlineRenderer();
+            }
         }
 
         private void RefreshAuraState()
@@ -343,7 +361,7 @@ namespace CuteIssac.Enemy
             scale.y *= 1f - (volleyWidthPulse * 0.18f * pulse);
             telegraphRenderer.transform.localScale = scale;
             telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.82f);
-            telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (volleyPulseSpeed * 0.6f)) * volleyRotateSpeed);
+            telegraphRenderer.transform.localRotation = _telegraphBaseRotation * Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (volleyPulseSpeed * 0.6f)) * volleyRotateSpeed);
         }
 
         private void AnimateSweepTelegraph()
@@ -354,7 +372,7 @@ namespace CuteIssac.Enemy
             scale.y *= 1f - (sweepWidthPulse * 0.22f * pulse);
             telegraphRenderer.transform.localScale = scale;
             telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.82f);
-            telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (sweepPulseSpeed * 0.45f)) * sweepRotateSpeed);
+            telegraphRenderer.transform.localRotation = _telegraphBaseRotation * Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (sweepPulseSpeed * 0.45f)) * sweepRotateSpeed);
         }
 
         private void AnimateSpiralTelegraph()
@@ -363,7 +381,7 @@ namespace CuteIssac.Enemy
             float scaleMultiplier = 1f + (spiralScalePulse * pulse);
             telegraphRenderer.transform.localScale = _currentTelegraphScale * scaleMultiplier;
             telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.8f);
-            telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Time.time * spiralRotateSpeed);
+            telegraphRenderer.transform.localRotation = _telegraphBaseRotation * Quaternion.Euler(0f, 0f, Time.time * spiralRotateSpeed);
         }
 
         private void AnimateFanTelegraph()
@@ -374,7 +392,18 @@ namespace CuteIssac.Enemy
             scale.y *= 1f - (fanWidthPulse * 0.16f * pulse);
             telegraphRenderer.transform.localScale = scale;
             telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.82f);
-            telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (fanPulseSpeed * 0.35f)) * fanRotateSpeed);
+            telegraphRenderer.transform.localRotation = _telegraphBaseRotation * Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (fanPulseSpeed * 0.35f)) * fanRotateSpeed);
+        }
+
+        private Quaternion ResolveTelegraphRotation()
+        {
+            if (_telegraphDirection.sqrMagnitude <= 0.0001f)
+            {
+                return Quaternion.identity;
+            }
+
+            float angle = Mathf.Atan2(_telegraphDirection.y, _telegraphDirection.x) * Mathf.Rad2Deg;
+            return Quaternion.Euler(0f, 0f, angle);
         }
 
         private void AnimateShockwaveTelegraph()
@@ -394,7 +423,7 @@ namespace CuteIssac.Enemy
             scale.y *= 1f - (crossfireWidthPulse * 0.2f * pulse);
             telegraphRenderer.transform.localScale = scale;
             telegraphRenderer.color = ResolveAnimatedTelegraphColor(pulse, 0.82f);
-            telegraphRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (crossfirePulseSpeed * 0.42f)) * crossfireRotateSpeed);
+            telegraphRenderer.transform.localRotation = _telegraphBaseRotation * Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * (crossfirePulseSpeed * 0.42f)) * crossfireRotateSpeed);
         }
 
         private Color ResolveVisibleTelegraphColor(Color source)

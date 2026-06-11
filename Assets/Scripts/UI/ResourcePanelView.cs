@@ -1,3 +1,4 @@
+using CuteIssac.Item;
 using CuteIssac.Player;
 using CuteIssac.Room;
 using UnityEngine;
@@ -51,6 +52,11 @@ namespace CuteIssac.UI
         [SerializeField] [Range(0f, 1f)] private float challengeIconTintStrength = 0.3f;
         [SerializeField] [Range(0f, 1f)] private float iconAlpha = 0.92f;
         [SerializeField] [Range(0f, 1f)] private float challengeIconAlpha = 0.98f;
+        [SerializeField] private Color unavailableResourceFlashColor = new(1f, 0.22f, 0.16f, 1f);
+        [SerializeField] [Min(0.05f)] private float unavailableResourceFeedbackDuration = 0.42f;
+        [SerializeField] [Min(0f)] private float unavailableResourceShakeAmplitude = 7f;
+        [SerializeField] [Min(0f)] private float unavailableResourceShakeFrequency = 42f;
+        [SerializeField] [Min(1f)] private float unavailableResourceScaleBump = 1.12f;
 
         [Header("Optional Root")]
         [Tooltip("Optional. Root object to hide or swap when replacing the whole resource panel prefab.")]
@@ -88,6 +94,9 @@ namespace CuteIssac.UI
         private Color _challengeThreatAccentColor = Color.white;
         private string _challengeThreatBadgeLabel = string.Empty;
         private ChallengeThreatStage _challengeThreatStage;
+        private ResourceFeedbackState _coinFeedback;
+        private ResourceFeedbackState _keyFeedback;
+        private ResourceFeedbackState _bombFeedback;
 
         public void ConfigureDebugView(
             Text coinText,
@@ -180,9 +189,25 @@ namespace CuteIssac.UI
             ApplyThreatTheme(Time.unscaledTime);
         }
 
+        public void PulseUnavailableResource(ShopCurrencyType currencyType)
+        {
+            switch (currencyType)
+            {
+                case ShopCurrencyType.Keys:
+                    StartSlotFeedback(keyBackgroundImage, keyIconImage, keyValueText, ref _keyFeedback);
+                    break;
+                case ShopCurrencyType.Bombs:
+                    StartSlotFeedback(bombBackgroundImage, bombIconImage, bombValueText, ref _bombFeedback);
+                    break;
+                default:
+                    StartSlotFeedback(coinBackgroundImage, coinIconImage, coinValueText, ref _coinFeedback);
+                    break;
+            }
+        }
+
         private void Update()
         {
-            if (!_hasResourceSnapshot && !_hasChallengeThreatTheme)
+            if (!_hasResourceSnapshot && !_hasChallengeThreatTheme && !HasActiveResourceFeedback())
             {
                 return;
             }
@@ -334,6 +359,9 @@ namespace CuteIssac.UI
             ApplySlotSkin(coinBackgroundImage, coinIconImage, coinValueText, coinSlotColor, unscaledTime);
             ApplySlotSkin(keyBackgroundImage, keyIconImage, keyValueText, keySlotColor, unscaledTime);
             ApplySlotSkin(bombBackgroundImage, bombIconImage, bombValueText, bombSlotColor, unscaledTime);
+            ApplySlotFeedback(coinBackgroundImage, coinIconImage, coinValueText, ref _coinFeedback);
+            ApplySlotFeedback(keyBackgroundImage, keyIconImage, keyValueText, ref _keyFeedback);
+            ApplySlotFeedback(bombBackgroundImage, bombIconImage, bombValueText, ref _bombFeedback);
         }
 
         private void ApplySlotSkin(Image backgroundImage, Image iconImage, Text valueText, Color backgroundColor, float unscaledTime)
@@ -429,6 +457,123 @@ namespace CuteIssac.UI
         private bool UsesChallengeBaselineTheme()
         {
             return string.Equals(_challengeThreatBadgeLabel, "챌린지");
+        }
+
+        private bool HasActiveResourceFeedback()
+        {
+            return _coinFeedback.HasBase || _keyFeedback.HasBase || _bombFeedback.HasBase;
+        }
+
+        private void StartSlotFeedback(Image backgroundImage, Image iconImage, Text valueText, ref ResourceFeedbackState feedbackState)
+        {
+            CaptureSlotFeedbackBase(backgroundImage, iconImage, valueText, ref feedbackState);
+            feedbackState.Duration = Mathf.Max(0.05f, unavailableResourceFeedbackDuration);
+            feedbackState.Remaining = feedbackState.Duration;
+        }
+
+        private static void CaptureSlotFeedbackBase(Image backgroundImage, Image iconImage, Text valueText, ref ResourceFeedbackState feedbackState)
+        {
+            if (feedbackState.HasBase)
+            {
+                RestoreSlotFeedbackBase(backgroundImage, iconImage, valueText, ref feedbackState);
+            }
+
+            feedbackState.BackgroundPosition = GetAnchoredPosition(backgroundImage);
+            feedbackState.IconPosition = GetAnchoredPosition(iconImage);
+            feedbackState.ValuePosition = valueText != null ? valueText.rectTransform.anchoredPosition : Vector2.zero;
+            feedbackState.BackgroundScale = backgroundImage != null ? backgroundImage.rectTransform.localScale : Vector3.one;
+            feedbackState.IconScale = iconImage != null ? iconImage.rectTransform.localScale : Vector3.one;
+            feedbackState.ValueScale = valueText != null ? valueText.rectTransform.localScale : Vector3.one;
+            feedbackState.HasBase = true;
+        }
+
+        private void ApplySlotFeedback(Image backgroundImage, Image iconImage, Text valueText, ref ResourceFeedbackState feedbackState)
+        {
+            if (!feedbackState.HasBase)
+            {
+                return;
+            }
+
+            if (feedbackState.Remaining <= 0f)
+            {
+                RestoreSlotFeedbackBase(backgroundImage, iconImage, valueText, ref feedbackState);
+                return;
+            }
+
+            float duration = Mathf.Max(0.05f, feedbackState.Duration);
+            feedbackState.Remaining = Mathf.Max(0f, feedbackState.Remaining - Time.unscaledDeltaTime);
+            float normalized = Mathf.Clamp01(feedbackState.Remaining / duration);
+            float elapsed = duration - feedbackState.Remaining;
+            float shake = Mathf.Sin(elapsed * unavailableResourceShakeFrequency) * unavailableResourceShakeAmplitude * normalized;
+            Vector2 offset = new(shake, 0f);
+            float scale = Mathf.Lerp(1f, Mathf.Max(1f, unavailableResourceScaleBump), normalized);
+            float tint = Mathf.Clamp01(normalized * 1.35f);
+
+            ApplyRectFeedback(backgroundImage, feedbackState.BackgroundPosition + offset, feedbackState.BackgroundScale * scale);
+            ApplyRectFeedback(iconImage, feedbackState.IconPosition + offset, feedbackState.IconScale * scale);
+
+            if (valueText != null)
+            {
+                valueText.rectTransform.anchoredPosition = feedbackState.ValuePosition + offset;
+                valueText.rectTransform.localScale = feedbackState.ValueScale * scale;
+                valueText.color = Color.Lerp(valueText.color, unavailableResourceFlashColor, tint);
+            }
+
+            if (backgroundImage != null)
+            {
+                backgroundImage.color = Color.Lerp(backgroundImage.color, unavailableResourceFlashColor, tint * 0.55f);
+            }
+
+            if (iconImage != null)
+            {
+                iconImage.color = Color.Lerp(iconImage.color, unavailableResourceFlashColor, tint);
+            }
+        }
+
+        private static void RestoreSlotFeedbackBase(Image backgroundImage, Image iconImage, Text valueText, ref ResourceFeedbackState feedbackState)
+        {
+            ApplyRectFeedback(backgroundImage, feedbackState.BackgroundPosition, feedbackState.BackgroundScale);
+            ApplyRectFeedback(iconImage, feedbackState.IconPosition, feedbackState.IconScale);
+
+            if (valueText != null)
+            {
+                valueText.rectTransform.anchoredPosition = feedbackState.ValuePosition;
+                valueText.rectTransform.localScale = feedbackState.ValueScale;
+            }
+
+            feedbackState.HasBase = false;
+            feedbackState.Remaining = 0f;
+            feedbackState.Duration = 0f;
+        }
+
+        private static Vector2 GetAnchoredPosition(Image image)
+        {
+            return image != null ? image.rectTransform.anchoredPosition : Vector2.zero;
+        }
+
+        private static void ApplyRectFeedback(Image image, Vector2 position, Vector3 scale)
+        {
+            if (image == null)
+            {
+                return;
+            }
+
+            RectTransform rectTransform = image.rectTransform;
+            rectTransform.anchoredPosition = position;
+            rectTransform.localScale = scale;
+        }
+
+        private struct ResourceFeedbackState
+        {
+            public bool HasBase;
+            public float Remaining;
+            public float Duration;
+            public Vector2 BackgroundPosition;
+            public Vector2 IconPosition;
+            public Vector2 ValuePosition;
+            public Vector3 BackgroundScale;
+            public Vector3 IconScale;
+            public Vector3 ValueScale;
         }
 
         private enum ResourceIconType

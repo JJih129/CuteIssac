@@ -27,6 +27,10 @@ namespace CuteIssac.Core.Run
         private FloorExit _activeFloorExit;
         private Coroutine _transitionRoutine;
         private Coroutine _bossPortalRoutine;
+        private int _activeFloorExitTargetFloorIndex = -1;
+
+        private const float BossPortalRewardSeparation = 1.85f;
+        private const float BossPortalBoundsPadding = 1.05f;
 
         private void Awake()
         {
@@ -141,30 +145,23 @@ namespace CuteIssac.Core.Run
 
         private void HandleBossRoomCleared(RoomController roomController)
         {
-            DestroyActiveFloorExit();
-
-            int nextFloorIndex = runManager != null
-                ? runManager.CurrentContext.CurrentFloorIndex + 1
-                : 0;
-
-            if (runManager == null || !runManager.HasFloor(nextFloorIndex))
-            {
-                runManager?.EndRun(RunEndReason.Victory);
-                return;
-            }
-
-            if (_bossPortalRoutine != null)
-            {
-                StopCoroutine(_bossPortalRoutine);
-            }
-
-            _bossPortalRoutine = StartCoroutine(SpawnBossPortalRoutine(roomController, nextFloorIndex));
+            QueueBossPortal(roomController, useDelay: true);
         }
 
         private void HandleFloorExitActivated(FloorExit floorExit)
         {
             if (floorExit == null || runManager == null)
             {
+                return;
+            }
+
+            int expectedNextFloorIndex = runManager.CurrentContext.CurrentFloorIndex + 1;
+            if (floorExit.TargetFloorIndex != expectedNextFloorIndex || !runManager.HasFloor(floorExit.TargetFloorIndex))
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"FloorTransitionController ignored a stale floor exit. Target={floorExit.TargetFloorIndex}, expected={expectedNextFloorIndex}.",
+                    floorExit);
+                DestroyActiveFloorExit();
                 return;
             }
 
@@ -297,6 +294,12 @@ namespace CuteIssac.Core.Run
                 _trackedBossRoom = roomPair.Value;
                 _trackedBossRoom.RoomCleared -= HandleBossRoomCleared;
                 _trackedBossRoom.RoomCleared += HandleBossRoomCleared;
+
+                if (_trackedBossRoom.HasResolvedRoom)
+                {
+                    QueueBossPortal(_trackedBossRoom, useDelay: false);
+                }
+
                 break;
             }
         }
@@ -324,6 +327,11 @@ namespace CuteIssac.Core.Run
                 yield break;
             }
 
+            if (HasActiveFloorExitFor(nextFloorIndex))
+            {
+                yield break;
+            }
+
             SpawnFloorExit(roomController, nextFloorIndex, true);
             GameplayFeedbackEvents.RaiseBannerFeedback(new BannerFeedbackRequest(
                 "차원 포탈 개방",
@@ -332,12 +340,64 @@ namespace CuteIssac.Core.Run
                 2.05f));
         }
 
+        private void QueueBossPortal(RoomController roomController, bool useDelay)
+        {
+            if (roomController == null)
+            {
+                return;
+            }
+
+            if (!TryResolveNextFloorIndex(out int nextFloorIndex))
+            {
+                DestroyActiveFloorExit();
+                runManager?.EndRun(RunEndReason.Victory);
+                return;
+            }
+
+            if (HasActiveFloorExitFor(nextFloorIndex))
+            {
+                return;
+            }
+
+            if (_bossPortalRoutine != null)
+            {
+                StopCoroutine(_bossPortalRoutine);
+                _bossPortalRoutine = null;
+            }
+
+            if (useDelay && bossClearPortalDelay > 0f)
+            {
+                _bossPortalRoutine = StartCoroutine(SpawnBossPortalRoutine(roomController, nextFloorIndex));
+                return;
+            }
+
+            SpawnFloorExit(roomController, nextFloorIndex, true);
+        }
+
+        private bool TryResolveNextFloorIndex(out int nextFloorIndex)
+        {
+            nextFloorIndex = runManager != null
+                ? runManager.CurrentContext.CurrentFloorIndex + 1
+                : 0;
+
+            return runManager != null && runManager.HasFloor(nextFloorIndex);
+        }
+
+        private bool HasActiveFloorExitFor(int targetFloorIndex)
+        {
+            return _activeFloorExit != null
+                && _activeFloorExitTargetFloorIndex == targetFloorIndex
+                && _activeFloorExit.TargetFloorIndex == targetFloorIndex;
+        }
+
         private void SpawnFloorExit(RoomController roomController, int nextFloorIndex, bool preferRoomCenter)
         {
             if (roomController == null)
             {
                 return;
             }
+
+            DestroyActiveFloorExit();
 
             FloorExit floorExit;
 
@@ -357,12 +417,14 @@ namespace CuteIssac.Core.Run
             floorExit.Activated -= HandleFloorExitActivated;
             floorExit.Activated += HandleFloorExitActivated;
             _activeFloorExit = floorExit;
+            _activeFloorExitTargetFloorIndex = nextFloorIndex;
         }
 
         private void DestroyActiveFloorExit()
         {
             if (_activeFloorExit == null)
             {
+                _activeFloorExitTargetFloorIndex = -1;
                 return;
             }
 
@@ -378,15 +440,17 @@ namespace CuteIssac.Core.Run
             }
 
             _activeFloorExit = null;
+            _activeFloorExitTargetFloorIndex = -1;
         }
 
         private static Vector3 ResolveFloorExitPosition(RoomController roomController, bool preferRoomCenter)
         {
-            Vector3 center = roomController.RoomBounds.center;
+            Bounds roomBounds = roomController.RoomBounds;
+            Vector3 center = roomBounds.center;
 
             if (preferRoomCenter)
             {
-                return new Vector3(center.x, center.y, roomController.transform.position.z);
+                return ResolveCenteredFloorExitPosition(roomController, roomBounds, center);
             }
 
             if (roomController.TryGetLastEnemyDeathPosition(out Vector3 lastEnemyDeathPosition))
@@ -395,6 +459,39 @@ namespace CuteIssac.Core.Run
             }
 
             return new Vector3(center.x, center.y - 1.25f, roomController.transform.position.z);
+        }
+
+        private static Vector3 ResolveCenteredFloorExitPosition(RoomController roomController, Bounds roomBounds, Vector3 center)
+        {
+            Vector3 portalPosition = new(center.x, center.y, roomController.transform.position.z);
+            RoomRewardSpawner rewardSpawner = roomController.GetComponent<RoomRewardSpawner>();
+
+            if (rewardSpawner == null || !rewardSpawner.TryGetPrimaryRewardAnchorPosition(out Vector3 rewardPosition))
+            {
+                return portalPosition;
+            }
+
+            Vector2 portalToReward = (Vector2)portalPosition - (Vector2)rewardPosition;
+            float minDistanceSqr = BossPortalRewardSeparation * BossPortalRewardSeparation;
+            if (portalToReward.sqrMagnitude >= minDistanceSqr)
+            {
+                return portalPosition;
+            }
+
+            Vector2 offsetDirection = portalToReward.sqrMagnitude > 0.0001f
+                ? portalToReward.normalized
+                : Vector2.down;
+            Vector2 separatedPosition = (Vector2)rewardPosition + offsetDirection * BossPortalRewardSeparation;
+            separatedPosition.x = Mathf.Clamp(
+                separatedPosition.x,
+                roomBounds.min.x + BossPortalBoundsPadding,
+                roomBounds.max.x - BossPortalBoundsPadding);
+            separatedPosition.y = Mathf.Clamp(
+                separatedPosition.y,
+                roomBounds.min.y + BossPortalBoundsPadding,
+                roomBounds.max.y - BossPortalBoundsPadding);
+
+            return new Vector3(separatedPosition.x, separatedPosition.y, roomController.transform.position.z);
         }
 
         private static int ResolveFloorSeed(int runSeed, int floorIndex)

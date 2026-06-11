@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using CuteIssac.Core.Pooling;
 
@@ -16,8 +15,6 @@ namespace CuteIssac.Combat
         [SerializeField] private bool spawnOriginIncludesMuzzleOffset;
         [SerializeField] [Min(0)] private int prewarmCount = 24;
 
-        private readonly HashSet<GameObject> _prewarmedPrefabs = new();
-
         public Transform SpawnOrigin => spawnOrigin;
 
         public ProjectileLogic Spawn(in ProjectileSpawnRequest request)
@@ -28,9 +25,9 @@ namespace CuteIssac.Combat
                 return null;
             }
 
-            if (prewarmCount > 0 && _prewarmedPrefabs.Add(request.ProjectilePrefab.gameObject))
+            if (prewarmCount > 0)
             {
-                PrefabPoolService.Prewarm(request.ProjectilePrefab.gameObject, prewarmCount);
+                PrefabPoolService.EnsurePrewarmed(request.ProjectilePrefab.gameObject, prewarmCount);
             }
 
             Quaternion rotation = Quaternion.FromToRotation(Vector3.right, request.Direction);

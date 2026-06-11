@@ -83,6 +83,20 @@ namespace CuteIssac.Data.Item
                 ShopOffer.CreateAmmoOffer(ammoAmount));
         }
 
+        public static ShopItemData CreateRuntimeSpeedHeartOffer(int speedHeartAmount, int runtimePrice, ShopCurrencyType runtimeCurrencyType)
+        {
+            return CreateRuntimeOffer(
+                "RuntimeShop_SpeedHeart",
+                $"runtime_shop_speed_heart_{Mathf.Max(1, speedHeartAmount)}",
+                "Speed Heart",
+                $"Stores {Mathf.Max(1, speedHeartAmount)} hit-trigger speed buff",
+                RuntimeShopIconFactory.GetSpeedCandySprite(),
+                runtimePrice,
+                runtimeCurrencyType,
+                ShopDeliveryMode.Immediate,
+                ShopOffer.CreateSpeedHeartOffer(speedHeartAmount));
+        }
+
         private static ShopItemData CreateRuntimeOffer(
             string runtimeName,
             string runtimeOfferId,

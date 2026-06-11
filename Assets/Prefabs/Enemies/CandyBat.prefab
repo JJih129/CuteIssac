@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 930000107}
   - component: {fileID: 930000108}
   - component: {fileID: 930000109}
+  - component: {fileID: 930000110}
   - component: {fileID: 1338251128795258452}
   - component: {fileID: 860780222624934568}
   m_Layer: 0
@@ -183,14 +184,14 @@ MonoBehaviour:
   attackEffectAnchor: {fileID: 930000141}
   hitEffectAnchor: {fileID: 0}
   deathEffectAnchor: {fileID: 930000151}
-  facingMode: 1
-  baseColor: {r: 0.86, g: 0.98, b: 1, a: 1}
+  facingMode: 0
+  baseColor: {r: 1, g: 1, b: 1, a: 1}
   hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
   damagedColor: {r: 1, g: 0.48, b: 0.48, a: 1}
   damagedFlashDuration: 0.08
   hitScaleMultiplier: 1.14
   hitScaleRecoverSpeed: 7
-  deadColor: {r: 0.86, g: 0.98, b: 1, a: 0.55}
+  deadColor: {r: 1, g: 1, b: 1, a: 0.55}
   attackTelegraphPulseSpeed: 9
   attackTelegraphBlend: 0.75
   championMarkerLocalOffset: {x: 0, y: 1.2, z: 0}
@@ -224,7 +225,6 @@ MonoBehaviour:
   temporaryLowHealthDamagedColor: {r: 0.84, g: 0.16, b: 0.16, a: 1}
   temporaryLowHealthDeadColor: {r: 0.46, g: 0.08, b: 0.08, a: 0.55}
   temporaryLowHealthScaleMultiplier: 0.92
-  temporaryLowHealthBandageColor: {r: 1, g: 0.96, b: 0.88, a: 0.98}
   temporaryLowHealthSlashColor: {r: 0.58, g: 0.06, b: 0.06, a: 0.9}
 --- !u!114 &930000108
 MonoBehaviour:
@@ -245,6 +245,7 @@ MonoBehaviour:
   muzzleOffset: {x: 0.42, y: 0}
   prewarmCount: 12
   runtimeProjectileSpeedMultiplier: 1
+  runtimeProjectileLifetimeMultiplier: 1
 --- !u!114 &930000109
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -254,21 +255,42 @@ MonoBehaviour:
   m_GameObject: {fileID: 930000100}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c2602d98031c4132b730e8b1e55f9320, type: 3}
+  m_Script: {fileID: 11500000, guid: c52eb49194b0472da74a9283af664f86, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   enemyCombat: {fileID: 930000108}
-  fireInterval: 1.15
-  shotsPerBurst: 2
-  burstSpacing: 0.18
-  postBurstRecovery: 0.55
-  burstTelegraphDuration: 0.22
-  burstTelegraphMoveSpeedMultiplier: 0.25
-  burstTelegraphColor: {r: 1, g: 0.78, b: 0.22, a: 1}
-  preferredRange: 5.5
-  retreatRange: 2.2
-  strafeBlend: 0.6
-  strafeSwapInterval: 1.1
+  fireInterval: 1.7
+  attackWindupDuration: 2
+  attackTelegraphColor: {r: 0.62, g: 1, b: 0.32, a: 1}
+  preferredRange: 5.2
+  retreatRange: 2.1
+  strafeBlend: 0.68
+  strafeSwapInterval: 1.05
+--- !u!114 &930000110
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d422b3b3f33489f8dbf697c1bf3cc4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enemyController: {fileID: 930000106}
+  enemyVisual: {fileID: 930000107}
+  batBrain: {fileID: 930000109}
+  bodySpriteRenderer: {fileID: 930000132}
+  frontFrame1: {fileID: 4848438669423101074, guid: 6588a78fd9dd9434592d7d3ba10c058c, type: 3}
+  frontFrame2: {fileID: -5372740047193977791, guid: a2a7bb16090a08045b9069f591761884, type: 3}
+  sideFrame1: {fileID: 6739867819301718881, guid: 725ad895cacdc204cb11fcd1ad3f9c59, type: 3}
+  sideFrame2: {fileID: 3633789147295384372, guid: f1b6ecac6f26cf046a88aebc85d4395a, type: 3}
+  upFrame1: {fileID: 1997954162754346390, guid: 213e4e6370c654447b1eff95997d2f7d, type: 3}
+  upFrame2: {fileID: -2192074727868676661, guid: e25747365a452a64d88fc0fcdb65d260, type: 3}
+  flightFrameInterval: 0.14
+  movingThreshold: 0.02
+  verticalBias: 1.05
 --- !u!114 &1338251128795258452
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -310,7 +332,7 @@ MonoBehaviour:
   transitionEffectPrefab: {fileID: 0}
   normalVisualSet: {fileID: 0}
   horrorVisualSet: {fileID: 0}
-  normalSprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10004, type: 3}
+  normalSprite: {fileID: 4848438669423101074, guid: 6588a78fd9dd9434592d7d3ba10c058c, type: 3}
   horrorSprite: {fileID: 0}
   cacheInitialSpriteAsNormal: 1
   automaticHorrorPhase: 1
@@ -381,7 +403,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.02, z: 0}
-  m_LocalScale: {x: 0.58, y: 0.68, z: 1}
+  m_LocalScale: {x: 0.09, y: 0.09, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 930000121}
@@ -435,8 +457,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10004, type: 3}
-  m_Color: {r: 0.4, g: 0.8, b: 1, a: 1}
+  m_Sprite: {fileID: 4848438669423101074, guid: 6588a78fd9dd9434592d7d3ba10c058c, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0

@@ -31,6 +31,8 @@ namespace CuteIssac.Player
         [SerializeField] private ProjectileSpawner projectileSpawner;
         [Tooltip("Optional. Handles camera or screen-space hit feedback when the player takes damage.")]
         [SerializeField] private PlayerScreenFeedback screenFeedback;
+        [Tooltip("Optional. Used to tint the player while a speed-heart buff is active.")]
+        [SerializeField] private PlayerSpeedBuffState speedBuffState;
 
         [Header("Presentation Roots")]
         [Tooltip("Optional root for all presentation-only children. Safe to leave empty when the root object already represents the visual hierarchy.")]
@@ -88,6 +90,13 @@ namespace CuteIssac.Player
         [SerializeField] [Min(0f)] private float hitVisualRecoverSpeed = 1.4f;
         [SerializeField] [Min(0f)] private float screenFeedbackScale = 1f;
         [SerializeField] private Color deadColor = new(1f, 1f, 1f, 0.55f);
+        [SerializeField] private bool rainbowTintDuringSpeedBuff = true;
+        [SerializeField] [Min(0.1f)] private float rainbowTintCyclesPerSecond = 7.5f;
+        [SerializeField] [Range(0f, 1f)] private float rainbowTintSaturation = 0.88f;
+        [SerializeField] [Range(0f, 1f)] private float rainbowTintValue = 1f;
+        [SerializeField] [Range(0f, 1f)] private float rainbowTintBlend = 0.86f;
+        [SerializeField] [Min(0f)] private float speedBuffActivationPulseDuration = 0.22f;
+        [SerializeField] [Min(0f)] private float speedBuffActivationScaleBonus = 0.18f;
 
         [Header("Optional Animator Parameters")]
         [SerializeField] private string moveXParameter = "MoveX";
@@ -121,6 +130,10 @@ namespace CuteIssac.Player
         private float _hitSpriteRemaining;
         private SpriteRenderer _hitPoseOverlayRenderer;
         private SpriteRenderer _hitFlashOverlayRenderer;
+        private bool _rainbowTintWasActive;
+        private float _speedBuffActivationPulseRemaining;
+        private Vector3 _bodyBaseLocalScale = Vector3.one;
+        private bool _hasBodyBaseLocalScale;
 
         private static Shader s_hitFlashShader;
         private static Material s_hitFlashMaterial;
@@ -171,8 +184,11 @@ namespace CuteIssac.Player
 
             _hitSpriteRemaining = 0f;
             _hitFlashRemaining = 0f;
+            _rainbowTintWasActive = false;
+            _speedBuffActivationPulseRemaining = 0f;
             ClearHitPoseOverlay();
             ClearHitFlashOverlay();
+            RestoreBodyBaseScale();
             ResetHitFeedbackRootPosition();
         }
 
@@ -182,16 +198,15 @@ namespace CuteIssac.Player
             UpdateHitVisualOffset();
             UpdateHitSpriteAnimation();
             UpdateHitFlashBlink();
+            UpdateSpeedBuffRainbowTint();
+            UpdateSpeedBuffActivationPulse();
         }
 
         public void SetMoveInput(Vector2 moveInput)
         {
             _lastMoveInput = moveInput;
 
-            bool usedHorizontalMoveFacing = ShouldUseSpriteSequenceAnimation()
-                && Mathf.Abs(moveInput.x) > walkAnimationMoveThreshold;
-
-            if (usedHorizontalMoveFacing)
+            if (Mathf.Abs(moveInput.x) > walkAnimationMoveThreshold)
             {
                 ApplyFacing(new Vector2(moveInput.x, 0f));
             }
@@ -259,8 +274,11 @@ namespace CuteIssac.Player
         {
             _hitFlashRemaining = 0f;
             _hitSpriteRemaining = 0f;
+            _rainbowTintWasActive = false;
+            _speedBuffActivationPulseRemaining = 0f;
             ClearHitPoseOverlay();
             ClearHitFlashOverlay();
+            RestoreBodyBaseScale();
             ApplyBodyColor(deadColor);
             SetAnimatorBool(deadBoolParameter, true);
             _currentHitVisualOffset = Vector3.zero;
@@ -339,16 +357,21 @@ namespace CuteIssac.Player
             switch (facingMode)
             {
                 case FacingMode.FlipX:
-                    Vector3 localScale = target.localScale;
-
                     if (Mathf.Abs(facingDirection.x) > 0.0001f)
                     {
-                        float horizontalSign = Mathf.Sign(facingDirection.x);
+                        bool shouldFaceRight = facingDirection.x > 0f;
+                        if (bodySpriteRenderer != null)
+                        {
+                            bodySpriteRenderer.flipX = shouldFaceRight != bodySpriteFacesRightByDefault;
+                            break;
+                        }
+
+                        Vector3 localScale = target.localScale;
+                        float horizontalSign = shouldFaceRight ? 1f : -1f;
                         if (!bodySpriteFacesRightByDefault)
                         {
                             horizontalSign *= -1f;
                         }
-
                         localScale.x = Mathf.Abs(localScale.x) * horizontalSign;
                         target.localScale = localScale;
                     }
@@ -406,6 +429,11 @@ namespace CuteIssac.Player
                 TryGetComponent(out screenFeedback);
             }
 
+            if (speedBuffState == null)
+            {
+                TryGetComponent(out speedBuffState);
+            }
+
             if (visualRoot == null)
             {
                 visualRoot = transform;
@@ -420,6 +448,8 @@ namespace CuteIssac.Player
             {
                 bodySpriteRenderer = GetComponentInChildren<SpriteRenderer>(true);
             }
+
+            CacheBodyBaseScale();
 
             if (bodyAnimator == null)
             {
@@ -602,6 +632,115 @@ namespace CuteIssac.Player
             }
 
             bodySpriteRenderer.color = color;
+        }
+
+        private void UpdateSpeedBuffRainbowTint()
+        {
+            if (!rainbowTintDuringSpeedBuff)
+            {
+                ClearSpeedBuffRainbowTint();
+                return;
+            }
+
+            if (speedBuffState == null)
+            {
+                TryGetComponent(out speedBuffState);
+            }
+
+            bool shouldTint = speedBuffState != null
+                && speedBuffState.IsActive
+                && bodySpriteRenderer != null
+                && (playerHealth == null || !playerHealth.IsDead);
+
+            if (!shouldTint)
+            {
+                ClearSpeedBuffRainbowTint();
+                return;
+            }
+
+            if (!_rainbowTintWasActive)
+            {
+                BeginSpeedBuffActivationPulse();
+            }
+
+            float hue = Mathf.Repeat(Time.unscaledTime * rainbowTintCyclesPerSecond, 1f);
+            Color rainbowColor = Color.HSVToRGB(
+                hue,
+                Mathf.Clamp01(rainbowTintSaturation),
+                Mathf.Clamp01(rainbowTintValue));
+            rainbowColor.a = baseColor.a;
+
+            bodySpriteRenderer.color = Color.Lerp(baseColor, rainbowColor, Mathf.Clamp01(rainbowTintBlend));
+            _rainbowTintWasActive = true;
+        }
+
+        private void BeginSpeedBuffActivationPulse()
+        {
+            CacheBodyBaseScale();
+            _speedBuffActivationPulseRemaining = Mathf.Max(_speedBuffActivationPulseRemaining, speedBuffActivationPulseDuration);
+        }
+
+        private void UpdateSpeedBuffActivationPulse()
+        {
+            if (_speedBuffActivationPulseRemaining <= 0f)
+            {
+                RestoreBodyBaseScale();
+                return;
+            }
+
+            _speedBuffActivationPulseRemaining = Mathf.Max(0f, _speedBuffActivationPulseRemaining - Time.unscaledDeltaTime);
+
+            if (bodySpriteRenderer == null || !_hasBodyBaseLocalScale)
+            {
+                return;
+            }
+
+            float normalized = speedBuffActivationPulseDuration > 0.0001f
+                ? Mathf.Clamp01(_speedBuffActivationPulseRemaining / speedBuffActivationPulseDuration)
+                : 0f;
+            float eased = Mathf.Sin(normalized * Mathf.PI);
+            bodySpriteRenderer.transform.localScale = _bodyBaseLocalScale * (1f + (speedBuffActivationScaleBonus * eased));
+
+            if (_speedBuffActivationPulseRemaining <= 0f)
+            {
+                RestoreBodyBaseScale();
+            }
+        }
+
+        private void ClearSpeedBuffRainbowTint()
+        {
+            if (!_rainbowTintWasActive)
+            {
+                return;
+            }
+
+            _rainbowTintWasActive = false;
+
+            if (bodySpriteRenderer != null && (playerHealth == null || !playerHealth.IsDead))
+            {
+                ApplyBodyColor(baseColor);
+            }
+        }
+
+        private void CacheBodyBaseScale()
+        {
+            if (_hasBodyBaseLocalScale || bodySpriteRenderer == null)
+            {
+                return;
+            }
+
+            _bodyBaseLocalScale = bodySpriteRenderer.transform.localScale;
+            _hasBodyBaseLocalScale = true;
+        }
+
+        private void RestoreBodyBaseScale()
+        {
+            if (!_hasBodyBaseLocalScale || bodySpriteRenderer == null)
+            {
+                return;
+            }
+
+            bodySpriteRenderer.transform.localScale = _bodyBaseLocalScale;
         }
 
         private void EnsureHitFlashOverlay()

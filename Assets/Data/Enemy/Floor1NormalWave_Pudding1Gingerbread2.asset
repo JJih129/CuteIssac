@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 785d4f5d233da034496f8ad678d9b0d6, type: 3}
-  m_Name: Floor1NormalWave_Pudding1Gingerbread2
+  m_Name: Floor1NormalWave_Gingerbread1Pudding1
   m_EditorClassIdentifier: Assembly-CSharp::CuteIssac.Data.Enemy.EnemyWaveData
-  waveId: f1_normal_pudding_1_gingerbread_2
+  waveId: f1_normal_gingerbread_1_pudding_1
   encounterTier: 0
   entries:
+  - enemyId: floor1_gingerbread_cookie
+    enemyPrefab: {fileID: 930000106, guid: d343facca3fd00941b50ccd6675a8571, type: 3}
+    count: 1
+    difficultyCost: 1
   - enemyId: floor1_pudding_jellyfish
     enemyPrefab: {fileID: 930000106, guid: 5a4f7dd499011d8489779b10eb1fe23c, type: 3}
     count: 1
     difficultyCost: 2
-  - enemyId: floor1_gingerbread_cookie
-    enemyPrefab: {fileID: 930000106, guid: d343facca3fd00941b50ccd6675a8571, type: 3}
-    count: 2
-    difficultyCost: 1

@@ -10,6 +10,11 @@ namespace CuteIssac.Item
     /// </summary>
     public sealed class ResourcePickupLogic : BasePickupLogic
     {
+        private const int MaxCachedFeedbackAmount = 32;
+        private static readonly string[] s_coinFeedbackLabels = BuildFeedbackLabelCache("COIN");
+        private static readonly string[] s_keyFeedbackLabels = BuildFeedbackLabelCache("KEY");
+        private static readonly string[] s_bombFeedbackLabels = BuildFeedbackLabelCache("BOMB");
+
         [Header("Resource Reward")]
         [SerializeField] private ResourcePickupType resourceType;
         [SerializeField] [Min(1)] private int amount = 1;
@@ -21,6 +26,7 @@ namespace CuteIssac.Item
         {
             resourceType = nextResourceType;
             amount = Mathf.Max(1, nextAmount);
+            InvalidatePickupFeedbackCache();
         }
 
         protected override bool TryCollect(PlayerInventory inventory, PlayerHealth health, PlayerItemManager itemManager)
@@ -48,7 +54,20 @@ namespace CuteIssac.Item
 
         protected override string BuildPickupFeedbackLabel()
         {
-            string resourceLabel = resourceType switch
+            string[] labelCache = resourceType switch
+            {
+                ResourcePickupType.Coin => s_coinFeedbackLabels,
+                ResourcePickupType.Key => s_keyFeedbackLabels,
+                ResourcePickupType.Bomb => s_bombFeedbackLabels,
+                _ => null
+            };
+
+            if (labelCache != null && amount > 0 && amount <= MaxCachedFeedbackAmount)
+            {
+                return labelCache[amount];
+            }
+
+            string resourceName = resourceType switch
             {
                 ResourcePickupType.Coin => "COIN",
                 ResourcePickupType.Key => "KEY",
@@ -56,9 +75,7 @@ namespace CuteIssac.Item
                 _ => "RESOURCE"
             };
 
-            return amount > 1
-                ? $"+{amount} {resourceLabel}"
-                : $"+1 {resourceLabel}";
+            return string.Concat("+", Mathf.Max(1, amount).ToString(), " ", resourceName);
         }
 
         protected override Color ResolvePickupFeedbackColor()
@@ -71,6 +88,18 @@ namespace CuteIssac.Item
                 _ => base.ResolvePickupFeedbackColor()
             };
         }
+
+        private static string[] BuildFeedbackLabelCache(string resourceName)
+        {
+            string[] labels = new string[MaxCachedFeedbackAmount + 1];
+
+            for (int index = 1; index < labels.Length; index++)
+            {
+                labels[index] = string.Concat("+", index.ToString(), " ", resourceName);
+            }
+
+            return labels;
+        }
     }
 
     public enum EnemyDropKind
@@ -78,7 +107,8 @@ namespace CuteIssac.Item
         None = 0,
         Coins = 1,
         Ammo = 2,
-        Bomb = 3
+        Bomb = 3,
+        Key = 4
     }
 
     public static class EnemyDropRules
@@ -86,6 +116,7 @@ namespace CuteIssac.Item
         public const float CoinDropChance = 0.50f;
         public const float AmmoDropChance = 0.05f;
         public const float BombDropChance = 0.05f;
+        public const float KeyDropChance = 0.03f;
         public const float NoDropChance = 0.40f;
         public const float SingleCoinChance = 0.50f;
         public const float DoubleCoinChance = 0.40f;
@@ -97,11 +128,22 @@ namespace CuteIssac.Item
             float bombWeight,
             float noDropWeight)
         {
+            return RollDropKind(coinWeight, ammoWeight, bombWeight, 0f, noDropWeight);
+        }
+
+        public static EnemyDropKind RollDropKind(
+            float coinWeight,
+            float ammoWeight,
+            float bombWeight,
+            float keyWeight,
+            float noDropWeight)
+        {
             float resolvedCoinWeight = Mathf.Max(0f, coinWeight);
             float resolvedAmmoWeight = Mathf.Max(0f, ammoWeight);
             float resolvedBombWeight = Mathf.Max(0f, bombWeight);
+            float resolvedKeyWeight = Mathf.Max(0f, keyWeight);
             float resolvedNoDropWeight = Mathf.Max(0f, noDropWeight);
-            float totalWeight = resolvedCoinWeight + resolvedAmmoWeight + resolvedBombWeight + resolvedNoDropWeight;
+            float totalWeight = resolvedCoinWeight + resolvedAmmoWeight + resolvedBombWeight + resolvedKeyWeight + resolvedNoDropWeight;
 
             if (totalWeight <= 0.0001f)
             {
@@ -124,6 +166,12 @@ namespace CuteIssac.Item
             if (roll < resolvedBombWeight)
             {
                 return EnemyDropKind.Bomb;
+            }
+
+            roll -= resolvedBombWeight;
+            if (roll < resolvedKeyWeight)
+            {
+                return EnemyDropKind.Key;
             }
 
             return EnemyDropKind.None;
@@ -168,20 +216,208 @@ namespace CuteIssac.Item
         public static readonly Color DefaultCoinPickupCollectedColor = new(1f, 0.96f, 0.74f, 0.24f);
         public static readonly Color DefaultBombPickupBaseColor = new(1f, 0.54f, 0.26f, 1f);
         public static readonly Color DefaultBombPickupCollectedColor = new(1f, 0.9f, 0.78f, 0.24f);
+        public static readonly Color DefaultKeyPickupBaseColor = new(0.68f, 0.86f, 1f, 1f);
+        public static readonly Color DefaultKeyPickupCollectedColor = new(0.9f, 0.98f, 1f, 0.24f);
 
         private static Sprite _ammoClipSprite;
         private static Sprite _coinSprite;
         private static Sprite _bombSprite;
+        private static Sprite _keySprite;
         private static Transform _templateRoot;
         private static GameObject _coinPickupTemplate;
         private static GameObject _bombPickupTemplate;
+        private static GameObject _keyPickupTemplate;
         private static GameObject _ammoPickupTemplate;
 
-        public static void PrewarmDefaultPickups(int coinCount = 24, int bombCount = 4, int ammoCount = 4)
+        public static void PrewarmDefaultPickups(int coinCount = 24, int bombCount = 4, int ammoCount = 4, int keyCount = 4)
         {
             PrewarmTemplate(GetOrCreateCoinPickupTemplate(), coinCount);
             PrewarmTemplate(GetOrCreateBombPickupTemplate(), bombCount);
             PrewarmTemplate(GetOrCreateAmmoPickupTemplate(), ammoCount);
+            PrewarmTemplate(GetOrCreateKeyPickupTemplate(), keyCount);
+        }
+
+        public static GameObject SpawnDefaultResourcePickup(
+            ResourcePickupType resourceType,
+            Vector3 position,
+            Transform parent,
+            string objectName)
+        {
+            return SpawnResourcePickup(
+                resourceType,
+                position,
+                parent,
+                DefaultPickupScale,
+                DefaultPickupColliderRadius,
+                DefaultPickupSortingOrder,
+                ResolveDefaultResourceBaseColor(resourceType),
+                ResolveDefaultResourceCollectedColor(resourceType),
+                objectName);
+        }
+
+        public static GameObject SpawnDefaultEnemyDropPickup(
+            EnemyDropKind dropKind,
+            Vector3 position,
+            Transform parent,
+            string objectName,
+            bool restockEquippedAmmo = false)
+        {
+            return SpawnEnemyDropPickup(
+                dropKind,
+                position,
+                parent,
+                DefaultPickupScale,
+                DefaultPickupColliderRadius,
+                DefaultPickupSortingOrder,
+                ResolveDefaultEnemyDropBaseColor(dropKind),
+                ResolveDefaultEnemyDropCollectedColor(dropKind),
+                objectName,
+                restockEquippedAmmo);
+        }
+
+        public static GameObject SpawnResourcePickup(
+            ResourcePickupType resourceType,
+            Vector3 position,
+            Transform parent,
+            float pickupScale,
+            float pickupColliderRadius,
+            int pickupSortingOrder,
+            Color baseColor,
+            Color collectedColor,
+            string objectName)
+        {
+            return resourceType switch
+            {
+                ResourcePickupType.Coin => SpawnCoinPickup(
+                    position,
+                    parent,
+                    pickupScale,
+                    pickupColliderRadius,
+                    pickupSortingOrder,
+                    baseColor,
+                    collectedColor,
+                    objectName),
+                ResourcePickupType.Bomb => SpawnBombPickup(
+                    position,
+                    parent,
+                    pickupScale,
+                    pickupColliderRadius,
+                    pickupSortingOrder,
+                    baseColor,
+                    collectedColor,
+                    objectName),
+                ResourcePickupType.Key => SpawnKeyPickup(
+                    position,
+                    parent,
+                    pickupScale,
+                    pickupColliderRadius,
+                    pickupSortingOrder,
+                    baseColor,
+                    collectedColor,
+                    objectName),
+                _ => null
+            };
+        }
+
+        public static GameObject SpawnEnemyDropPickup(
+            EnemyDropKind dropKind,
+            Vector3 position,
+            Transform parent,
+            float pickupScale,
+            float pickupColliderRadius,
+            int pickupSortingOrder,
+            Color baseColor,
+            Color collectedColor,
+            string objectName,
+            bool restockEquippedAmmo = false)
+        {
+            return dropKind switch
+            {
+                EnemyDropKind.Coins => SpawnResourcePickup(
+                    ResourcePickupType.Coin,
+                    position,
+                    parent,
+                    pickupScale,
+                    pickupColliderRadius,
+                    pickupSortingOrder,
+                    baseColor,
+                    collectedColor,
+                    objectName),
+                EnemyDropKind.Bomb => SpawnResourcePickup(
+                    ResourcePickupType.Bomb,
+                    position,
+                    parent,
+                    pickupScale,
+                    pickupColliderRadius,
+                    pickupSortingOrder,
+                    baseColor,
+                    collectedColor,
+                    objectName),
+                EnemyDropKind.Key => SpawnResourcePickup(
+                    ResourcePickupType.Key,
+                    position,
+                    parent,
+                    pickupScale,
+                    pickupColliderRadius,
+                    pickupSortingOrder,
+                    baseColor,
+                    collectedColor,
+                    objectName),
+                EnemyDropKind.Ammo => SpawnAmmoPickup(
+                    position,
+                    parent,
+                    pickupScale,
+                    pickupColliderRadius,
+                    pickupSortingOrder,
+                    baseColor,
+                    collectedColor,
+                    1,
+                    restockEquippedAmmo,
+                    objectName),
+                _ => null
+            };
+        }
+
+        private static Color ResolveDefaultResourceBaseColor(ResourcePickupType resourceType)
+        {
+            return resourceType switch
+            {
+                ResourcePickupType.Bomb => DefaultBombPickupBaseColor,
+                ResourcePickupType.Key => DefaultKeyPickupBaseColor,
+                _ => DefaultCoinPickupBaseColor
+            };
+        }
+
+        private static Color ResolveDefaultResourceCollectedColor(ResourcePickupType resourceType)
+        {
+            return resourceType switch
+            {
+                ResourcePickupType.Bomb => DefaultBombPickupCollectedColor,
+                ResourcePickupType.Key => DefaultKeyPickupCollectedColor,
+                _ => DefaultCoinPickupCollectedColor
+            };
+        }
+
+        private static Color ResolveDefaultEnemyDropBaseColor(EnemyDropKind dropKind)
+        {
+            return dropKind switch
+            {
+                EnemyDropKind.Ammo => DefaultAmmoPickupBaseColor,
+                EnemyDropKind.Bomb => DefaultBombPickupBaseColor,
+                EnemyDropKind.Key => DefaultKeyPickupBaseColor,
+                _ => DefaultCoinPickupBaseColor
+            };
+        }
+
+        private static Color ResolveDefaultEnemyDropCollectedColor(EnemyDropKind dropKind)
+        {
+            return dropKind switch
+            {
+                EnemyDropKind.Ammo => DefaultAmmoPickupCollectedColor,
+                EnemyDropKind.Bomb => DefaultBombPickupCollectedColor,
+                EnemyDropKind.Key => DefaultKeyPickupCollectedColor,
+                _ => DefaultCoinPickupCollectedColor
+            };
         }
 
         public static GameObject SpawnCoinPickup(
@@ -240,6 +476,34 @@ namespace CuteIssac.Item
             return pickupObject;
         }
 
+        public static GameObject SpawnKeyPickup(
+            Vector3 position,
+            Transform parent,
+            float pickupScale,
+            float pickupColliderRadius,
+            int pickupSortingOrder,
+            Color baseColor,
+            Color collectedColor,
+            string objectName = "KeyPickup")
+        {
+            GameObject pickupObject = SpawnPickupObject(
+                GetOrCreateKeyPickupTemplate(),
+                position,
+                parent,
+                pickupScale,
+                objectName);
+            ConfigureResourcePickup(
+                pickupObject,
+                pickupColliderRadius,
+                pickupSortingOrder,
+                baseColor,
+                collectedColor,
+                ResourcePickupType.Key,
+                1,
+                ResolveKeySprite());
+            return pickupObject;
+        }
+
         public static GameObject SpawnAmmoPickup(
             Vector3 position,
             Transform parent,
@@ -285,7 +549,10 @@ namespace CuteIssac.Item
                 return;
             }
 
-            SpriteRenderer spriteRenderer = pickupObject.GetComponent<SpriteRenderer>();
+            RuntimePickupComponentCache componentCache = ResolvePickupComponentCache(pickupObject);
+            SpriteRenderer spriteRenderer = componentCache != null
+                ? componentCache.SpriteRenderer
+                : pickupObject.GetComponent<SpriteRenderer>();
             if (spriteRenderer != null)
             {
                 spriteRenderer.sortingOrder = pickupSortingOrder;
@@ -293,19 +560,27 @@ namespace CuteIssac.Item
                 spriteRenderer.color = baseColor;
             }
 
-            CircleCollider2D triggerCollider = pickupObject.GetComponent<CircleCollider2D>();
+            CircleCollider2D triggerCollider = componentCache != null
+                ? componentCache.TriggerCollider
+                : pickupObject.GetComponent<CircleCollider2D>();
             if (triggerCollider != null)
             {
                 triggerCollider.isTrigger = true;
                 triggerCollider.radius = Mathf.Max(0.1f, pickupColliderRadius);
             }
 
-            if (pickupObject.TryGetComponent(out ResourcePickupLogic pickupLogic))
+            ResourcePickupLogic pickupLogic = componentCache != null
+                ? componentCache.ResourcePickupLogic
+                : pickupObject.GetComponent<ResourcePickupLogic>();
+            if (pickupLogic != null)
             {
                 pickupLogic.Configure(resourceType, Mathf.Max(1, amount));
             }
 
-            if (pickupObject.TryGetComponent(out PickupVisual pickupVisual))
+            PickupVisual pickupVisual = componentCache != null
+                ? componentCache.PickupVisual
+                : pickupObject.GetComponent<PickupVisual>();
+            if (pickupVisual != null)
             {
                 pickupVisual.ApplyRuntimeVisual(sprite, baseColor, collectedColor);
             }
@@ -326,7 +601,10 @@ namespace CuteIssac.Item
                 return;
             }
 
-            SpriteRenderer spriteRenderer = pickupObject.GetComponent<SpriteRenderer>();
+            RuntimePickupComponentCache componentCache = ResolvePickupComponentCache(pickupObject);
+            SpriteRenderer spriteRenderer = componentCache != null
+                ? componentCache.SpriteRenderer
+                : pickupObject.GetComponent<SpriteRenderer>();
             if (spriteRenderer != null)
             {
                 spriteRenderer.sortingOrder = pickupSortingOrder;
@@ -334,22 +612,41 @@ namespace CuteIssac.Item
                 spriteRenderer.color = baseColor;
             }
 
-            CircleCollider2D triggerCollider = pickupObject.GetComponent<CircleCollider2D>();
+            CircleCollider2D triggerCollider = componentCache != null
+                ? componentCache.TriggerCollider
+                : pickupObject.GetComponent<CircleCollider2D>();
             if (triggerCollider != null)
             {
                 triggerCollider.isTrigger = true;
                 triggerCollider.radius = Mathf.Max(0.1f, pickupColliderRadius);
             }
 
-            if (pickupObject.TryGetComponent(out AmmoPickupLogic pickupLogic))
+            AmmoPickupLogic pickupLogic = componentCache != null
+                ? componentCache.AmmoPickupLogic
+                : pickupObject.GetComponent<AmmoPickupLogic>();
+            if (pickupLogic != null)
             {
                 pickupLogic.Configure(amount, restockEquipped);
             }
 
-            if (pickupObject.TryGetComponent(out PickupVisual pickupVisual))
+            PickupVisual pickupVisual = componentCache != null
+                ? componentCache.PickupVisual
+                : pickupObject.GetComponent<PickupVisual>();
+            if (pickupVisual != null)
             {
                 pickupVisual.ApplyRuntimeVisual(sprite, baseColor, collectedColor);
             }
+        }
+
+        private static RuntimePickupComponentCache ResolvePickupComponentCache(GameObject pickupObject)
+        {
+            if (pickupObject != null && pickupObject.TryGetComponent(out RuntimePickupComponentCache componentCache))
+            {
+                componentCache.ResolveReferences();
+                return componentCache;
+            }
+
+            return null;
         }
 
         private static GameObject SpawnPickupObject(GameObject template, Vector3 position, Transform parent, float pickupScale, string objectName)
@@ -397,6 +694,22 @@ namespace CuteIssac.Item
             return _bombPickupTemplate;
         }
 
+        private static GameObject GetOrCreateKeyPickupTemplate()
+        {
+            if (_keyPickupTemplate != null)
+            {
+                return _keyPickupTemplate;
+            }
+
+            _keyPickupTemplate = CreateResourcePickupTemplate(
+                "RuntimeKeyPickupTemplate",
+                ResourcePickupType.Key,
+                ResolveKeySprite(),
+                DefaultKeyPickupBaseColor,
+                DefaultKeyPickupCollectedColor);
+            return _keyPickupTemplate;
+        }
+
         private static GameObject GetOrCreateAmmoPickupTemplate()
         {
             if (_ammoPickupTemplate != null)
@@ -411,6 +724,7 @@ namespace CuteIssac.Item
                 DefaultAmmoPickupCollectedColor);
             AmmoPickupLogic pickupLogic = template.AddComponent<AmmoPickupLogic>();
             pickupLogic.Configure(1, true);
+            template.GetComponent<RuntimePickupComponentCache>()?.ResolveReferences();
             _ammoPickupTemplate = template;
             return _ammoPickupTemplate;
         }
@@ -425,6 +739,7 @@ namespace CuteIssac.Item
             GameObject template = CreateBasePickupTemplate(templateName, sprite, baseColor, collectedColor);
             ResourcePickupLogic pickupLogic = template.AddComponent<ResourcePickupLogic>();
             pickupLogic.Configure(resourceType, 1);
+            template.GetComponent<RuntimePickupComponentCache>()?.ResolveReferences();
             return template;
         }
 
@@ -449,6 +764,8 @@ namespace CuteIssac.Item
             triggerCollider.radius = DefaultPickupColliderRadius;
 
             pickupVisual.ApplyRuntimeVisual(spriteRenderer.sprite, baseColor, collectedColor);
+            RuntimePickupComponentCache componentCache = template.AddComponent<RuntimePickupComponentCache>();
+            componentCache.ResolveReferences();
             template.AddComponent<PooledObject>();
             return template;
         }
@@ -476,7 +793,7 @@ namespace CuteIssac.Item
                 return;
             }
 
-            PrefabPoolService.Prewarm(template, count);
+            PrefabPoolService.EnsurePrewarmed(template, count);
         }
 
         private static Sprite ResolveAmmoClipSprite()
@@ -537,6 +854,31 @@ namespace CuteIssac.Item
             return _bombSprite;
         }
 
+        private static Sprite ResolveKeySprite()
+        {
+            if (_keySprite != null)
+            {
+                return _keySprite;
+            }
+
+            _keySprite = CreateSpriteFromPattern(
+                "RuntimeKeyPickup",
+                new[]
+                {
+                    "..XXXX....",
+                    ".XX..XX...",
+                    ".XX..XX...",
+                    "..XXXX....",
+                    "....XX....",
+                    "....XX....",
+                    "....XXXX..",
+                    "....XX....",
+                    "....XXXX..",
+                    "....XX...."
+                });
+            return _keySprite;
+        }
+
         private static Sprite CreateSpriteFromPattern(string spriteName, string[] pattern)
         {
             int height = pattern.Length;
@@ -585,6 +927,50 @@ namespace CuteIssac.Item
                 {
                     pixels[rowOffset + px] = color;
                 }
+            }
+        }
+    }
+
+    [DisallowMultipleComponent]
+    public sealed class RuntimePickupComponentCache : MonoBehaviour
+    {
+        [SerializeField] private SpriteRenderer spriteRenderer;
+        [SerializeField] private CircleCollider2D triggerCollider;
+        [SerializeField] private PickupVisual pickupVisual;
+        [SerializeField] private ResourcePickupLogic resourcePickupLogic;
+        [SerializeField] private AmmoPickupLogic ammoPickupLogic;
+
+        public SpriteRenderer SpriteRenderer => spriteRenderer;
+        public CircleCollider2D TriggerCollider => triggerCollider;
+        public PickupVisual PickupVisual => pickupVisual;
+        public ResourcePickupLogic ResourcePickupLogic => resourcePickupLogic;
+        public AmmoPickupLogic AmmoPickupLogic => ammoPickupLogic;
+
+        public void ResolveReferences()
+        {
+            if (spriteRenderer == null)
+            {
+                TryGetComponent(out spriteRenderer);
+            }
+
+            if (triggerCollider == null)
+            {
+                TryGetComponent(out triggerCollider);
+            }
+
+            if (pickupVisual == null)
+            {
+                TryGetComponent(out pickupVisual);
+            }
+
+            if (resourcePickupLogic == null)
+            {
+                TryGetComponent(out resourcePickupLogic);
+            }
+
+            if (ammoPickupLogic == null)
+            {
+                TryGetComponent(out ammoPickupLogic);
             }
         }
     }

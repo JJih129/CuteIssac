@@ -331,7 +331,8 @@ namespace CuteIssac.Enemy
                     continue;
                 }
 
-                PrefabPoolService.Prewarm(summonPrefab.gameObject, prewarmCount);
+                PrefabPoolService.EnsurePrewarmed(summonPrefab.gameObject, prewarmCount);
+                summonPrefab.GetComponent<EnemyCombat>()?.PrewarmProjectilesForExpectedShooters(prewarmCount);
             }
         }
 

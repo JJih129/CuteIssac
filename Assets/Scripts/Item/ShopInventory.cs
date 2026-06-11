@@ -16,17 +16,25 @@ namespace CuteIssac.Item
         [SerializeField] private ShopItem[] shopItems = System.Array.Empty<ShopItem>();
         [SerializeField] private RunItemPoolService runItemPoolService;
         [SerializeField] [Min(0)] private int weaponOfferPrice = 30;
+        [SerializeField] [Range(0f, 1f)] private float weaponOfferChance = 0.18f;
+        [SerializeField] [Min(1)] private int randomPassiveOfferSlots = 1;
         [SerializeField] [Min(1)] private int randomItemOfferPriceMin = 12;
         [SerializeField] [Min(1)] private int randomItemOfferPriceMax = 24;
         [SerializeField] [Min(0.5f)] private float healthOfferAmount = 2f;
         [SerializeField] [Min(0)] private int healthOfferPrice = 5;
         [SerializeField] [Min(1)] private int ammoOfferAmount = 8;
         [SerializeField] [Min(0)] private int ammoOfferPrice = 5;
+        [SerializeField] private bool includeSpeedHeartOffer = true;
+        [SerializeField] [Min(1)] private int speedHeartOfferAmount = 1;
+        [SerializeField] [Min(0)] private int speedHeartOfferPrice = 7;
         [SerializeField] [Min(1)] private int minimumRuntimeShopSlots = 3;
         [SerializeField] [Min(0.1f)] private float shopSlotSpacing = 1.32f;
         [SerializeField] private Vector3 shopSlotCenterLocalPosition = new(0f, -1.05f, 0f);
+        [SerializeField] [Min(0f)] private float itemInteractionPadding = 0.14f;
         [SerializeField] private bool createRuntimeShopkeeper = true;
         [SerializeField] private Vector3 runtimeShopkeeperLocalPosition = new(0f, 1.16f, 0f);
+        [SerializeField] private Sprite runtimeShopkeeperSprite;
+        [SerializeField] private Vector3 runtimeShopkeeperLocalScale = new(0.105f, 0.105f, 1f);
 
         private ShopItem _highlightedItem;
         private Transform _runtimeContentRoot;
@@ -72,6 +80,12 @@ namespace CuteIssac.Item
                 configuredItemSlots = 3;
             }
 
+            if (includeSpeedHeartOffer && TryGetShopItem(3, out _))
+            {
+                ConfigureSpeedHeartSlot(3);
+                configuredItemSlots = Mathf.Max(configuredItemSlots, 4);
+            }
+
             for (int i = configuredItemSlots; i < shopItems.Length; i++)
             {
                 ClearShopSlot(shopItems[i]);
@@ -86,7 +100,7 @@ namespace CuteIssac.Item
             PlayerHealth playerHealth)
         {
             ShopItem closestItem = null;
-            float closestDistanceSqr = maxDistance * maxDistance;
+            float closestDistanceSqr = float.PositiveInfinity;
 
             for (int i = 0; i < shopItems.Length; i++)
             {
@@ -97,9 +111,8 @@ namespace CuteIssac.Item
                     continue;
                 }
 
-                float distanceSqr = (shopItem.transform.position - buyerPosition).sqrMagnitude;
-
-                if (distanceSqr <= closestDistanceSqr)
+                if (shopItem.IsBuyerWithinInteractionBounds(buyerPosition, maxDistance, itemInteractionPadding, out float distanceSqr)
+                    && distanceSqr <= closestDistanceSqr)
                 {
                     closestDistanceSqr = distanceSqr;
                     closestItem = shopItem;
@@ -183,6 +196,43 @@ namespace CuteIssac.Item
             }
         }
 
+        public bool TryGetShopItemVisualBounds(out Bounds bounds)
+        {
+            bounds = default;
+            bool hasBounds = false;
+
+            if (shopItems == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < shopItems.Length; i++)
+            {
+                ShopItem shopItem = shopItems[i];
+
+                if (shopItem == null || !shopItem.gameObject.activeInHierarchy || shopItem.IsSold)
+                {
+                    continue;
+                }
+
+                if (!shopItem.TryGetInteractionBounds(out Bounds itemBounds))
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = itemBounds;
+                    hasBounds = true;
+                    continue;
+                }
+
+                bounds.Encapsulate(itemBounds);
+            }
+
+            return hasBounds;
+        }
+
         public bool TryResolvePreferredItem(string reasonTag, out ShopItem preferredItem)
         {
             preferredItem = null;
@@ -244,13 +294,13 @@ namespace CuteIssac.Item
         private void EnsureRuntimeShopPresentation()
         {
             EnsureMinimumShopSlots();
-            AlignShopSlots(Mathf.Max(1, minimumRuntimeShopSlots));
+            AlignShopSlots(ResolveRuntimeShopSlotCount());
             EnsureRuntimeShopkeeper();
         }
 
         private void EnsureMinimumShopSlots()
         {
-            int targetSlotCount = Mathf.Max(1, minimumRuntimeShopSlots);
+            int targetSlotCount = ResolveRuntimeShopSlotCount();
 
             if (shopItems != null && shopItems.Length >= targetSlotCount)
             {
@@ -368,10 +418,10 @@ namespace CuteIssac.Item
             GameObject npcObject = new("ShopkeeperNpc");
             npcObject.transform.SetParent(transform, false);
             npcObject.transform.localPosition = runtimeShopkeeperLocalPosition;
-            npcObject.transform.localScale = new Vector3(0.62f, 0.62f, 1f);
+            npcObject.transform.localScale = runtimeShopkeeperLocalScale;
 
             SpriteRenderer renderer = npcObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = RuntimeShopIconFactory.GetShopkeeperSprite();
+            renderer.sprite = runtimeShopkeeperSprite != null ? runtimeShopkeeperSprite : RuntimeShopIconFactory.GetShopkeeperSprite();
             renderer.sortingOrder = 16;
             _runtimeShopkeeper = npcObject;
         }
@@ -384,7 +434,7 @@ namespace CuteIssac.Item
             }
 
             int configuredCount = 0;
-            int targetCount = Mathf.Min(3, shopItems.Length);
+            int targetCount = Mathf.Min(Mathf.Max(1, randomPassiveOfferSlots), shopItems.Length);
 
             for (int slotIndex = 0; slotIndex < targetCount; slotIndex++)
             {
@@ -393,13 +443,18 @@ namespace CuteIssac.Item
                     continue;
                 }
 
-                if (!TrySelectShopItem(itemPool, out ItemData selectedItem))
+                ItemData selectedItem = null;
+                bool selectedWeapon = slotIndex == 0
+                    && Random.value <= Mathf.Clamp01(weaponOfferChance)
+                    && TrySelectWeaponItem(itemPool, out selectedItem);
+
+                if (!selectedWeapon && !TrySelectShopItem(itemPool, out selectedItem))
                 {
                     ClearShopSlot(shopItem);
                     continue;
                 }
 
-                int price = ResolveRandomItemOfferPrice(selectedItem);
+                int price = selectedWeapon ? weaponOfferPrice : ResolveRandomItemOfferPrice(selectedItem);
                 ShopItemData runtimeShopItemData = ShopItemData.CreateRuntimePassiveItemOffer(
                     selectedItem,
                     price,
@@ -425,9 +480,29 @@ namespace CuteIssac.Item
                 return;
             }
 
-            if (itemPool == null || !TrySelectWeaponItem(itemPool, out ItemData selectedWeapon))
+            bool shouldOfferWeapon = Random.value <= Mathf.Clamp01(weaponOfferChance);
+            if (itemPool == null || !shouldOfferWeapon || !TrySelectWeaponItem(itemPool, out ItemData selectedWeapon))
             {
-                ClearShopSlot(shopItem);
+                if (itemPool != null && TrySelectShopItem(itemPool, out ItemData fallbackItem))
+                {
+                    int fallbackPrice = ResolveRandomItemOfferPrice(fallbackItem);
+                    ShopItemData fallbackShopItemData = ShopItemData.CreateRuntimePassiveItemOffer(
+                        fallbackItem,
+                        fallbackPrice,
+                        ShopCurrencyType.Coins);
+
+                    ApplyRuntimeShopItem(shopItem, fallbackShopItemData);
+
+                    if (fallbackShopItemData != null)
+                    {
+                        _selectedItemIds.Add(fallbackItem.ItemId);
+                        runItemPoolService?.RegisterOffer(fallbackItem);
+                    }
+
+                    return;
+                }
+
+                ConfigureHealthSlot(slotIndex);
                 return;
             }
 
@@ -470,6 +545,21 @@ namespace CuteIssac.Item
             ShopItemData runtimeShopItemData = ShopItemData.CreateRuntimeAmmoOffer(
                 ammoOfferAmount,
                 ammoOfferPrice,
+                ShopCurrencyType.Coins);
+
+            ApplyRuntimeShopItem(shopItem, runtimeShopItemData);
+        }
+
+        private void ConfigureSpeedHeartSlot(int slotIndex)
+        {
+            if (!TryGetShopItem(slotIndex, out ShopItem shopItem))
+            {
+                return;
+            }
+
+            ShopItemData runtimeShopItemData = ShopItemData.CreateRuntimeSpeedHeartOffer(
+                speedHeartOfferAmount,
+                speedHeartOfferPrice,
                 ShopCurrencyType.Coins);
 
             ApplyRuntimeShopItem(shopItem, runtimeShopItemData);
@@ -576,6 +666,7 @@ namespace CuteIssac.Item
                     score += offer.RewardType switch
                     {
                         ShopOfferRewardType.Health => 12f,
+                        ShopOfferRewardType.SpeedHeart => 10f,
                         ShopOfferRewardType.PassiveItem => 8f,
                         _ => 2f
                     };
@@ -587,6 +678,7 @@ namespace CuteIssac.Item
                     score += offer.RewardType switch
                     {
                         ShopOfferRewardType.Health => 10f,
+                        ShopOfferRewardType.SpeedHeart => 9f,
                         ShopOfferRewardType.Ammo => 10f,
                         ShopOfferRewardType.Keys => 9f,
                         ShopOfferRewardType.Bombs => 9f,
@@ -600,6 +692,11 @@ namespace CuteIssac.Item
             }
 
             return score;
+        }
+
+        private int ResolveRuntimeShopSlotCount()
+        {
+            return Mathf.Max(includeSpeedHeartOffer ? 4 : 1, minimumRuntimeShopSlots);
         }
     }
 }

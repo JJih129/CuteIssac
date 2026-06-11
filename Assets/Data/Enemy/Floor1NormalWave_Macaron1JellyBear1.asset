@@ -18,7 +18,7 @@ MonoBehaviour:
   - enemyId: floor1_macaron_cat
     enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     count: 1
-    difficultyCost: 2
+    difficultyCost: 1
   - enemyId: floor1_jelly_bear
     enemyPrefab: {fileID: 930000106, guid: 051a7ffa4ff96624ca215a8800d60ca8, type: 3}
     count: 1

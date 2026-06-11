@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0a4a33d1eb240f5b730298fe32d2b6f, type: 3}
   m_Name: ExploderEnemyVisualSet
   m_EditorClassIdentifier: 
-bodySprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10006, type: 3}
+  bodySprite: {fileID: -5122416978897219397, guid: 9eebbb3271487074eb02b20ea4b42d8d, type: 3}
   baseColor: {r: 1, g: 0.62, b: 0.44, a: 1}
   hitFlashColor: {r: 1, g: 0.96, b: 0.74, a: 1}
   damagedColor: {r: 1, g: 0.34, b: 0.24, a: 1}

@@ -1,3 +1,4 @@
+using System;
 using CuteIssac.Common.Combat;
 using CuteIssac.Player;
 using UnityEngine;
@@ -50,17 +51,18 @@ namespace CuteIssac.Room
         public Vector2 WorldPosition => transform.position;
         public float Radius => radius;
         public bool IsTelegraphing => _phase == HazardPhase.Telegraph;
+        public event Action<ArenaPressurePulseHazard> Completed;
 
         private void Awake()
         {
-            _phaseOffset = Random.Range(0f, Mathf.PI * 2f);
+            _phaseOffset = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
         }
 
         private void Update()
         {
             if (roomController != null && roomController.State != RoomState.Combat)
             {
-                DestroySelf();
+                CompleteSelf();
                 return;
             }
 
@@ -82,7 +84,7 @@ namespace CuteIssac.Room
 
             if (_phaseTimer <= 0f)
             {
-                DestroySelf();
+                CompleteSelf();
             }
         }
 
@@ -102,14 +104,21 @@ namespace CuteIssac.Room
             accentColor = configuredAccentColor;
             _phase = HazardPhase.Telegraph;
             _phaseTimer = telegraphDuration;
-            _phaseOffset = Random.Range(0f, Mathf.PI * 2f);
+            _phaseOffset = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
             BuildVisual();
             UpdateTelegraphVisual();
         }
 
         public void ForceDissipate()
         {
-            DestroySelf();
+            CompleteSelf();
+        }
+
+        public void ResetForReuse()
+        {
+            roomController = null;
+            _phaseTimer = 0f;
+            HideVisual();
         }
 
         private void Detonate()
@@ -148,30 +157,54 @@ namespace CuteIssac.Room
 
         private void BuildVisual()
         {
-            ClearVisual();
+            EnsureVisualRoot();
+            _visualRoot.gameObject.SetActive(true);
+            _visualRoot.gameObject.layer = gameObject.layer;
+            _visualRoot.localPosition = Vector3.zero;
 
-            GameObject root = new("PulseVisual");
-            root.layer = gameObject.layer;
-            root.transform.SetParent(transform, false);
-            root.transform.localPosition = Vector3.zero;
-            _visualRoot = root.transform;
-
-            _outlineRenderer = CreatePart("Outline", GetCircleSprite(), 0);
-            _ringRenderer = CreatePart("Ring", GetCircleSprite(), 1);
-            _fillRenderer = CreatePart("Fill", GetCircleSprite(), 2);
-            _coreRenderer = CreatePart("Core", GetWhiteSprite(), 3);
+            EnsurePart(ref _outlineRenderer, "Outline", GetCircleSprite(), 0);
+            EnsurePart(ref _ringRenderer, "Ring", GetCircleSprite(), 1);
+            EnsurePart(ref _fillRenderer, "Fill", GetCircleSprite(), 2);
+            EnsurePart(ref _coreRenderer, "Core", GetWhiteSprite(), 3);
         }
 
-        private SpriteRenderer CreatePart(string name, Sprite sprite, int sortingOrder)
+        private void EnsureVisualRoot()
         {
-            GameObject child = new(name);
-            child.layer = gameObject.layer;
-            child.transform.SetParent(_visualRoot, false);
+            if (_visualRoot != null)
+            {
+                return;
+            }
 
-            SpriteRenderer renderer = child.AddComponent<SpriteRenderer>();
+            GameObject root = new("PulseVisual");
+            root.transform.SetParent(transform, false);
+            _visualRoot = root.transform;
+        }
+
+        private void EnsurePart(ref SpriteRenderer renderer, string name, Sprite sprite, int sortingOrder)
+        {
+            if (renderer == null)
+            {
+                Transform partTransform = _visualRoot.Find(name);
+
+                if (partTransform == null)
+                {
+                    GameObject child = new(name);
+                    partTransform = child.transform;
+                    partTransform.SetParent(_visualRoot, false);
+                }
+
+                renderer = partTransform.GetComponent<SpriteRenderer>();
+
+                if (renderer == null)
+                {
+                    renderer = partTransform.gameObject.AddComponent<SpriteRenderer>();
+                }
+            }
+
+            renderer.gameObject.SetActive(true);
+            renderer.gameObject.layer = gameObject.layer;
             renderer.sprite = sprite;
             renderer.sortingOrder = sortingOrder;
-            return renderer;
         }
 
         private void UpdateTelegraphVisual()
@@ -281,41 +314,20 @@ namespace CuteIssac.Room
             }
         }
 
-        private void DestroySelf()
+        private void CompleteSelf()
         {
-            ClearVisual();
-
-            if (Application.isPlaying)
-            {
-                Destroy(gameObject);
-            }
-            else
-            {
-                DestroyImmediate(gameObject);
-            }
+            HideVisual();
+            Completed?.Invoke(this);
         }
 
-        private void ClearVisual()
+        private void HideVisual()
         {
             if (_visualRoot == null)
             {
                 return;
             }
 
-            if (Application.isPlaying)
-            {
-                Destroy(_visualRoot.gameObject);
-            }
-            else
-            {
-                DestroyImmediate(_visualRoot.gameObject);
-            }
-
-            _visualRoot = null;
-            _outlineRenderer = null;
-            _ringRenderer = null;
-            _fillRenderer = null;
-            _coreRenderer = null;
+            _visualRoot.gameObject.SetActive(false);
         }
 
         private static Sprite GetCircleSprite()

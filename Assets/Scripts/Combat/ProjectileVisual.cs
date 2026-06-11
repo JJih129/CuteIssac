@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using CuteIssac.Core.Pooling;
 
@@ -11,8 +10,6 @@ namespace CuteIssac.Combat
     [DisallowMultipleComponent]
     public sealed class ProjectileVisual : MonoBehaviour
     {
-        private static readonly HashSet<GameObject> PrewarmedEffectPrefabs = new();
-
         [Header("Visual References")]
         [Tooltip("Optional sprite renderer for the projectile body.")]
         [SerializeField] private SpriteRenderer spriteRenderer;
@@ -68,6 +65,15 @@ namespace CuteIssac.Combat
         private Color _baseTrailEndColor = Color.white;
         private float _baseTrailStartWidth;
         private float _baseTrailEndWidth;
+
+        private void Awake()
+        {
+            ResolveReferences();
+            TryPrewarmEffects();
+            CacheDefaultPresentation();
+            SyncOutlineRenderer();
+            PrepareTraitRenderers();
+        }
 
         public void HandleInitialized(Vector2 direction)
         {
@@ -127,11 +133,22 @@ namespace CuteIssac.Combat
 
         private void Reset()
         {
-            spriteRenderer = GetComponent<SpriteRenderer>();
-            trailRenderer = GetComponent<TrailRenderer>();
+            ResolveReferences();
         }
 
         private void OnValidate()
+        {
+            ResolveReferences();
+
+            if (Application.isPlaying)
+            {
+                CacheDefaultPresentation();
+                ApplyTraitPresentation();
+                SyncOutlineRenderer();
+            }
+        }
+
+        private void ResolveReferences()
         {
             if (spriteRenderer == null)
             {
@@ -141,13 +158,6 @@ namespace CuteIssac.Combat
             if (trailRenderer == null)
             {
                 trailRenderer = GetComponent<TrailRenderer>();
-            }
-
-            if (Application.isPlaying)
-            {
-                CacheDefaultPresentation();
-                ApplyTraitPresentation();
-                SyncOutlineRenderer();
             }
         }
 
@@ -187,12 +197,25 @@ namespace CuteIssac.Combat
 
         private void TryPrewarmEffect(GameObject effectPrefab)
         {
-            if (effectPrefab == null || !PrewarmedEffectPrefabs.Add(effectPrefab))
+            if (effectPrefab == null)
             {
                 return;
             }
 
-            PrefabPoolService.Prewarm(effectPrefab, effectPrewarmCount);
+            PrefabPoolService.EnsurePrewarmed(effectPrefab, effectPrewarmCount);
+        }
+
+        private void PrepareTraitRenderers()
+        {
+            if (!useRuntimeTraitOverlay || spriteRenderer == null || spriteRenderer.sprite == null)
+            {
+                return;
+            }
+
+            EnsureTraitRenderer(ref _traitAuraRenderer, "RuntimeTraitAura", -2);
+            EnsureTraitRenderer(ref _traitCoreRenderer, "RuntimeTraitCore", -1);
+            _traitAuraRenderer.enabled = false;
+            _traitCoreRenderer.enabled = false;
         }
 
         private void WarnIfFullyUnassigned()

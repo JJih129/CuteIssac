@@ -19,15 +19,15 @@ MonoBehaviour:
   eventFlags: 
   damageModifier: 0
   tearsModifier: 0
-  speedModifier: 0.25
+  speedModifier: 0.22
   rangeModifier: 0
-  shotSpeedModifier: 0
+  shotSpeedModifier: 0.18
   luckModifier: 0
   maxHealthModifier: 0
   projectileFlags: 
   itemId: P006
   displayName: Wind Ribbon
-  description: Major move speed up.
+  description: Move speed and shot speed up.
   icon: {fileID: 0}
   rarity: 1
   unlockedByDefault: 1

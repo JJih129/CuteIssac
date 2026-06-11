@@ -61,6 +61,16 @@ namespace CuteIssac.Data.Item
                 return false;
             }
 
+            if (RecentCategories is HashSet<ItemCategory> categoryHashSet)
+            {
+                return categoryHashSet.Contains(itemData.ItemCategory);
+            }
+
+            if (RecentCategories is ISet<ItemCategory> categorySet)
+            {
+                return categorySet.Contains(itemData.ItemCategory);
+            }
+
             foreach (ItemCategory recentCategory in RecentCategories)
             {
                 if (recentCategory == itemData.ItemCategory)
@@ -89,6 +99,16 @@ namespace CuteIssac.Data.Item
                 return false;
             }
 
+            if (UnlockedItemKeys is HashSet<string> unlockedHashSet)
+            {
+                return unlockedHashSet.Contains(itemData.UnlockKey);
+            }
+
+            if (UnlockedItemKeys is ISet<string> unlockedSet)
+            {
+                return unlockedSet.Contains(itemData.UnlockKey);
+            }
+
             foreach (string unlockedItemKey in UnlockedItemKeys)
             {
                 if (unlockedItemKey == itemData.UnlockKey)
@@ -105,6 +125,21 @@ namespace CuteIssac.Data.Item
             if (itemData == null || itemIds == null)
             {
                 return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(itemData.ItemId))
+            {
+                return false;
+            }
+
+            if (itemIds is HashSet<string> itemHashSet)
+            {
+                return itemHashSet.Contains(itemData.ItemId);
+            }
+
+            if (itemIds is ISet<string> itemSet)
+            {
+                return itemSet.Contains(itemData.ItemId);
             }
 
             foreach (string itemId in itemIds)

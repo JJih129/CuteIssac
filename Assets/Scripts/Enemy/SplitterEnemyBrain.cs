@@ -139,7 +139,8 @@ namespace CuteIssac.Enemy
             }
 
             _hasPrewarmedChildren = true;
-            PrefabPoolService.Prewarm(enemyData.ChildEnemyPrefab.gameObject, enemyData.ChildPrewarmCount);
+            PrefabPoolService.EnsurePrewarmed(enemyData.ChildEnemyPrefab.gameObject, enemyData.ChildPrewarmCount);
+            enemyData.ChildEnemyPrefab.GetComponent<EnemyCombat>()?.PrewarmProjectilesForExpectedShooters(enemyData.ChildPrewarmCount);
         }
 
         private void SubscribeToDeath()

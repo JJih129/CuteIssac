@@ -29,12 +29,57 @@ namespace CuteIssac.Room
             Siege = 3
         }
 
+        private struct SpawnedEnemyRuntimeContext
+        {
+            public EnemyController Enemy;
+            public ShooterEnemyBrain ShooterBrain;
+            public CandyBatShooterBrain CandyBatShooterBrain;
+            public BurstShooterEnemyBrain BurstShooterBrain;
+            public HomingShooterEnemyBrain HomingShooterBrain;
+            public SniperEnemyBrain SniperBrain;
+            public TurretEnemyBrain TurretBrain;
+            public ChaserEnemyBrain ChaserBrain;
+            public DasherEnemyBrain DasherBrain;
+            public ShieldEnemyBrain ShieldBrain;
+            public ExploderEnemyBrain ExploderBrain;
+            public OrbiterEnemyBrain OrbiterBrain;
+            public SplitterEnemyBrain SplitterBrain;
+            public PullerEnemyBrain PullerBrain;
+            public TeleporterEnemyBrain TeleporterBrain;
+            public MineLayerEnemyBrain MineLayerBrain;
+            public EnemySpawnerBrain SpawnerBrain;
+            public SupportHealerEnemyBrain SupportHealerBrain;
+            public EnemyFormationModifier FormationModifier;
+            public EncounterDeathPulseModifier DeathPulseModifier;
+            public EnemySpawnTelegraph SpawnTelegraph;
+            public EnemyDeathDropper DeathDropper;
+
+            public bool IsSupport => SupportHealerBrain != null;
+            public bool IsFrontline => ChaserBrain != null
+                || DasherBrain != null
+                || ShieldBrain != null
+                || ExploderBrain != null
+                || OrbiterBrain != null
+                || SplitterBrain != null;
+            public bool IsController => PullerBrain != null || TeleporterBrain != null;
+            public bool IsRanged => ShooterBrain != null
+                || CandyBatShooterBrain != null
+                || BurstShooterBrain != null
+                || HomingShooterBrain != null
+                || SniperBrain != null
+                || TurretBrain != null;
+            public bool IsSiege => MineLayerBrain != null
+                || SpawnerBrain != null
+                || ExploderBrain != null;
+        }
+
         [Header("References")]
         [Tooltip("RoomController that requests combat spawning. Auto-filled from the same object when possible.")]
         [SerializeField] private RoomController roomController;
         [Tooltip("Optional parent used to keep spawned enemies grouped under the room hierarchy.")]
         [SerializeField] private Transform spawnedEnemyParent;
         [SerializeField] private RunManager runManager;
+        [SerializeField] private PlayerController playerController;
 
         [Header("Wave Source")]
         [Tooltip("Authored test wave for this room. Generated rooms can override this at runtime with ConfigureWave.")]
@@ -61,6 +106,16 @@ namespace CuteIssac.Room
         [SerializeField] [Range(0f, 0.45f)] private float roomBoundsInsetRatio = 0.16f;
         [SerializeField] [Min(0f)] private float doorSpawnClearanceDistance = 2.25f;
         [SerializeField] [Range(1f, 2f)] private float globalEnemyCountMultiplier = 1.45f;
+
+        [Header("Isaac-Style Enemy Drops")]
+        [SerializeField] private bool enableIsaacStyleEnemyDeathDrops = true;
+        [SerializeField] [Range(0f, 1f)] private float regularEnemyDeathDropChance = 0.08f;
+        [SerializeField] [Range(0f, 1f)] private float challengeEnemyDeathDropChance = 0.06f;
+        [SerializeField] [Range(0f, 1f)] private float miniBossEnemyDeathDropChance = 0.18f;
+        [SerializeField] [Min(0f)] private float enemyDropCoinWeight = 0.66f;
+        [SerializeField] [Min(0f)] private float enemyDropAmmoWeight = 0.12f;
+        [SerializeField] [Min(0f)] private float enemyDropBombWeight = 0.10f;
+        [SerializeField] [Min(0f)] private float enemyDropKeyWeight = 0.12f;
 
         [Header("Dormant Release")]
         [SerializeField] [Min(0f)] private float combatDormantReleaseDelay = 0.5f;
@@ -99,12 +154,13 @@ namespace CuteIssac.Room
         private bool _hasPreSpawnedEncounter;
         private Coroutine _combatReleaseRoutine;
         private readonly System.Collections.Generic.List<Vector3> _spawnedPositionBuffer = new();
-        private readonly System.Collections.Generic.List<EnemyController> _spawnedEnemyBuffer = new();
+        private readonly System.Collections.Generic.List<SpawnedEnemyRuntimeContext> _spawnedEnemyContextBuffer = new();
         private readonly System.Collections.Generic.List<EnemyHealth> _releasedEnemyBuffer = new();
         private ChampionEnemyProfile _runtimeChampionProfile;
         private EnemyWaveAssignment _challengeFollowupWaveAssignment;
         private int _currentEncounterWave;
         private int _plannedEncounterWaveCount = 1;
+        private Transform _cachedPlayerTransform;
 
         public bool HasSpawnedEncounter => _hasSpawnedEncounter;
 
@@ -208,6 +264,8 @@ namespace CuteIssac.Room
             {
                 runManager = FindFirstObjectByType<RunManager>(FindObjectsInactive.Exclude);
             }
+
+            ResolvePlayerReference();
         }
 
         /// <summary>
@@ -385,9 +443,28 @@ namespace CuteIssac.Room
                     continue;
                 }
 
-                PrefabPoolService.Prewarm(
+                int adjustedSpawnCount = ResolveAdjustedSpawnCount(spawnGroup.Count);
+
+                PrefabPoolService.EnsurePrewarmed(
                     spawnGroup.EnemyPrefab.gameObject,
-                    Mathf.Max(1, ResolveAdjustedSpawnCount(spawnGroup.Count) + prewarmBufferCount));
+                    Mathf.Max(1, adjustedSpawnCount + prewarmBufferCount),
+                    PreparePrewarmedEnemyInstance);
+
+                EnemyCombat enemyCombat = spawnGroup.EnemyPrefab.GetComponent<EnemyCombat>();
+                enemyCombat?.PrewarmProjectilesForExpectedShooters(adjustedSpawnCount);
+            }
+        }
+
+        private void PreparePrewarmedEnemyInstance(GameObject instance)
+        {
+            if (!enableSpawnTelegraph || instance == null)
+            {
+                return;
+            }
+
+            if (instance.GetComponent<EnemySpawnTelegraph>() == null)
+            {
+                instance.AddComponent<EnemySpawnTelegraph>();
             }
         }
 
@@ -416,7 +493,7 @@ namespace CuteIssac.Room
             int promotedChampionCount = 0;
             int totalSpawnCount = ResolveAdjustedTotalEnemyCount(enemyWaveAssignment);
             _spawnedPositionBuffer.Clear();
-            _spawnedEnemyBuffer.Clear();
+            _spawnedEnemyContextBuffer.Clear();
 
             for (int i = 0; i < enemyWaveAssignment.SpawnGroups.Count; i++)
             {
@@ -477,9 +554,11 @@ namespace CuteIssac.Room
             }
 
             roomEnemyMember.AssignRoom(targetRoom);
-            spawnedEnemy.GetComponent<EnemyFormationModifier>()?.PrepareForSpawn();
-            spawnedEnemy.GetComponent<EncounterDeathPulseModifier>()?.PrepareForSpawn();
-            ApplyEncounterPacing(spawnedEnemy);
+            SpawnedEnemyRuntimeContext spawnedEnemyContext = BuildSpawnedEnemyRuntimeContext(spawnedEnemy);
+            spawnedEnemyContext.FormationModifier?.PrepareForSpawn();
+            spawnedEnemyContext.DeathPulseModifier?.PrepareForSpawn();
+            ConfigureEnemyDeathDrops(ref spawnedEnemyContext, targetRoom);
+            ApplyEncounterPacing(in spawnedEnemyContext);
 
             if (dormantSpawn)
             {
@@ -489,7 +568,7 @@ namespace CuteIssac.Room
             {
                 float aggroDelay = CalculateAggroDelay(spawnIndex, waveIndex);
                 spawnedEnemy.ApplySpawnAggroDelay(aggroDelay);
-                ApplySpawnTelegraph(spawnedEnemy, spawnIndex, waveIndex, aggroDelay);
+                ApplySpawnTelegraph(ref spawnedEnemyContext, spawnIndex, waveIndex, aggroDelay);
 
                 if (spawnIndex == 0)
                 {
@@ -502,9 +581,85 @@ namespace CuteIssac.Room
                 promotedChampionCount++;
             }
 
-            _spawnedEnemyBuffer.Add(spawnedEnemy);
+            _spawnedEnemyContextBuffer.Add(spawnedEnemyContext);
             _spawnedPositionBuffer.Add(spawnedEnemy.transform.position);
             return true;
+        }
+
+        private static SpawnedEnemyRuntimeContext BuildSpawnedEnemyRuntimeContext(EnemyController spawnedEnemy)
+        {
+            SpawnedEnemyRuntimeContext context = new()
+            {
+                Enemy = spawnedEnemy
+            };
+
+            if (spawnedEnemy == null)
+            {
+                return context;
+            }
+
+            spawnedEnemy.TryGetComponent(out context.ShooterBrain);
+            spawnedEnemy.TryGetComponent(out context.CandyBatShooterBrain);
+            spawnedEnemy.TryGetComponent(out context.BurstShooterBrain);
+            spawnedEnemy.TryGetComponent(out context.HomingShooterBrain);
+            spawnedEnemy.TryGetComponent(out context.SniperBrain);
+            spawnedEnemy.TryGetComponent(out context.TurretBrain);
+            spawnedEnemy.TryGetComponent(out context.ChaserBrain);
+            spawnedEnemy.TryGetComponent(out context.DasherBrain);
+            spawnedEnemy.TryGetComponent(out context.ShieldBrain);
+            spawnedEnemy.TryGetComponent(out context.ExploderBrain);
+            spawnedEnemy.TryGetComponent(out context.OrbiterBrain);
+            spawnedEnemy.TryGetComponent(out context.SplitterBrain);
+            spawnedEnemy.TryGetComponent(out context.PullerBrain);
+            spawnedEnemy.TryGetComponent(out context.TeleporterBrain);
+            spawnedEnemy.TryGetComponent(out context.MineLayerBrain);
+            spawnedEnemy.TryGetComponent(out context.SpawnerBrain);
+            spawnedEnemy.TryGetComponent(out context.SupportHealerBrain);
+            spawnedEnemy.TryGetComponent(out context.FormationModifier);
+            spawnedEnemy.TryGetComponent(out context.DeathPulseModifier);
+            spawnedEnemy.TryGetComponent(out context.SpawnTelegraph);
+            spawnedEnemy.TryGetComponent(out context.DeathDropper);
+            return context;
+        }
+
+        private void ConfigureEnemyDeathDrops(ref SpawnedEnemyRuntimeContext spawnedEnemyContext, RoomController targetRoom)
+        {
+            if (!enableIsaacStyleEnemyDeathDrops || spawnedEnemyContext.Enemy == null || targetRoom == null)
+            {
+                return;
+            }
+
+            float dropChance = ResolveEnemyDeathDropChance(GetEffectiveRoomType());
+            if (dropChance <= 0f)
+            {
+                return;
+            }
+
+            EnemyDeathDropper dropper = spawnedEnemyContext.DeathDropper;
+            if (dropper == null)
+            {
+                dropper = spawnedEnemyContext.Enemy.gameObject.AddComponent<EnemyDeathDropper>();
+                spawnedEnemyContext.DeathDropper = dropper;
+            }
+
+            dropper.Configure(
+                dropChance,
+                enemyDropCoinWeight,
+                enemyDropAmmoWeight,
+                enemyDropBombWeight,
+                enemyDropKeyWeight,
+                targetRoom.transform);
+        }
+
+        private float ResolveEnemyDeathDropChance(RoomType roomType)
+        {
+            return roomType switch
+            {
+                RoomType.Normal => regularEnemyDeathDropChance,
+                RoomType.Challenge => challengeEnemyDeathDropChance,
+                RoomType.MiniBoss => miniBossEnemyDeathDropChance,
+                _ => 0f
+            };
         }
 
         private void PreSpawnEncounterIfNeeded(EnemyWaveAssignment enemyWaveAssignment)
@@ -557,7 +712,7 @@ namespace CuteIssac.Room
 
         private void ApplyEncounterSynergy(RoomController targetRoom, int waveIndex, bool suppressFeedback)
         {
-            if (!enableEncounterSynergy || targetRoom == null || _spawnedEnemyBuffer.Count < 2)
+            if (!enableEncounterSynergy || targetRoom == null || _spawnedEnemyContextBuffer.Count < 2)
             {
                 return;
             }
@@ -575,36 +730,36 @@ namespace CuteIssac.Room
             int rangedCount = 0;
             int siegeCount = 0;
 
-            for (int index = 0; index < _spawnedEnemyBuffer.Count; index++)
+            for (int index = 0; index < _spawnedEnemyContextBuffer.Count; index++)
             {
-                EnemyController enemy = _spawnedEnemyBuffer[index];
+                SpawnedEnemyRuntimeContext enemyContext = _spawnedEnemyContextBuffer[index];
 
-                if (enemy == null)
+                if (enemyContext.Enemy == null)
                 {
                     continue;
                 }
 
-                if (IsSupportEnemy(enemy))
+                if (enemyContext.IsSupport)
                 {
                     supportCount++;
                 }
 
-                if (IsFrontlineEnemy(enemy))
+                if (enemyContext.IsFrontline)
                 {
                     frontlineCount++;
                 }
 
-                if (IsControllerEnemy(enemy))
+                if (enemyContext.IsController)
                 {
                     controllerCount++;
                 }
 
-                if (IsRangedEnemy(enemy))
+                if (enemyContext.IsRanged)
                 {
                     rangedCount++;
                 }
 
-                if (IsSiegeEnemy(enemy))
+                if (enemyContext.IsSiege)
                 {
                     siegeCount++;
                 }
@@ -655,25 +810,27 @@ namespace CuteIssac.Room
             Color accentColor = new(0.48f, 0.96f, 0.62f, 1f);
             Color criticalColor = Color.Lerp(accentColor, Color.white, 0.24f);
 
-            for (int index = 0; index < _spawnedEnemyBuffer.Count; index++)
+            for (int index = 0; index < _spawnedEnemyContextBuffer.Count; index++)
             {
-                EnemyController enemy = _spawnedEnemyBuffer[index];
+                SpawnedEnemyRuntimeContext enemyContext = _spawnedEnemyContextBuffer[index];
 
-                if (enemy == null)
+                if (enemyContext.Enemy == null)
                 {
                     continue;
                 }
 
-                if (IsFrontlineEnemy(enemy))
+                if (enemyContext.IsFrontline)
                 {
-                    ApplyFormationModifier(enemy, "escort", EnemyFormationRole.Frontline, accentColor, speedMultiplier, contactMultiplier);
+                    ApplyFormationModifier(ref enemyContext, "escort", EnemyFormationRole.Frontline, accentColor, speedMultiplier, contactMultiplier);
+                    _spawnedEnemyContextBuffer[index] = enemyContext;
                     continue;
                 }
 
-                if (IsSupportEnemy(enemy))
+                if (enemyContext.IsSupport)
                 {
-                    ApplyFormationModifier(enemy, "escort", EnemyFormationRole.Support, accentColor, supportSpeedMultiplier, 1f);
-                    ApplyPriorityHint(enemy, "escort", EnemyFormationPriorityLevel.Critical, criticalColor);
+                    ApplyFormationModifier(ref enemyContext, "escort", EnemyFormationRole.Support, accentColor, supportSpeedMultiplier, 1f);
+                    ApplyPriorityHint(ref enemyContext, "escort", EnemyFormationPriorityLevel.Critical, criticalColor);
+                    _spawnedEnemyContextBuffer[index] = enemyContext;
                 }
             }
 
@@ -691,28 +848,30 @@ namespace CuteIssac.Room
             Color focusColor = Color.Lerp(accentColor, Color.white, 0.12f);
             Color criticalColor = Color.Lerp(accentColor, Color.white, 0.28f);
 
-            for (int index = 0; index < _spawnedEnemyBuffer.Count; index++)
+            for (int index = 0; index < _spawnedEnemyContextBuffer.Count; index++)
             {
-                EnemyController enemy = _spawnedEnemyBuffer[index];
+                SpawnedEnemyRuntimeContext enemyContext = _spawnedEnemyContextBuffer[index];
 
-                if (enemy == null)
+                if (enemyContext.Enemy == null)
                 {
                     continue;
                 }
 
-                if (IsControllerEnemy(enemy))
+                if (enemyContext.IsController)
                 {
-                    enemy.ScaleSpawnAggroDelay(aggroScale);
-                    ApplyFormationModifier(enemy, "crossfire", EnemyFormationRole.Controller, accentColor, controllerSpeedMultiplier, 1f);
-                    ApplyPriorityHint(enemy, "crossfire", EnemyFormationPriorityLevel.Critical, criticalColor);
+                    enemyContext.Enemy.ScaleSpawnAggroDelay(aggroScale);
+                    ApplyFormationModifier(ref enemyContext, "crossfire", EnemyFormationRole.Controller, accentColor, controllerSpeedMultiplier, 1f);
+                    ApplyPriorityHint(ref enemyContext, "crossfire", EnemyFormationPriorityLevel.Critical, criticalColor);
+                    _spawnedEnemyContextBuffer[index] = enemyContext;
                     continue;
                 }
 
-                if (IsRangedEnemy(enemy))
+                if (enemyContext.IsRanged)
                 {
-                    enemy.ScaleSpawnAggroDelay(Mathf.Lerp(aggroScale, 1f, 0.35f));
-                    ApplyFormationModifier(enemy, "crossfire", EnemyFormationRole.Ranged, accentColor, 1.05f, 1f);
-                    ApplyPriorityHint(enemy, "crossfire", EnemyFormationPriorityLevel.Focus, focusColor);
+                    enemyContext.Enemy.ScaleSpawnAggroDelay(Mathf.Lerp(aggroScale, 1f, 0.35f));
+                    ApplyFormationModifier(ref enemyContext, "crossfire", EnemyFormationRole.Ranged, accentColor, 1.05f, 1f);
+                    ApplyPriorityHint(ref enemyContext, "crossfire", EnemyFormationPriorityLevel.Focus, focusColor);
+                    _spawnedEnemyContextBuffer[index] = enemyContext;
                 }
             }
 
@@ -730,18 +889,19 @@ namespace CuteIssac.Room
             Color accentColor = new(1f, 0.62f, 0.3f, 1f);
             Color criticalColor = Color.Lerp(accentColor, Color.white, 0.22f);
 
-            for (int index = 0; index < _spawnedEnemyBuffer.Count; index++)
+            for (int index = 0; index < _spawnedEnemyContextBuffer.Count; index++)
             {
-                EnemyController enemy = _spawnedEnemyBuffer[index];
+                SpawnedEnemyRuntimeContext enemyContext = _spawnedEnemyContextBuffer[index];
 
-                if (enemy == null || !IsSiegeEnemy(enemy))
+                if (enemyContext.Enemy == null || !enemyContext.IsSiege)
                 {
                     continue;
                 }
 
-                ApplyFormationModifier(enemy, "siege", EnemyFormationRole.Siege, accentColor, speedMultiplier, 1.08f);
-                ApplyDeathPulseModifier(enemy, deathPulseRadius, siegeDeathPulseTelegraphDuration, deathPulseDamage, siegeDeathPulseKnockback, accentColor);
-                ApplyPriorityHint(enemy, "siege", EnemyFormationPriorityLevel.Critical, criticalColor);
+                ApplyFormationModifier(ref enemyContext, "siege", EnemyFormationRole.Siege, accentColor, speedMultiplier, 1.08f);
+                ApplyDeathPulseModifier(ref enemyContext, deathPulseRadius, siegeDeathPulseTelegraphDuration, deathPulseDamage, siegeDeathPulseKnockback, accentColor);
+                ApplyPriorityHint(ref enemyContext, "siege", EnemyFormationPriorityLevel.Critical, criticalColor);
+                _spawnedEnemyContextBuffer[index] = enemyContext;
             }
 
             if (!suppressFeedback)
@@ -750,35 +910,36 @@ namespace CuteIssac.Room
             }
         }
 
-        private static void ApplyFormationModifier(EnemyController enemy, string formationId, EnemyFormationRole formationRole, Color accentColor, float speedMultiplier, float contactDamageMultiplier)
+        private static void ApplyFormationModifier(ref SpawnedEnemyRuntimeContext enemyContext, string formationId, EnemyFormationRole formationRole, Color accentColor, float speedMultiplier, float contactDamageMultiplier)
         {
-            if (enemy == null)
+            if (enemyContext.Enemy == null)
             {
                 return;
             }
 
-            EnemyFormationModifier modifier = enemy.GetComponent<EnemyFormationModifier>();
+            EnemyFormationModifier modifier = enemyContext.FormationModifier;
 
             if (modifier == null)
             {
-                modifier = enemy.gameObject.AddComponent<EnemyFormationModifier>();
+                modifier = enemyContext.Enemy.gameObject.AddComponent<EnemyFormationModifier>();
+                enemyContext.FormationModifier = modifier;
             }
 
             modifier.ApplyFormation(formationId, formationRole, accentColor, speedMultiplier, contactDamageMultiplier);
-            enemy.GetComponent<EnemySpawnTelegraph>()?.ApplyAccent(
+            enemyContext.SpawnTelegraph?.ApplyAccent(
                 accentColor,
                 ResolveFormationTelegraphScaleMultiplier(formationId),
                 ResolveFormationTelegraphOpacityMultiplier(formationId));
         }
 
-        private static void ApplyPriorityHint(EnemyController enemy, string formationId, EnemyFormationPriorityLevel priorityLevel, Color accentColor)
+        private static void ApplyPriorityHint(ref SpawnedEnemyRuntimeContext enemyContext, string formationId, EnemyFormationPriorityLevel priorityLevel, Color accentColor)
         {
-            if (enemy == null)
+            if (enemyContext.Enemy == null)
             {
                 return;
             }
 
-            EnemyFormationModifier modifier = enemy.GetComponent<EnemyFormationModifier>();
+            EnemyFormationModifier modifier = enemyContext.FormationModifier;
 
             if (modifier == null)
             {
@@ -796,21 +957,22 @@ namespace CuteIssac.Room
                 + (priorityLevel == EnemyFormationPriorityLevel.Critical ? 0.12f : 0.06f);
             float opacityMultiplier = ResolveFormationTelegraphOpacityMultiplier(formationId)
                 + (priorityLevel == EnemyFormationPriorityLevel.Critical ? 0.18f : 0.1f);
-            enemy.GetComponent<EnemySpawnTelegraph>()?.ApplyAccent(accentColor, scaleMultiplier, opacityMultiplier);
+            enemyContext.SpawnTelegraph?.ApplyAccent(accentColor, scaleMultiplier, opacityMultiplier);
         }
 
-        private static void ApplyDeathPulseModifier(EnemyController enemy, float pulseRadius, float telegraphDuration, float pulseDamage, float pulseKnockback, Color pulseColor)
+        private static void ApplyDeathPulseModifier(ref SpawnedEnemyRuntimeContext enemyContext, float pulseRadius, float telegraphDuration, float pulseDamage, float pulseKnockback, Color pulseColor)
         {
-            if (enemy == null)
+            if (enemyContext.Enemy == null)
             {
                 return;
             }
 
-            EncounterDeathPulseModifier modifier = enemy.GetComponent<EncounterDeathPulseModifier>();
+            EncounterDeathPulseModifier modifier = enemyContext.DeathPulseModifier;
 
             if (modifier == null)
             {
-                modifier = enemy.gameObject.AddComponent<EncounterDeathPulseModifier>();
+                modifier = enemyContext.Enemy.gameObject.AddComponent<EncounterDeathPulseModifier>();
+                enemyContext.DeathPulseModifier = modifier;
             }
 
             modifier.Configure(pulseRadius, telegraphDuration, pulseDamage, pulseKnockback, pulseColor);
@@ -872,50 +1034,9 @@ namespace CuteIssac.Room
             }
         }
 
-        private static bool IsSupportEnemy(EnemyController enemy)
+        private void ApplySpawnTelegraph(ref SpawnedEnemyRuntimeContext spawnedEnemyContext, int spawnIndex, int waveIndex, float aggroDelay)
         {
-            return enemy != null && enemy.GetComponent<SupportHealerEnemyBrain>() != null;
-        }
-
-        private static bool IsFrontlineEnemy(EnemyController enemy)
-        {
-            return enemy != null
-                && (enemy.GetComponent<ChaserEnemyBrain>() != null
-                    || enemy.GetComponent<DasherEnemyBrain>() != null
-                    || enemy.GetComponent<ShieldEnemyBrain>() != null
-                    || enemy.GetComponent<ExploderEnemyBrain>() != null
-                    || enemy.GetComponent<OrbiterEnemyBrain>() != null
-                    || enemy.GetComponent<SplitterEnemyBrain>() != null);
-        }
-
-        private static bool IsControllerEnemy(EnemyController enemy)
-        {
-            return enemy != null
-                && (enemy.GetComponent<PullerEnemyBrain>() != null
-                    || enemy.GetComponent<TeleporterEnemyBrain>() != null);
-        }
-
-        private static bool IsRangedEnemy(EnemyController enemy)
-        {
-            return enemy != null
-                && (enemy.GetComponent<ShooterEnemyBrain>() != null
-                    || enemy.GetComponent<BurstShooterEnemyBrain>() != null
-                    || enemy.GetComponent<HomingShooterEnemyBrain>() != null
-                    || enemy.GetComponent<SniperEnemyBrain>() != null
-                    || enemy.GetComponent<TurretEnemyBrain>() != null);
-        }
-
-        private static bool IsSiegeEnemy(EnemyController enemy)
-        {
-            return enemy != null
-                && (enemy.GetComponent<MineLayerEnemyBrain>() != null
-                    || enemy.GetComponent<EnemySpawnerBrain>() != null
-                    || enemy.GetComponent<ExploderEnemyBrain>() != null);
-        }
-
-        private void ApplySpawnTelegraph(EnemyController spawnedEnemy, int spawnIndex, int waveIndex, float aggroDelay)
-        {
-            if (!enableSpawnTelegraph || spawnedEnemy == null || aggroDelay <= 0.1f)
+            if (!enableSpawnTelegraph || spawnedEnemyContext.Enemy == null || aggroDelay <= 0.1f)
             {
                 return;
             }
@@ -927,11 +1048,12 @@ namespace CuteIssac.Room
                 return;
             }
 
-            EnemySpawnTelegraph telegraph = spawnedEnemy.GetComponent<EnemySpawnTelegraph>();
+            EnemySpawnTelegraph telegraph = spawnedEnemyContext.SpawnTelegraph;
 
             if (telegraph == null)
             {
-                telegraph = spawnedEnemy.gameObject.AddComponent<EnemySpawnTelegraph>();
+                telegraph = spawnedEnemyContext.Enemy.gameObject.AddComponent<EnemySpawnTelegraph>();
+                spawnedEnemyContext.SpawnTelegraph = telegraph;
             }
 
             telegraph.Configure(
@@ -1115,9 +1237,9 @@ namespace CuteIssac.Room
             return true;
         }
 
-        private void ApplyEncounterPacing(EnemyController spawnedEnemy)
+        private void ApplyEncounterPacing(in SpawnedEnemyRuntimeContext spawnedEnemyContext)
         {
-            if (spawnedEnemy == null || _runtimeEncounterPacing == null)
+            if (spawnedEnemyContext.Enemy == null || _runtimeEncounterPacing == null)
             {
                 return;
             }
@@ -1125,81 +1247,64 @@ namespace CuteIssac.Room
             float firstAttackDelayBonus = _runtimeEncounterPacing.FirstAttackDelayBonus;
             float telegraphDurationMultiplier = _runtimeEncounterPacing.TelegraphDurationMultiplier;
 
-            ShooterEnemyBrain shooterEnemyBrain = spawnedEnemy.GetComponent<ShooterEnemyBrain>();
-
-            if (shooterEnemyBrain != null)
+            if (spawnedEnemyContext.ShooterBrain != null)
             {
-                shooterEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.ShooterBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            DasherEnemyBrain dasherEnemyBrain = spawnedEnemy.GetComponent<DasherEnemyBrain>();
-
-            if (dasherEnemyBrain != null)
+            if (spawnedEnemyContext.CandyBatShooterBrain != null)
             {
-                dasherEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.CandyBatShooterBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            EnemySpawnerBrain enemySpawnerBrain = spawnedEnemy.GetComponent<EnemySpawnerBrain>();
-
-            if (enemySpawnerBrain != null)
+            if (spawnedEnemyContext.DasherBrain != null)
             {
-                enemySpawnerBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.DasherBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            HomingShooterEnemyBrain homingShooterEnemyBrain = spawnedEnemy.GetComponent<HomingShooterEnemyBrain>();
-
-            if (homingShooterEnemyBrain != null)
+            if (spawnedEnemyContext.SpawnerBrain != null)
             {
-                homingShooterEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.SpawnerBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            BurstShooterEnemyBrain burstShooterEnemyBrain = spawnedEnemy.GetComponent<BurstShooterEnemyBrain>();
-
-            if (burstShooterEnemyBrain != null)
+            if (spawnedEnemyContext.HomingShooterBrain != null)
             {
-                burstShooterEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.HomingShooterBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            SniperEnemyBrain sniperEnemyBrain = spawnedEnemy.GetComponent<SniperEnemyBrain>();
-
-            if (sniperEnemyBrain != null)
+            if (spawnedEnemyContext.BurstShooterBrain != null)
             {
-                sniperEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.BurstShooterBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            MineLayerEnemyBrain mineLayerEnemyBrain = spawnedEnemy.GetComponent<MineLayerEnemyBrain>();
-
-            if (mineLayerEnemyBrain != null)
+            if (spawnedEnemyContext.SniperBrain != null)
             {
-                mineLayerEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.SniperBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            TeleporterEnemyBrain teleporterEnemyBrain = spawnedEnemy.GetComponent<TeleporterEnemyBrain>();
-
-            if (teleporterEnemyBrain != null)
+            if (spawnedEnemyContext.MineLayerBrain != null)
             {
-                teleporterEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.MineLayerBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            PullerEnemyBrain pullerEnemyBrain = spawnedEnemy.GetComponent<PullerEnemyBrain>();
-
-            if (pullerEnemyBrain != null)
+            if (spawnedEnemyContext.TeleporterBrain != null)
             {
-                pullerEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.TeleporterBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            ExploderEnemyBrain exploderEnemyBrain = spawnedEnemy.GetComponent<ExploderEnemyBrain>();
-
-            if (exploderEnemyBrain != null)
+            if (spawnedEnemyContext.PullerBrain != null)
             {
-                exploderEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.PullerBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
 
-            SupportHealerEnemyBrain supportHealerEnemyBrain = spawnedEnemy.GetComponent<SupportHealerEnemyBrain>();
-
-            if (supportHealerEnemyBrain != null)
+            if (spawnedEnemyContext.ExploderBrain != null)
             {
-                supportHealerEnemyBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+                spawnedEnemyContext.ExploderBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
+            }
+
+            if (spawnedEnemyContext.SupportHealerBrain != null)
+            {
+                spawnedEnemyContext.SupportHealerBrain.ApplyEncounterPacing(firstAttackDelayBonus, telegraphDurationMultiplier);
             }
         }
 
@@ -1368,10 +1473,31 @@ namespace CuteIssac.Room
 
         private float GetDistanceToPlayer(Vector3 candidate)
         {
-            PlayerController playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
-            return playerController != null
-                ? Vector2.Distance(candidate, playerController.transform.position)
+            Transform playerTransform = ResolvePlayerTransform();
+            return playerTransform != null
+                ? Vector2.Distance(candidate, playerTransform.position)
                 : GetMinimumDistanceFromPlayer();
+        }
+
+        private Transform ResolvePlayerTransform()
+        {
+            if (_cachedPlayerTransform != null)
+            {
+                return _cachedPlayerTransform;
+            }
+
+            ResolvePlayerReference();
+            return _cachedPlayerTransform;
+        }
+
+        private void ResolvePlayerReference()
+        {
+            if (playerController == null)
+            {
+                playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            }
+
+            _cachedPlayerTransform = playerController != null ? playerController.transform : null;
         }
 
         private float GetNearestSpawnDistance(Vector3 candidate)

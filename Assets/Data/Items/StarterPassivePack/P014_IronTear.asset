@@ -17,7 +17,7 @@ MonoBehaviour:
   flavorText: Your tears learned to drill.
   sourcePools: 0000000002000000
   eventFlags: 
-  damageModifier: 0
+  damageModifier: 0.35
   tearsModifier: 0
   speedModifier: 0
   rangeModifier: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 00000000
   itemId: P014
   displayName: Iron Tear
-  description: Shots pierce enemies.
+  description: Damage up. Shots pierce enemies.
   icon: {fileID: 0}
   rarity: 2
   unlockedByDefault: 1

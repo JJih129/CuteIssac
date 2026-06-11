@@ -115,14 +115,7 @@ namespace CuteIssac.Enemy
             _duration = 0f;
             _isConfigured = false;
 
-            if (Application.isPlaying)
-            {
-                Destroy(this);
-            }
-            else
-            {
-                DestroyImmediate(this);
-            }
+            enabled = false;
         }
 
         private void CachePresentationTargets()
@@ -235,18 +228,22 @@ namespace CuteIssac.Enemy
 
         private void BuildTelegraphVisual()
         {
-            ClearTelegraphVisual();
+            EnsureTelegraphRoot();
 
-            GameObject root = new("SpawnTelegraph");
-            root.layer = gameObject.layer;
-            root.transform.SetParent(transform, false);
-            root.transform.localPosition = new Vector3(localOffset.x, localOffset.y, 0f);
-            root.transform.localScale = Vector3.one;
-            _telegraphRoot = root.transform;
+            if (_telegraphRoot == null)
+            {
+                return;
+            }
+
+            _telegraphRoot.gameObject.SetActive(true);
+            _telegraphRoot.gameObject.layer = gameObject.layer;
+            _telegraphRoot.localPosition = new Vector3(localOffset.x, localOffset.y, 0f);
+            _telegraphRoot.localScale = Vector3.one;
             float effectiveScale = telegraphScale * _accentScaleMultiplier;
             float effectiveOpacity = Mathf.Clamp01(telegraphOpacity * _accentOpacityMultiplier);
 
-            _outerRingRenderer = CreateTelegraphPart(
+            ConfigureTelegraphPart(
+                ref _outerRingRenderer,
                 "OuterRing",
                 GetCircleSprite(),
                 Vector3.zero,
@@ -254,7 +251,8 @@ namespace CuteIssac.Enemy
                 new Color(telegraphColor.r, telegraphColor.g, telegraphColor.b, effectiveOpacity * 0.32f),
                 1);
 
-            _innerPulseRenderer = CreateTelegraphPart(
+            ConfigureTelegraphPart(
+                ref _innerPulseRenderer,
                 "InnerPulse",
                 GetCircleSprite(),
                 Vector3.zero,
@@ -262,7 +260,8 @@ namespace CuteIssac.Enemy
                 new Color(telegraphColor.r, telegraphColor.g, telegraphColor.b, effectiveOpacity * 0.2f),
                 2);
 
-            _crossbarHorizontalRenderer = CreateTelegraphPart(
+            ConfigureTelegraphPart(
+                ref _crossbarHorizontalRenderer,
                 "CrossbarHorizontal",
                 GetWhiteSprite(),
                 Vector3.zero,
@@ -270,7 +269,8 @@ namespace CuteIssac.Enemy
                 new Color(1f, 1f, 1f, effectiveOpacity * 0.72f),
                 3);
 
-            _crossbarVerticalRenderer = CreateTelegraphPart(
+            ConfigureTelegraphPart(
+                ref _crossbarVerticalRenderer,
                 "CrossbarVertical",
                 GetWhiteSprite(),
                 Vector3.zero,
@@ -279,19 +279,54 @@ namespace CuteIssac.Enemy
                 3);
         }
 
-        private SpriteRenderer CreateTelegraphPart(string name, Sprite sprite, Vector3 localPosition, Vector3 localScale, Color color, int sortingOrder)
+        private void EnsureTelegraphRoot()
         {
-            GameObject child = new(name);
-            child.layer = gameObject.layer;
-            child.transform.SetParent(_telegraphRoot, false);
-            child.transform.localPosition = localPosition;
-            child.transform.localScale = localScale;
+            if (_telegraphRoot != null)
+            {
+                return;
+            }
 
-            SpriteRenderer renderer = child.AddComponent<SpriteRenderer>();
+            GameObject root = new("SpawnTelegraph");
+            root.layer = gameObject.layer;
+            root.transform.SetParent(transform, false);
+            _telegraphRoot = root.transform;
+        }
+
+        private void ConfigureTelegraphPart(
+            ref SpriteRenderer renderer,
+            string name,
+            Sprite sprite,
+            Vector3 localPosition,
+            Vector3 localScale,
+            Color color,
+            int sortingOrder)
+        {
+            if (renderer == null)
+            {
+                Transform childTransform = _telegraphRoot.Find(name);
+
+                if (childTransform == null)
+                {
+                    GameObject child = new(name);
+                    childTransform = child.transform;
+                    childTransform.SetParent(_telegraphRoot, false);
+                }
+
+                renderer = childTransform.GetComponent<SpriteRenderer>();
+
+                if (renderer == null)
+                {
+                    renderer = childTransform.gameObject.AddComponent<SpriteRenderer>();
+                }
+            }
+
+            renderer.gameObject.SetActive(true);
+            renderer.gameObject.layer = gameObject.layer;
+            renderer.transform.localPosition = localPosition;
+            renderer.transform.localScale = localScale;
             renderer.sprite = sprite;
             renderer.color = color;
             renderer.sortingOrder = sortingOrder;
-            return renderer;
         }
 
         private void UpdateTelegraphVisual()
@@ -350,20 +385,7 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            if (Application.isPlaying)
-            {
-                Destroy(_telegraphRoot.gameObject);
-            }
-            else
-            {
-                DestroyImmediate(_telegraphRoot.gameObject);
-            }
-
-            _telegraphRoot = null;
-            _outerRingRenderer = null;
-            _innerPulseRenderer = null;
-            _crossbarHorizontalRenderer = null;
-            _crossbarVerticalRenderer = null;
+            _telegraphRoot.gameObject.SetActive(false);
         }
 
         private void ClearCaches()

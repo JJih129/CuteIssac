@@ -99,7 +99,7 @@ namespace CuteIssac.Enemy
             Damaged?.Invoke();
             GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
                 ResolveDamageFeedbackPosition(in resolvedDamageInfo),
-                Mathf.CeilToInt(damageAmount).ToString(),
+                FloatingFeedbackTextCache.GetUnsignedCeil(damageAmount),
                 new Color(1f, 0.92f, 0.52f, 1f),
                 0.52f,
                 0.65f,
@@ -135,7 +135,7 @@ namespace CuteIssac.Enemy
             CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + healAmount);
             GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
                 ResolveHealFeedbackPosition(),
-                $"+{Mathf.CeilToInt(healAmount)}",
+                FloatingFeedbackTextCache.GetPositiveCeil(healAmount),
                 new Color(0.48f, 1f, 0.6f, 1f),
                 0.5f,
                 0.58f,

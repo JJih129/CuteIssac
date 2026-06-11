@@ -79,6 +79,7 @@ namespace CuteIssac.Room.Gimmicks
         {
             ResolveReferences();
             CacheVisualState();
+            PooledEffectSpawner.Prewarm(explosionEffectPrefab, 1);
         }
 
         private void OnEnable()

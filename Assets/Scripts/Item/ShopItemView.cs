@@ -10,6 +10,11 @@ namespace CuteIssac.Item
     [DisallowMultipleComponent]
     public sealed class ShopItemView : MonoBehaviour
     {
+        private const int NameTextSortingOrder = 38;
+        private const int NameShadowSortingOrder = 37;
+        private const int PriceTextSortingOrder = 42;
+        private const int PriceShadowSortingOrder = 41;
+
         [Header("Visual References")]
         [SerializeField] private SpriteRenderer bodyRenderer;
         [SerializeField] private SpriteRenderer iconRenderer;
@@ -18,6 +23,8 @@ namespace CuteIssac.Item
         [SerializeField] private SpriteRenderer currencyMarkerRenderer;
         [SerializeField] private TextMesh nameText;
         [SerializeField] private TextMesh priceText;
+        [SerializeField] private TextMesh nameShadowText;
+        [SerializeField] private TextMesh priceShadowText;
         [SerializeField] private bool showWorldTextLabels = true;
         [SerializeField] private bool showWorldNameLabel;
         [SerializeField] private bool showCurrencyMarker;
@@ -31,10 +38,16 @@ namespace CuteIssac.Item
         [SerializeField] private Color coinMarkerColor = new(1f, 0.85f, 0.25f, 1f);
         [SerializeField] private Color keyMarkerColor = new(0.7f, 0.9f, 1f, 1f);
         [SerializeField] private Color bombMarkerColor = new(1f, 0.55f, 0.2f, 1f);
+        [SerializeField] private Color availablePriceTextColor = new(1f, 0.98f, 0.78f, 1f);
+        [SerializeField] private Color unavailablePriceTextColor = new(1f, 0.42f, 0.34f, 1f);
+        [SerializeField] private Color soldPriceTextColor = new(0.66f, 0.66f, 0.66f, 0.92f);
+        [SerializeField] private Color worldTextShadowColor = new(0.08f, 0.04f, 0.03f, 0.82f);
         [SerializeField] [Min(0f)] private float highlightPulseSpeed = 6f;
         [SerializeField] [Range(0f, 1f)] private float highlightPulseAlphaFloor = 0.35f;
         [SerializeField] private Color purchaseFlashColor = new(1f, 0.92f, 0.46f, 1f);
         [SerializeField] [Min(0.05f)] private float purchaseFlashDuration = 0.28f;
+        [SerializeField] private Color purchaseFailureFlashColor = new(1f, 0.24f, 0.18f, 0.95f);
+        [SerializeField] [Min(0.05f)] private float purchaseFailureFlashDuration = 0.22f;
         [SerializeField] [Min(1f)] private float purchaseScaleMultiplier = 1.12f;
         [SerializeField] [Min(0f)] private float purchaseScaleRecoverSpeed = 7.5f;
         [SerializeField] [Min(1f)] private float weaponBodyScaleMultiplier = 1.4f;
@@ -43,6 +56,9 @@ namespace CuteIssac.Item
 
         private bool _isHighlighted;
         private float _purchaseFlashRemaining;
+        private float _activeFlashDuration;
+        private Color _activeFlashColor;
+        private bool _showSoldOverlayDuringFlash;
         private Vector3 _initialScale = Vector3.one;
         private bool _hasInitialScale;
         private Vector3 _baseBodyScale = Vector3.one;
@@ -100,23 +116,13 @@ namespace CuteIssac.Item
                 };
             }
 
-            if (nameText != null)
-            {
-                nameText.gameObject.SetActive(showWorldTextLabels && showWorldNameLabel);
-                nameText.text = shopItemData != null ? shopItemData.DisplayName : string.Empty;
-                nameText.color = isSold ? soldBodyColor : Color.white;
-            }
+            string displayName = shopItemData != null ? shopItemData.DisplayName : string.Empty;
+            bool showName = showWorldTextLabels && showWorldNameLabel && !string.IsNullOrEmpty(displayName);
+            PresentWorldText(nameText, nameShadowText, showName, displayName, isSold ? soldBodyColor : Color.white);
 
-            if (priceText != null)
-            {
-                priceText.gameObject.SetActive(showWorldTextLabels);
-                priceText.text = shopItemData != null
-                    ? Mathf.Max(0, effectivePrice).ToString()
-                    : string.Empty;
-                priceText.color = isSold
-                    ? soldBodyColor
-                    : (canAfford ? Color.white : unaffordableBodyColor);
-            }
+            string priceValue = shopItemData != null ? (isSold ? "SOLD" : $"{Mathf.Max(0, effectivePrice)}{GetCurrencySuffix(currencyType)}") : string.Empty;
+            Color priceColor = isSold ? soldPriceTextColor : (canAfford ? availablePriceTextColor : unavailablePriceTextColor);
+            PresentWorldText(priceText, priceShadowText, showWorldTextLabels && !string.IsNullOrEmpty(priceValue), priceValue, priceColor);
         }
 
         private void Update()
@@ -141,24 +147,12 @@ namespace CuteIssac.Item
 
         public void PlayPurchaseSuccess()
         {
-            CacheInitialScale();
-            _purchaseFlashRemaining = purchaseFlashDuration;
+            BeginFeedbackFlash(purchaseFlashColor, purchaseFlashDuration, purchaseScaleMultiplier, true);
+        }
 
-            if (_hasInitialScale)
-            {
-                transform.localScale = _initialScale * purchaseScaleMultiplier;
-            }
-
-            if (highlightRenderer != null)
-            {
-                highlightRenderer.gameObject.SetActive(true);
-                highlightRenderer.color = purchaseFlashColor;
-            }
-
-            if (soldOverlayRenderer != null)
-            {
-                soldOverlayRenderer.gameObject.SetActive(true);
-            }
+        public void PlayPurchaseFailure()
+        {
+            BeginFeedbackFlash(purchaseFailureFlashColor, purchaseFailureFlashDuration, 1f, false);
         }
 
         public void ConfigureRuntimeReferences(
@@ -188,18 +182,55 @@ namespace CuteIssac.Item
             EnsureWorldLabelsState();
         }
 
+        public bool TryGetInteractionDistanceSqr(Vector3 worldPosition, out float distanceSqr)
+        {
+            distanceSqr = 0f;
+
+            if (!TryGetInteractionBounds(out Bounds bounds))
+            {
+                return false;
+            }
+
+            worldPosition.z = bounds.center.z;
+            distanceSqr = bounds.SqrDistance(worldPosition);
+            return true;
+        }
+
+        public bool TryGetInteractionBounds(out Bounds bounds)
+        {
+            bounds = default;
+            bool hasBounds = false;
+
+            TryEncapsulateRendererBounds(bodyRenderer, ref bounds, ref hasBounds);
+            TryEncapsulateRendererBounds(iconRenderer, ref bounds, ref hasBounds);
+
+            return hasBounds;
+        }
+
         private void EnsureRuntimeLabels()
         {
             CacheInitialScale();
 
             if (nameText == null)
             {
-                nameText = CreateRuntimeText("NameLabel", new Vector3(0f, 0.72f, 0f), 0.22f);
+                nameText = CreateRuntimeText("NameLabel", new Vector3(0f, 0.72f, 0f), 0.22f, NameTextSortingOrder);
+            }
+
+            if (nameShadowText == null)
+            {
+                nameShadowText = CreateRuntimeText("NameShadow", new Vector3(0.035f, 0.685f, 0.01f), 0.22f, NameShadowSortingOrder);
             }
 
             if (priceText == null)
             {
-                priceText = CreateRuntimeText("PriceLabel", new Vector3(0f, -0.88f, 0f), 0.3f);
+                priceText = CreateRuntimeText("PriceLabel", new Vector3(0f, -0.88f, -0.01f), 0.36f, PriceTextSortingOrder);
+                priceText.fontStyle = FontStyle.Bold;
+            }
+
+            if (priceShadowText == null)
+            {
+                priceShadowText = CreateRuntimeText("PriceShadow", new Vector3(0.045f, -0.93f, 0.01f), 0.36f, PriceShadowSortingOrder);
+                priceShadowText.fontStyle = FontStyle.Bold;
             }
         }
 
@@ -230,7 +261,7 @@ namespace CuteIssac.Item
             }
         }
 
-        private TextMesh CreateRuntimeText(string objectName, Vector3 localPosition, float characterSize)
+        private TextMesh CreateRuntimeText(string objectName, Vector3 localPosition, float characterSize, int sortingOrder)
         {
             TextMesh[] existingTexts = GetComponentsInChildren<TextMesh>(true);
 
@@ -240,6 +271,7 @@ namespace CuteIssac.Item
 
                 if (existingText != null && existingText.gameObject.name == objectName)
                 {
+                    ConfigureTextRenderer(existingText, sortingOrder);
                     return existingText;
                 }
             }
@@ -254,7 +286,79 @@ namespace CuteIssac.Item
             textMesh.characterSize = characterSize;
             textMesh.color = Color.white;
             CuteIssac.UI.LocalizedUiFontProvider.Apply(textMesh);
+            ConfigureTextRenderer(textMesh, sortingOrder);
             return textMesh;
+        }
+
+        private void PresentWorldText(TextMesh text, TextMesh shadow, bool visible, string value, Color color)
+        {
+            if (text != null)
+            {
+                text.gameObject.SetActive(visible);
+                text.text = visible ? value : string.Empty;
+                text.color = color;
+                SetTextRendererEnabled(text, visible);
+            }
+
+            if (shadow != null)
+            {
+                shadow.gameObject.SetActive(visible);
+                shadow.text = visible ? value : string.Empty;
+                shadow.color = worldTextShadowColor;
+                SetTextRendererEnabled(shadow, visible);
+            }
+        }
+
+        private void ConfigureTextRenderer(TextMesh textMesh, int sortingOrder)
+        {
+            if (textMesh == null)
+            {
+                return;
+            }
+
+            MeshRenderer meshRenderer = textMesh.GetComponent<MeshRenderer>();
+            if (meshRenderer == null)
+            {
+                return;
+            }
+
+            if (bodyRenderer != null)
+            {
+                meshRenderer.sortingLayerID = bodyRenderer.sortingLayerID;
+            }
+
+            meshRenderer.sortingOrder = sortingOrder;
+
+            if (textMesh.font != null)
+            {
+                meshRenderer.sharedMaterial = textMesh.font.material;
+            }
+        }
+
+        private static void SetTextRendererEnabled(TextMesh textMesh, bool enabled)
+        {
+            MeshRenderer meshRenderer = textMesh != null ? textMesh.GetComponent<MeshRenderer>() : null;
+            if (meshRenderer != null)
+            {
+                meshRenderer.enabled = enabled;
+            }
+        }
+
+        private static void TryEncapsulateRendererBounds(SpriteRenderer renderer, ref Bounds bounds, ref bool hasBounds)
+        {
+            if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy || renderer.sprite == null)
+            {
+                return;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+                return;
+            }
+
+            bounds.Encapsulate(renderer.bounds);
         }
 
         private static string GetCurrencySuffix(ShopCurrencyType currencyType)
@@ -342,22 +446,47 @@ namespace CuteIssac.Item
 
         private void UpdatePurchaseFlash()
         {
-            float duration = Mathf.Max(0.01f, purchaseFlashDuration);
+            float duration = Mathf.Max(0.01f, _activeFlashDuration);
             float normalized = Mathf.Clamp01(_purchaseFlashRemaining / duration);
 
             if (highlightRenderer != null)
             {
-                Color flashColor = purchaseFlashColor;
-                flashColor.a = Mathf.Lerp(0f, purchaseFlashColor.a, normalized);
+                Color flashColor = _activeFlashColor;
+                flashColor.a = Mathf.Lerp(0f, _activeFlashColor.a, normalized);
                 highlightRenderer.color = flashColor;
                 highlightRenderer.gameObject.SetActive(normalized > 0.02f || _isHighlighted);
             }
 
-            if (soldOverlayRenderer != null)
+            if (soldOverlayRenderer != null && _showSoldOverlayDuringFlash)
             {
                 Color overlayColor = soldOverlayColor;
                 overlayColor.a = Mathf.Max(soldOverlayColor.a, normalized * 0.75f);
                 soldOverlayRenderer.color = overlayColor;
+            }
+        }
+
+        private void BeginFeedbackFlash(Color flashColor, float duration, float scaleMultiplier, bool showSoldOverlay)
+        {
+            CacheInitialScale();
+            _activeFlashColor = flashColor;
+            _activeFlashDuration = Mathf.Max(0.05f, duration);
+            _showSoldOverlayDuringFlash = showSoldOverlay;
+            _purchaseFlashRemaining = _activeFlashDuration;
+
+            if (_hasInitialScale)
+            {
+                transform.localScale = _initialScale * Mathf.Max(1f, scaleMultiplier);
+            }
+
+            if (highlightRenderer != null)
+            {
+                highlightRenderer.gameObject.SetActive(true);
+                highlightRenderer.color = flashColor;
+            }
+
+            if (soldOverlayRenderer != null && showSoldOverlay)
+            {
+                soldOverlayRenderer.gameObject.SetActive(true);
             }
         }
     }

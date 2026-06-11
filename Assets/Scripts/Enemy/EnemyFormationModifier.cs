@@ -48,6 +48,7 @@ namespace CuteIssac.Enemy
         private static Sprite s_CircleSprite;
         private static Sprite s_WhiteSprite;
         private static readonly List<EnemyFormationModifier> s_ActiveModifiers = new();
+        private static readonly Dictionary<int, int> s_ActiveModifierIndicesById = new();
         private static int s_CueSerialCounter;
         private Vector3 _markerBaseLocalPosition;
         private Vector3 _ringBaseScale;
@@ -648,15 +649,43 @@ namespace CuteIssac.Enemy
 
         private void RegisterActiveModifier()
         {
-            if (!s_ActiveModifiers.Contains(this))
+            int instanceId = GetInstanceID();
+            if (s_ActiveModifierIndicesById.ContainsKey(instanceId))
             {
-                s_ActiveModifiers.Add(this);
+                return;
             }
+
+            s_ActiveModifierIndicesById.Add(instanceId, s_ActiveModifiers.Count);
+            s_ActiveModifiers.Add(this);
         }
 
         private void UnregisterActiveModifier()
         {
-            s_ActiveModifiers.Remove(this);
+            int instanceId = GetInstanceID();
+            if (!s_ActiveModifierIndicesById.TryGetValue(instanceId, out int index))
+            {
+                return;
+            }
+
+            int lastIndex = s_ActiveModifiers.Count - 1;
+            s_ActiveModifierIndicesById.Remove(instanceId);
+
+            if (index < 0 || index > lastIndex)
+            {
+                return;
+            }
+
+            if (index != lastIndex)
+            {
+                EnemyFormationModifier movedModifier = s_ActiveModifiers[lastIndex];
+                s_ActiveModifiers[index] = movedModifier;
+                if (movedModifier != null)
+                {
+                    s_ActiveModifierIndicesById[movedModifier.GetInstanceID()] = index;
+                }
+            }
+
+            s_ActiveModifiers.RemoveAt(lastIndex);
         }
 
         private void BuildMarker()

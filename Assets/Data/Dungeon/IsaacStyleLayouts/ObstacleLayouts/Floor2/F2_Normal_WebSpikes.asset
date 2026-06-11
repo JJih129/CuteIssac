@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ff0ba1a9898de44d944e150e347a239, type: 3}
+  m_Name: F2_Normal_WebSpikes
+  m_EditorClassIdentifier: Assembly-CSharp::CuteIssac.Data.Dungeon.RoomObstacleLayoutData
+  layoutId: floor2_f2_normal_webspikes
+  disablesObstacleSpawning: 0
+  obstacles:
+  - prefab: {fileID: 710000100, guid: b8c4ef2a7d1c4c6aa0d8b7e9f4c1a2d3, type: 3}
+    localPosition: {x: -2.2, y: 1.05}
+    rotationZ: 0
+    scaleMultiplier: 1
+  - prefab: {fileID: 710000100, guid: b8c4ef2a7d1c4c6aa0d8b7e9f4c1a2d3, type: 3}
+    localPosition: {x: 2.2, y: -1.05}
+    rotationZ: 0
+    scaleMultiplier: 1
+  - prefab: {fileID: 730000100, guid: 3804a4118b7b40deab67f3003658f9b1, type: 3}
+    localPosition: {x: -0.9, y: -0.6}
+    rotationZ: 0
+    scaleMultiplier: 1
+  - prefab: {fileID: 730000100, guid: 3804a4118b7b40deab67f3003658f9b1, type: 3}
+    localPosition: {x: 0.9, y: 0.6}
+    rotationZ: 0
+    scaleMultiplier: 1

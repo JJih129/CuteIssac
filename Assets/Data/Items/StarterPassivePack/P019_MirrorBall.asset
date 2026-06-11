@@ -22,12 +22,12 @@ MonoBehaviour:
   speedModifier: 0
   rangeModifier: 0
   shotSpeedModifier: 0
-  luckModifier: 0
+  luckModifier: 0.7
   maxHealthModifier: 0
   projectileFlags: 06000000
   itemId: P019
   displayName: Mirror Ball
-  description: Shots bounce off walls.
+  description: Shots bounce off walls. Luck up.
   icon: {fileID: 0}
   rarity: 2
   unlockedByDefault: 1

@@ -317,7 +317,7 @@ MonoBehaviour:
   walkRightFrame2: {fileID: 1996046236813397669, guid: 2b7469945b3471e4fa2b96d0a8b89d22, type: 3}
   walkDownFrame1: {fileID: -1270885261910112879, guid: 2b8e6e6122b3be24cb872a8b3381f030, type: 3}
   walkDownFrame2: {fileID: 594456881102621707, guid: ba6fa82cb7a54cc49aba557294737a8a, type: 3}
-  fastChaseSprite: {fileID: -8345552367059234386, guid: 241dca156d5959f4ba44cfe8be576e0c, type: 3}
+  fastChaseSprite: {fileID: 6445787327838367027, guid: 241dca156d5959f4ba44cfe8be576e0c, type: 3}
   recoverySprite: {fileID: 8526336432290167622, guid: 7e4f60eebde936144a4c464571f03567, type: 3}
   slowWalkFrameInterval: 0.16
   fastWalkFrameInterval: 0.08

@@ -61,6 +61,7 @@ namespace CuteIssac.Enemy
         {
             ResolveReferences();
             CacheInitialSprite();
+            PooledEffectSpawner.Prewarm(transitionEffectPrefab, 1);
             ApplyPhaseVisuals(false, spawnEffect: false);
         }
 

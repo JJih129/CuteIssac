@@ -49,6 +49,9 @@ namespace CuteIssac.Enemy
         private bool _walkFrameToggle;
         private Sprite _lastAppliedSprite;
         private Vector2 _lastFacingDirection = Vector2.down;
+        private Vector3 _baseSpriteLocalScale = Vector3.one;
+        private Vector2 _referenceSpriteWorldSize = Vector2.one;
+        private bool _hasScaleReference;
 
         private void Awake()
         {
@@ -289,7 +292,56 @@ namespace CuteIssac.Enemy
             }
 
             bodySpriteRenderer.sprite = sprite;
+            ApplySpriteSizeNormalization(sprite);
             _lastAppliedSprite = sprite;
+        }
+
+        private void ApplySpriteSizeNormalization(Sprite sprite)
+        {
+            if (bodySpriteRenderer == null || sprite == null)
+            {
+                return;
+            }
+
+            CacheScaleReference();
+
+            Vector2 spriteSize = ResolveSpriteWorldSize(sprite);
+
+            if (spriteSize.x <= Mathf.Epsilon
+                || spriteSize.y <= Mathf.Epsilon
+                || _referenceSpriteWorldSize.x <= Mathf.Epsilon
+                || _referenceSpriteWorldSize.y <= Mathf.Epsilon)
+            {
+                bodySpriteRenderer.transform.localScale = _baseSpriteLocalScale;
+                return;
+            }
+
+            float scaleMultiplier = _referenceSpriteWorldSize.y / spriteSize.y;
+
+            bodySpriteRenderer.transform.localScale = new Vector3(
+                _baseSpriteLocalScale.x * scaleMultiplier,
+                _baseSpriteLocalScale.y * scaleMultiplier,
+                _baseSpriteLocalScale.z);
+        }
+
+        private void CacheScaleReference()
+        {
+            if (_hasScaleReference || bodySpriteRenderer == null)
+            {
+                return;
+            }
+
+            Sprite referenceSprite = ResolveFallbackSprite();
+            Vector2 referenceSize = ResolveSpriteWorldSize(referenceSprite);
+
+            _baseSpriteLocalScale = bodySpriteRenderer.transform.localScale;
+            _referenceSpriteWorldSize = referenceSize;
+            _hasScaleReference = true;
+        }
+
+        private static Vector2 ResolveSpriteWorldSize(Sprite sprite)
+        {
+            return sprite != null ? sprite.bounds.size : Vector2.one;
         }
 
         private void ResolveReferences()

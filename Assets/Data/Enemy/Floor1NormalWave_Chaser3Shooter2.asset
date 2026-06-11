@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 785d4f5d233da034496f8ad678d9b0d6, type: 3}
-  m_Name: Floor1NormalWave_Chaser3Shooter2
+  m_Name: Floor1NormalWave_Macaron2Pudding2_FromLegacyChaser3Shooter2
   m_EditorClassIdentifier: 
-  waveId: f1_normal_chaser_3_shooter_2
+  waveId: f1_normal_macaron_2_pudding_2_legacy_b
   encounterTier: 0
   entries:
-  - enemyId: floor1_chaser
+  - enemyId: floor1_macaron_cat
     enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
-    count: 3
+    count: 2
     difficultyCost: 1
-  - enemyId: floor1_shooter
-    enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
+  - enemyId: floor1_pudding_jellyfish
+    enemyPrefab: {fileID: 930000106, guid: 5a4f7dd499011d8489779b10eb1fe23c, type: 3}
     count: 2
     difficultyCost: 2

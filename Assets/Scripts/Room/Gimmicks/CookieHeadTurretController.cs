@@ -26,6 +26,7 @@ namespace CuteIssac.Room.Gimmicks
         {
             ResolveLocalReferences();
             base.Awake();
+            PrewarmProjectiles();
         }
 
         protected override void Reset()
@@ -65,11 +66,7 @@ namespace CuteIssac.Room.Gimmicks
                 InstigatorCollider = ownerCollider
             };
 
-            if (!_prewarmed && prewarmCount > 0)
-            {
-                PrefabPoolService.Prewarm(bloodTearProjectilePrefab.gameObject, prewarmCount);
-                _prewarmed = true;
-            }
+            PrewarmProjectiles();
 
             EnemyProjectileLogic projectile = PrefabPoolService.Spawn(
                 bloodTearProjectilePrefab,
@@ -87,6 +84,17 @@ namespace CuteIssac.Room.Gimmicks
             {
                 ownerCollider = GetComponent<Collider2D>();
             }
+        }
+
+        private void PrewarmProjectiles()
+        {
+            if (_prewarmed || prewarmCount <= 0 || bloodTearProjectilePrefab == null)
+            {
+                return;
+            }
+
+            PrefabPoolService.EnsurePrewarmed(bloodTearProjectilePrefab.gameObject, prewarmCount);
+            _prewarmed = true;
         }
     }
 }

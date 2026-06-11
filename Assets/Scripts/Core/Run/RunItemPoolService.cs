@@ -16,6 +16,7 @@ namespace CuteIssac.Core.Run
         private readonly HashSet<string> _offeredItemIds = new();
         private readonly HashSet<string> _recentOfferedItemIds = new();
         private readonly Queue<string> _recentOfferedQueue = new();
+        private readonly Dictionary<string, int> _recentOfferedItemCounts = new();
         private readonly HashSet<ItemCategory> _recentOfferedCategories = new();
         private readonly Queue<ItemCategory> _recentOfferedCategoryQueue = new();
         private readonly Dictionary<ItemCategory, int> _recentOfferedCategoryCounts = new();
@@ -46,21 +47,8 @@ namespace CuteIssac.Core.Run
             }
 
             _offeredItemIds.Add(itemData.ItemId);
-            _recentOfferedItemIds.Add(itemData.ItemId);
-            _recentOfferedQueue.Enqueue(itemData.ItemId);
+            RegisterRecentItem(itemData.ItemId);
             RegisterRecentCategory(itemData.ItemCategory);
-
-            while (_recentOfferedQueue.Count > Mathf.Max(1, recentOfferMemory))
-            {
-                string evictedItemId = _recentOfferedQueue.Dequeue();
-
-                if (_recentOfferedQueue.Contains(evictedItemId))
-                {
-                    continue;
-                }
-
-                _recentOfferedItemIds.Remove(evictedItemId);
-            }
         }
 
         public void RegisterAcquired(ItemData itemData)
@@ -134,6 +122,7 @@ namespace CuteIssac.Core.Run
             _offeredItemIds.Clear();
             _recentOfferedItemIds.Clear();
             _recentOfferedQueue.Clear();
+            _recentOfferedItemCounts.Clear();
             _recentOfferedCategories.Clear();
             _recentOfferedCategoryQueue.Clear();
             _recentOfferedCategoryCounts.Clear();
@@ -180,6 +169,47 @@ namespace CuteIssac.Core.Run
                 }
 
                 _recentOfferedCategoryCounts[evictedCategory] = evictedCount;
+            }
+        }
+
+        private void RegisterRecentItem(string itemId)
+        {
+            if (string.IsNullOrWhiteSpace(itemId))
+            {
+                return;
+            }
+
+            _recentOfferedQueue.Enqueue(itemId);
+
+            if (_recentOfferedItemCounts.TryGetValue(itemId, out int existingCount))
+            {
+                _recentOfferedItemCounts[itemId] = existingCount + 1;
+            }
+            else
+            {
+                _recentOfferedItemCounts[itemId] = 1;
+            }
+
+            _recentOfferedItemIds.Add(itemId);
+
+            while (_recentOfferedQueue.Count > Mathf.Max(1, recentOfferMemory))
+            {
+                string evictedItemId = _recentOfferedQueue.Dequeue();
+
+                if (!_recentOfferedItemCounts.TryGetValue(evictedItemId, out int evictedCount))
+                {
+                    continue;
+                }
+
+                evictedCount--;
+                if (evictedCount <= 0)
+                {
+                    _recentOfferedItemCounts.Remove(evictedItemId);
+                    _recentOfferedItemIds.Remove(evictedItemId);
+                    continue;
+                }
+
+                _recentOfferedItemCounts[evictedItemId] = evictedCount;
             }
         }
     }

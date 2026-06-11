@@ -17,7 +17,7 @@ MonoBehaviour:
   flavorText: Still warm to the touch.
   sourcePools: 0000000001000000
   eventFlags: 
-  damageModifier: 0.8
+  damageModifier: 0.9
   tearsModifier: 0
   speedModifier: 0
   rangeModifier: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 
   itemId: P001
   displayName: Blood Marble
-  description: Base damage up.
+  description: Damage up. A clean Isaac-style baseline power item.
   icon: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1

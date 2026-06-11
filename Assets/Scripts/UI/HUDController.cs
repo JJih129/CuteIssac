@@ -63,6 +63,8 @@ namespace CuteIssac.UI
         [SerializeField] private TrinketPanelView trinketPanelView;
         [Tooltip("Replaceable weapon loadout view. If empty, HUDController creates a fallback panel at runtime.")]
         [SerializeField] private WeaponPanelView weaponPanelView;
+        [Tooltip("If enabled, HUDController controls the weapon panel RectTransform. Leave disabled for scene-authored HUD layouts.")]
+        [SerializeField] private bool autoLayoutWeaponPanel;
         [Tooltip("Replaceable recent run trace history strip. If empty, HUDController creates a fallback panel at runtime.")]
         [SerializeField] private LoadoutHistoryPanelView loadoutHistoryPanelView;
         [Tooltip("Replaceable boss HP panel view. Hidden until a boss is explicitly shown.")]
@@ -81,6 +83,13 @@ namespace CuteIssac.UI
         [Header("Fallback Weapon HUD Art")]
         [Tooltip("Optional authored ammo label/icon used by the runtime weapon HUD ammo plate.")]
         [SerializeField] private Sprite weaponAmmoUiSprite;
+        [SerializeField] private Sprite weaponPanelUiSprite;
+        [SerializeField] private Sprite weaponNamePlateUiSprite;
+        [SerializeField] private Sprite weaponAmmoBoxUiSprite;
+        [SerializeField] private Sprite weaponStatusTagUiSprite;
+        [SerializeField] private Sprite weaponReloadTrackUiSprite;
+        [SerializeField] private Sprite weaponReloadFillUiSprite;
+        [SerializeField] private Sprite weaponActiveSlotUiSprite;
 
         [Header("Run Sources")]
         [Tooltip("Optional. Assign the run manager here. If empty, the controller tries to find one in the scene.")]
@@ -106,6 +115,7 @@ namespace CuteIssac.UI
         private bool _warnedMissingMinimapPanelView;
         private bool _warnedMissingTopHudBarView;
         private bool _loggedAutoReboundHudViews;
+        private bool _createdFallbackWeaponPanel;
         private RoomController _observedRoom;
         private float _nextChallengeStatusRefreshTime;
         private int _challengeFeedbackRoomInstanceId = -1;
@@ -484,6 +494,7 @@ namespace CuteIssac.UI
             if (weaponPanelView == null)
             {
                 weaponPanelView = CreateFallbackWeaponPanel();
+                _createdFallbackWeaponPanel = weaponPanelView != null;
             }
 
             ApplyWeaponHudLayout(false);
@@ -570,11 +581,15 @@ namespace CuteIssac.UI
             GameplayRuntimeEvents.PlayerInteractionOutcome += HandlePlayerInteractionOutcome;
             GameplayRuntimeEvents.ChoiceRouteResolved -= HandleChoiceRouteResolved;
             GameplayRuntimeEvents.ChoiceRouteResolved += HandleChoiceRouteResolved;
+            GameplayRuntimeEvents.ShopPurchaseFailed -= HandleShopPurchaseFailed;
+            GameplayRuntimeEvents.ShopPurchaseFailed += HandleShopPurchaseFailed;
 
             if (playerHealth != null)
             {
                 playerHealth.HealthChanged -= HandleHealthChanged;
                 playerHealth.HealthChanged += HandleHealthChanged;
+                playerHealth.SpeedHeartChanged -= HandleSpeedHeartChanged;
+                playerHealth.SpeedHeartChanged += HandleSpeedHeartChanged;
             }
 
             if (playerInventory != null)
@@ -654,10 +669,12 @@ namespace CuteIssac.UI
             GameplayRuntimeEvents.PlayerLoadoutDelta -= HandlePlayerLoadoutDelta;
             GameplayRuntimeEvents.PlayerInteractionOutcome -= HandlePlayerInteractionOutcome;
             GameplayRuntimeEvents.ChoiceRouteResolved -= HandleChoiceRouteResolved;
+            GameplayRuntimeEvents.ShopPurchaseFailed -= HandleShopPurchaseFailed;
 
             if (playerHealth != null)
             {
                 playerHealth.HealthChanged -= HandleHealthChanged;
+                playerHealth.SpeedHeartChanged -= HandleSpeedHeartChanged;
             }
 
             if (playerInventory != null)
@@ -718,7 +735,15 @@ namespace CuteIssac.UI
         {
             if (healthPanelView != null)
             {
-                healthPanelView.SetHealth(currentHealth, maxHealth);
+                healthPanelView.SetHealth(currentHealth, maxHealth, playerHealth != null ? playerHealth.SpeedHeartCount : 0);
+            }
+        }
+
+        private void HandleSpeedHeartChanged(int speedHeartCount)
+        {
+            if (healthPanelView != null && playerHealth != null)
+            {
+                healthPanelView.SetHealth(playerHealth.CurrentHealth, playerHealth.MaxHealth, speedHeartCount);
             }
         }
 
@@ -728,6 +753,13 @@ namespace CuteIssac.UI
             {
                 resourcePanelView.SetResources(resources);
             }
+
+            RefreshRoomStatus();
+        }
+
+        private void HandleShopPurchaseFailed(ShopPurchaseFailedSignal signal)
+        {
+            resourcePanelView?.PulseUnavailableResource(signal.CurrencyType);
         }
 
         private void HandleInventoryChanged()
@@ -1059,7 +1091,7 @@ namespace CuteIssac.UI
         {
             if (healthPanelView != null && playerHealth != null)
             {
-                healthPanelView.SetHealth(playerHealth.CurrentHealth, playerHealth.MaxHealth);
+                healthPanelView.SetHealth(playerHealth.CurrentHealth, playerHealth.MaxHealth, playerHealth.SpeedHeartCount);
             }
 
             if (resourcePanelView != null && playerInventory != null)
@@ -1112,7 +1144,7 @@ namespace CuteIssac.UI
                 return;
             }
 
-            activeItemPanelView.HidePanel();
+            activeItemPanelView.ShowPlaceholder();
         }
 
         private void RefreshSpeedBuffStatus()
@@ -1159,7 +1191,7 @@ namespace CuteIssac.UI
                 return;
             }
 
-            trinketPanelView.HidePanel();
+            trinketPanelView.ShowPlaceholder();
         }
 
         private void RefreshWeaponPanel()
@@ -1346,19 +1378,33 @@ namespace CuteIssac.UI
                 return null;
             }
 
+            ResolveFallbackWeaponHudSprites();
+
             GameObject panelObject = new("WeaponPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(WeaponPanelView));
             RectTransform panelRect = panelObject.GetComponent<RectTransform>();
             panelRect.SetParent(parent, false);
             panelRect.anchorMin = new Vector2(1f, 0f);
             panelRect.anchorMax = new Vector2(1f, 0f);
             panelRect.pivot = new Vector2(1f, 0f);
-            panelRect.anchoredPosition = new Vector2(-32f, 32f);
-            panelRect.sizeDelta = new Vector2(560f, 224f);
+            panelRect.anchoredPosition = new Vector2(-24f, 24f);
+            panelRect.sizeDelta = new Vector2(460f, 228f);
             panelRect.localScale = Vector3.one;
 
             Image backgroundImage = panelObject.GetComponent<Image>();
-            backgroundImage.color = new Color(0.03f, 0.06f, 0.1f, 0.88f);
+            backgroundImage.sprite = null;
+            backgroundImage.color = Color.clear;
             backgroundImage.raycastTarget = false;
+
+            Image panelArtImage = CreateWeaponHudImage(
+                "WeaponPanelArt",
+                panelRect,
+                weaponPanelUiSprite,
+                new Vector2(0f, 1f),
+                new Vector2(0f, 1f),
+                new Vector2(0f, 1f),
+                Vector2.zero,
+                new Vector2(460f, 228f),
+                false);
 
             GameObject iconBackdropObject = new("WeaponIconBackdrop", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             RectTransform iconBackdropRect = iconBackdropObject.GetComponent<RectTransform>();
@@ -1366,10 +1412,14 @@ namespace CuteIssac.UI
             iconBackdropRect.anchorMin = new Vector2(0f, 1f);
             iconBackdropRect.anchorMax = new Vector2(0f, 1f);
             iconBackdropRect.pivot = new Vector2(0f, 1f);
-            iconBackdropRect.anchoredPosition = new Vector2(18f, -18f);
-            iconBackdropRect.sizeDelta = new Vector2(116f, 116f);
+            iconBackdropRect.anchoredPosition = new Vector2(38f, -61f);
+            iconBackdropRect.sizeDelta = new Vector2(95f, 97f);
             Image iconBackdropImage = iconBackdropObject.GetComponent<Image>();
-            iconBackdropImage.color = new Color(0.07f, 0.12f, 0.18f, 0.97f);
+            iconBackdropImage.sprite = weaponActiveSlotUiSprite;
+            iconBackdropImage.preserveAspect = true;
+            iconBackdropImage.color = weaponActiveSlotUiSprite != null
+                ? Color.white
+                : new Color(0.07f, 0.12f, 0.18f, 0.97f);
             iconBackdropImage.raycastTarget = false;
 
             GameObject iconObject = new("WeaponIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -1379,7 +1429,7 @@ namespace CuteIssac.UI
             iconRect.anchorMax = new Vector2(0.5f, 0.5f);
             iconRect.pivot = new Vector2(0.5f, 0.5f);
             iconRect.anchoredPosition = Vector2.zero;
-            iconRect.sizeDelta = new Vector2(88f, 88f);
+            iconRect.sizeDelta = new Vector2(70f, 70f);
             Image iconImage = iconObject.GetComponent<Image>();
             iconImage.raycastTarget = false;
 
@@ -1389,10 +1439,14 @@ namespace CuteIssac.UI
             statusPlateRect.anchorMin = new Vector2(1f, 1f);
             statusPlateRect.anchorMax = new Vector2(1f, 1f);
             statusPlateRect.pivot = new Vector2(1f, 1f);
-            statusPlateRect.anchoredPosition = new Vector2(-18f, -18f);
-            statusPlateRect.sizeDelta = new Vector2(140f, 42f);
+            statusPlateRect.anchoredPosition = new Vector2(-31f, -31f);
+            statusPlateRect.sizeDelta = new Vector2(118f, 46f);
             Image statusPlateImage = statusPlateObject.GetComponent<Image>();
-            statusPlateImage.color = new Color(0.09f, 0.15f, 0.22f, 0.96f);
+            statusPlateImage.sprite = weaponStatusTagUiSprite;
+            statusPlateImage.preserveAspect = true;
+            statusPlateImage.color = weaponStatusTagUiSprite != null
+                ? Color.white
+                : new Color(0.09f, 0.15f, 0.22f, 0.96f);
             statusPlateImage.raycastTarget = false;
 
             GameObject ammoPlateObject = new("WeaponAmmoPlate", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -1401,10 +1455,14 @@ namespace CuteIssac.UI
             ammoPlateRect.anchorMin = new Vector2(0f, 1f);
             ammoPlateRect.anchorMax = new Vector2(0f, 1f);
             ammoPlateRect.pivot = new Vector2(0f, 1f);
-            ammoPlateRect.anchoredPosition = new Vector2(152f, -62f);
-            ammoPlateRect.sizeDelta = new Vector2(246f, 78f);
+            ammoPlateRect.anchoredPosition = new Vector2(161f, -90f);
+            ammoPlateRect.sizeDelta = new Vector2(194f, 79f);
             Image ammoPlateImage = ammoPlateObject.GetComponent<Image>();
-            ammoPlateImage.color = new Color(0.07f, 0.11f, 0.17f, 0.97f);
+            ammoPlateImage.sprite = weaponAmmoBoxUiSprite;
+            ammoPlateImage.preserveAspect = true;
+            ammoPlateImage.color = weaponAmmoBoxUiSprite != null
+                ? Color.white
+                : new Color(0.07f, 0.11f, 0.17f, 0.97f);
             ammoPlateImage.raycastTarget = false;
 
             bool hasAmmoUiSprite = weaponAmmoUiSprite != null;
@@ -1416,8 +1474,8 @@ namespace CuteIssac.UI
                 ammoIconRect.anchorMin = new Vector2(0f, 0.5f);
                 ammoIconRect.anchorMax = new Vector2(0f, 0.5f);
                 ammoIconRect.pivot = new Vector2(0f, 0.5f);
-                ammoIconRect.anchoredPosition = new Vector2(14f, 0f);
-                ammoIconRect.sizeDelta = new Vector2(68f, 28f);
+                ammoIconRect.anchoredPosition = new Vector2(26f, -1f);
+                ammoIconRect.sizeDelta = new Vector2(23f, 41f);
 
                 Image ammoIconImage = ammoIconObject.GetComponent<Image>();
                 ammoIconImage.sprite = weaponAmmoUiSprite;
@@ -1432,10 +1490,14 @@ namespace CuteIssac.UI
             reloadTrackRect.anchorMin = new Vector2(0f, 0f);
             reloadTrackRect.anchorMax = new Vector2(1f, 0f);
             reloadTrackRect.pivot = new Vector2(0.5f, 0f);
-            reloadTrackRect.offsetMin = new Vector2(20f, 16f);
-            reloadTrackRect.offsetMax = new Vector2(-20f, 40f);
+            reloadTrackRect.offsetMin = new Vector2(56f, 20f);
+            reloadTrackRect.offsetMax = new Vector2(-56f, 41f);
             Image reloadTrackImage = reloadTrackObject.GetComponent<Image>();
-            reloadTrackImage.color = new Color(0.16f, 0.24f, 0.34f, 0.94f);
+            reloadTrackImage.sprite = weaponReloadTrackUiSprite;
+            reloadTrackImage.preserveAspect = false;
+            reloadTrackImage.color = weaponReloadTrackUiSprite != null
+                ? Color.white
+                : new Color(0.16f, 0.24f, 0.34f, 0.94f);
             reloadTrackImage.raycastTarget = false;
 
             GameObject reloadFillObject = new("ReloadFill", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -1446,30 +1508,180 @@ namespace CuteIssac.UI
             reloadFillRect.offsetMin = Vector2.zero;
             reloadFillRect.offsetMax = Vector2.zero;
             Image reloadFillImage = reloadFillObject.GetComponent<Image>();
+            reloadFillImage.sprite = weaponReloadFillUiSprite;
             reloadFillImage.type = Image.Type.Filled;
             reloadFillImage.fillMethod = Image.FillMethod.Horizontal;
             reloadFillImage.fillOrigin = 0;
             reloadFillImage.raycastTarget = false;
 
-            Text titleText = CreateFallbackHudText("WeaponTitle", panelRect, new Vector2(152f, -18f), new Vector2(278f, 34f), 30, FontStyle.Bold);
-            Text statusText = CreateFallbackHudText("WeaponStatus", statusPlateRect, new Vector2(0f, 0f), new Vector2(140f, 42f), 20, FontStyle.Bold);
+            if (weaponNamePlateUiSprite != null)
+            {
+                GameObject titlePlateObject = new("WeaponNamePlate", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                RectTransform titlePlateRect = titlePlateObject.GetComponent<RectTransform>();
+                titlePlateRect.SetParent(panelRect, false);
+                titlePlateRect.anchorMin = new Vector2(0f, 1f);
+                titlePlateRect.anchorMax = new Vector2(0f, 1f);
+                titlePlateRect.pivot = new Vector2(0f, 1f);
+                titlePlateRect.anchoredPosition = new Vector2(151f, -23f);
+                titlePlateRect.sizeDelta = new Vector2(197f, 46f);
+
+                Image titlePlateImage = titlePlateObject.GetComponent<Image>();
+                titlePlateImage.sprite = weaponNamePlateUiSprite;
+                titlePlateImage.preserveAspect = false;
+                titlePlateImage.raycastTarget = false;
+                titlePlateImage.color = Color.white;
+            }
+
+            Text titleText = CreateFallbackHudText("WeaponTitle", panelRect, new Vector2(159f, -31f), new Vector2(179f, 31f), 23, FontStyle.Bold);
+            titleText.alignment = TextAnchor.MiddleCenter;
+            Text statusText = CreateFallbackHudText("WeaponStatus", statusPlateRect, new Vector2(0f, 0f), new Vector2(118f, 44f), 18, FontStyle.Bold);
             statusText.alignment = TextAnchor.MiddleCenter;
             statusText.rectTransform.anchorMin = Vector2.zero;
             statusText.rectTransform.anchorMax = Vector2.one;
             statusText.rectTransform.pivot = new Vector2(0.5f, 0.5f);
             statusText.rectTransform.anchoredPosition = Vector2.zero;
             statusText.rectTransform.sizeDelta = Vector2.zero;
-            Vector2 ammoTextPosition = hasAmmoUiSprite ? new Vector2(88f, -5f) : new Vector2(12f, -5f);
-            Vector2 ammoTextSize = hasAmmoUiSprite ? new Vector2(146f, 68f) : new Vector2(220f, 68f);
-            Text ammoText = CreateFallbackHudText("WeaponAmmo", ammoPlateRect, ammoTextPosition, ammoTextSize, 52, FontStyle.Bold);
+            Vector2 ammoTextPosition = hasAmmoUiSprite ? new Vector2(61f, -3f) : new Vector2(18f, -3f);
+            Vector2 ammoTextSize = hasAmmoUiSprite ? new Vector2(110f, 69f) : new Vector2(156f, 69f);
+            Text ammoText = CreateFallbackHudText("WeaponAmmo", ammoPlateRect, ammoTextPosition, ammoTextSize, 46, FontStyle.Bold);
             ammoText.alignment = TextAnchor.MiddleLeft;
-            Text detailText = CreateFallbackHudText("WeaponDetail", panelRect, new Vector2(20f, -152f), new Vector2(520f, 26f), 18, FontStyle.Normal);
-            Text loadoutText = CreateFallbackHudText("WeaponLoadout", panelRect, new Vector2(20f, -182f), new Vector2(520f, 22f), 16, FontStyle.Normal);
+            Text detailText = CreateFallbackHudText("WeaponDetail", panelRect, new Vector2(54f, -164f), new Vector2(353f, 23f), 15, FontStyle.Bold);
+            detailText.alignment = TextAnchor.MiddleCenter;
+            Text loadoutText = CreateFallbackHudText("WeaponLoadout", panelRect, new Vector2(69f, -187f), new Vector2(322f, 20f), 12, FontStyle.Normal);
+            loadoutText.alignment = TextAnchor.MiddleCenter;
 
             WeaponPanelView view = panelObject.GetComponent<WeaponPanelView>();
-            view.ConfigureRuntimeView(panelObject, backgroundImage, iconBackdropImage, iconImage, statusPlateImage, ammoPlateImage, reloadTrackImage, reloadFillImage, titleText, statusText, ammoText, detailText, loadoutText);
+            view.ConfigureRuntimeView(panelObject, panelArtImage != null ? panelArtImage : backgroundImage, iconBackdropImage, iconImage, statusPlateImage, ammoPlateImage, reloadTrackImage, reloadFillImage, titleText, statusText, ammoText, detailText, loadoutText);
             view.ShowPlaceholder();
             return view;
+        }
+
+        private void ResolveFallbackWeaponHudSprites()
+        {
+            ResolveFallbackWeaponHudSpritesFromAsset();
+
+            if (weaponAmmoUiSprite == null)
+            {
+                return;
+            }
+
+            Texture2D sourceTexture = weaponAmmoUiSprite.texture;
+            if (sourceTexture == null)
+            {
+                return;
+            }
+
+            AssignSpriteIfMissing(ref weaponPanelUiSprite, CreateFallbackWeaponHudSprite(sourceTexture, 24f, 316f, 180f, 89f, "RuntimeWeaponPanel"));
+            AssignSpriteIfMissing(ref weaponNamePlateUiSprite, CreateFallbackWeaponHudSprite(sourceTexture, 212f, 332f, 106f, 43f, "RuntimeWeaponNamePlate"));
+            AssignSpriteIfMissing(ref weaponAmmoBoxUiSprite, CreateFallbackWeaponHudSprite(sourceTexture, 328f, 319f, 95f, 68f, "RuntimeWeaponAmmoBox"));
+            AssignSpriteIfMissing(ref weaponStatusTagUiSprite, CreateFallbackWeaponHudSprite(sourceTexture, 433f, 330f, 108f, 44f, "RuntimeWeaponStatusTag"));
+            AssignSpriteIfMissing(ref weaponReloadTrackUiSprite, CreateFallbackWeaponHudSprite(sourceTexture, 31f, 67f, 119f, 31f, "RuntimeWeaponReloadTrack"));
+            AssignSpriteIfMissing(ref weaponReloadFillUiSprite, CreateFallbackWeaponHudSprite(sourceTexture, 22f, 229f, 84f, 31f, "RuntimeWeaponReloadFill"));
+            AssignSpriteIfMissing(ref weaponActiveSlotUiSprite, CreateFallbackWeaponHudSprite(sourceTexture, 129f, 208f, 85f, 87f, "RuntimeWeaponActiveSlot"));
+        }
+
+        private void ResolveFallbackWeaponHudSpritesFromAsset()
+        {
+#if UNITY_EDITOR
+            if (weaponPanelUiSprite != null
+                && weaponNamePlateUiSprite != null
+                && weaponAmmoBoxUiSprite != null
+                && weaponStatusTagUiSprite != null
+                && weaponReloadTrackUiSprite != null
+                && weaponReloadFillUiSprite != null
+                && weaponActiveSlotUiSprite != null
+                && weaponAmmoUiSprite != null)
+            {
+                return;
+            }
+
+            UnityEngine.Object[] assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath("Assets/Art/HUD/anrl-removebg-preview.png");
+            if (assets == null || assets.Length == 0)
+            {
+                return;
+            }
+
+            AssignSpriteIfMissing(ref weaponPanelUiSprite, FindSpriteAsset(assets, "anrl-removebg-preview_0"));
+            AssignSpriteIfMissing(ref weaponNamePlateUiSprite, FindSpriteAsset(assets, "anrl-removebg-preview_1"));
+            AssignSpriteIfMissing(ref weaponAmmoBoxUiSprite, FindSpriteAsset(assets, "anrl-removebg-preview_2"));
+            AssignSpriteIfMissing(ref weaponStatusTagUiSprite, FindSpriteAsset(assets, "anrl-removebg-preview_3"));
+            AssignSpriteIfMissing(ref weaponReloadFillUiSprite, FindSpriteAsset(assets, "anrl-removebg-preview_4"));
+            AssignSpriteIfMissing(ref weaponActiveSlotUiSprite, FindSpriteAsset(assets, "anrl-removebg-preview_5"));
+            AssignSpriteIfMissing(ref weaponAmmoUiSprite, FindSpriteAsset(assets, "anrl-removebg-preview_9"));
+            AssignSpriteIfMissing(ref weaponReloadTrackUiSprite, FindSpriteAsset(assets, "anrl-removebg-preview_14"));
+#endif
+        }
+
+        private static void AssignSpriteIfMissing(ref Sprite target, Sprite candidate)
+        {
+            if (target == null && candidate != null)
+            {
+                target = candidate;
+            }
+        }
+
+        private static Sprite FindSpriteAsset(UnityEngine.Object[] assets, string spriteName)
+        {
+            if (assets == null || string.IsNullOrEmpty(spriteName))
+            {
+                return null;
+            }
+
+            for (int index = 0; index < assets.Length; index++)
+            {
+                if (assets[index] is Sprite sprite && sprite.name == spriteName)
+                {
+                    return sprite;
+                }
+            }
+
+            return null;
+        }
+
+        private static Sprite CreateFallbackWeaponHudSprite(Texture2D texture, float x, float y, float width, float height, string spriteName)
+        {
+            if (texture == null || width <= 0f || height <= 0f)
+            {
+                return null;
+            }
+
+            Rect rect = new(x, y, width, height);
+            Sprite sprite = Sprite.Create(texture, rect, new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            sprite.name = spriteName;
+            return sprite;
+        }
+
+        private static Image CreateWeaponHudImage(
+            string objectName,
+            RectTransform parent,
+            Sprite sprite,
+            Vector2 anchorMin,
+            Vector2 anchorMax,
+            Vector2 pivot,
+            Vector2 anchoredPosition,
+            Vector2 sizeDelta,
+            bool preserveAspect)
+        {
+            if (parent == null || sprite == null)
+            {
+                return null;
+            }
+
+            GameObject imageObject = new(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            RectTransform imageRect = imageObject.GetComponent<RectTransform>();
+            imageRect.SetParent(parent, false);
+            imageRect.anchorMin = anchorMin;
+            imageRect.anchorMax = anchorMax;
+            imageRect.pivot = pivot;
+            imageRect.anchoredPosition = anchoredPosition;
+            imageRect.sizeDelta = sizeDelta;
+
+            Image image = imageObject.GetComponent<Image>();
+            image.sprite = sprite;
+            image.preserveAspect = preserveAspect;
+            image.raycastTarget = false;
+            image.color = Color.white;
+            return image;
         }
 
         private LoadoutHistoryPanelView CreateFallbackLoadoutHistoryPanel()
@@ -1577,21 +1789,26 @@ namespace CuteIssac.UI
                 return;
             }
 
+            if (!autoLayoutWeaponPanel && !_createdFallbackWeaponPanel)
+            {
+                return;
+            }
+
             if (centerForCarousel)
             {
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);
                 panelRect.anchorMax = new Vector2(0.5f, 0.5f);
                 panelRect.pivot = new Vector2(0.5f, 0.5f);
                 panelRect.anchoredPosition = new Vector2(0f, -12f);
-                panelRect.sizeDelta = new Vector2(720f, 280f);
+                panelRect.sizeDelta = new Vector2(620f, 300f);
                 return;
             }
 
             panelRect.anchorMin = new Vector2(1f, 0f);
             panelRect.anchorMax = new Vector2(1f, 0f);
             panelRect.pivot = new Vector2(1f, 0f);
-            panelRect.anchoredPosition = new Vector2(-32f, 32f);
-            panelRect.sizeDelta = new Vector2(560f, 224f);
+            panelRect.anchoredPosition = new Vector2(-24f, 24f);
+            panelRect.sizeDelta = new Vector2(460f, 228f);
         }
 
         private T FindLocalView<T>() where T : Component
@@ -2431,6 +2648,48 @@ namespace CuteIssac.UI
             return true;
         }
 
+        private bool TryBuildHiddenSecretDoorStatus(out string headline, out string detail, out Color accentColor)
+        {
+            headline = string.Empty;
+            detail = string.Empty;
+            accentColor = new Color(0.82f, 0.55f, 1f, 1f);
+
+            if (_observedRoom == null || _observedRoom.RoomType == RoomType.Secret)
+            {
+                return false;
+            }
+
+            IReadOnlyList<RoomDoor> roomDoors = _observedRoom.RoomDoors;
+            if (roomDoors == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < roomDoors.Count; i++)
+            {
+                RoomDoor roomDoor = roomDoors[i];
+                if (roomDoor == null || !roomDoor.HasUnrevealedSecretAccess)
+                {
+                    continue;
+                }
+
+                RoomController connectedRoom = roomDoor.ConnectedRoom;
+                if (connectedRoom == null || connectedRoom.RoomType != RoomType.Secret)
+                {
+                    continue;
+                }
+
+                bool hasBomb = playerInventory != null && playerInventory.Bombs > 0;
+                headline = hasBomb ? "비밀문 의심" : "폭탄 필요";
+                detail = hasBomb
+                    ? $"{ResolveSecretRevealDirectionLabel(roomDoor.DoorDirection)} 벽에 폭탄 사용 가능"
+                    : $"{ResolveSecretRevealDirectionLabel(roomDoor.DoorDirection)} 비밀문은 폭탄이 필요";
+                return true;
+            }
+
+            return false;
+        }
+
         private bool TryBuildSecretRewardReadyStatus(out string headline, out string detail, out Color accentColor)
         {
             headline = string.Empty;
@@ -2491,6 +2750,103 @@ namespace CuteIssac.UI
             }
 
             return false;
+        }
+
+        private bool TryBuildLockedKeyDoorStatus(out RoomType roomType, out string headline, out string detail, out Color accentColor)
+        {
+            roomType = RoomType.Normal;
+            headline = string.Empty;
+            detail = string.Empty;
+            accentColor = new Color(0.45f, 0.82f, 1f, 1f);
+
+            if (_observedRoom == null || playerInventory == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<RoomDoor> roomDoors = _observedRoom.RoomDoors;
+            if (roomDoors == null)
+            {
+                return false;
+            }
+
+            int availableKeys = playerInventory.Keys;
+            RoomDoor bestDoor = null;
+            RoomController bestRoom = null;
+            int bestPriority = int.MinValue;
+
+            for (int i = 0; i < roomDoors.Count; i++)
+            {
+                RoomDoor roomDoor = roomDoors[i];
+                if (roomDoor == null || roomDoor.IsLocked)
+                {
+                    continue;
+                }
+
+                int requiredKeys = roomDoor.RequiredKeysToEnter;
+                if (requiredKeys <= 0 || availableKeys >= requiredKeys)
+                {
+                    continue;
+                }
+
+                RoomController connectedRoom = roomDoor.ConnectedRoom;
+                if (connectedRoom == null)
+                {
+                    continue;
+                }
+
+                int priority = ResolveLockedKeyDoorPriority(connectedRoom.RoomType);
+                if (priority <= bestPriority)
+                {
+                    continue;
+                }
+
+                bestPriority = priority;
+                bestDoor = roomDoor;
+                bestRoom = connectedRoom;
+            }
+
+            if (bestDoor == null || bestRoom == null)
+            {
+                return false;
+            }
+
+            int missingKeys = Mathf.Max(1, bestDoor.RequiredKeysToEnter - availableKeys);
+            roomType = bestRoom.RoomType;
+            headline = $"{ResolveRoomTypeStatusLabel(bestRoom.RoomType)} 잠김";
+            detail = $"{ResolveSecretRevealDirectionLabel(bestDoor.DoorDirection)} 문은 열쇠 {missingKeys}개 필요";
+            accentColor = Color.Lerp(RoomTraversalGuidanceController.ResolveRoomAccent(bestRoom.RoomType), new Color(0.45f, 0.82f, 1f, 1f), 0.66f);
+            return true;
+        }
+
+        private static int ResolveLockedKeyDoorPriority(RoomType roomType)
+        {
+            return roomType switch
+            {
+                RoomType.Treasure => 40,
+                RoomType.Shop => 30,
+                RoomType.Secret => 24,
+                RoomType.Challenge => 18,
+                RoomType.MiniBoss => 16,
+                RoomType.Boss => 14,
+                _ => 10
+            };
+        }
+
+        private static string ResolveRoomTypeStatusLabel(RoomType roomType)
+        {
+            return roomType switch
+            {
+                RoomType.Treasure => "보물방",
+                RoomType.Shop => "상점",
+                RoomType.Secret => "비밀방",
+                RoomType.Boss => "보스방",
+                RoomType.MiniBoss => "엘리트방",
+                RoomType.Challenge => "도전방",
+                RoomType.Curse => "저주방",
+                RoomType.Trap => "함정방",
+                _ => "방"
+            };
         }
 
         private bool TryBuildCurseAltarStatus(out string headline, out string detail, out Color accentColor, out bool emphasize)
@@ -3652,6 +4008,12 @@ namespace CuteIssac.UI
                 return;
             }
 
+            if (TryBuildHiddenSecretDoorStatus(out string hiddenSecretHeadline, out string hiddenSecretDetail, out Color hiddenSecretAccent))
+            {
+                minimapPanelView.SetRoomStatus(RoomType.Secret, hiddenSecretHeadline, hiddenSecretDetail, hiddenSecretAccent, true, "BOMB");
+                return;
+            }
+
             if (TryBuildSecretRewardReadyStatus(out string secretRewardHeadline, out string secretRewardDetail, out Color secretRewardAccent))
             {
                 minimapPanelView.SetRoomStatus(RoomType.Secret, secretRewardHeadline, secretRewardDetail, secretRewardAccent, true);
@@ -3823,6 +4185,22 @@ namespace CuteIssac.UI
                     choiceRouteEyebrow,
                     choiceRouteCompactTag,
                     choiceRouteDetailEyebrow);
+                return;
+            }
+
+            if (TryBuildLockedKeyDoorStatus(
+                out RoomType lockedKeyDoorRoomType,
+                out string lockedKeyDoorHeadline,
+                out string lockedKeyDoorDetail,
+                out Color lockedKeyDoorAccent))
+            {
+                minimapPanelView.SetRoomStatus(
+                    lockedKeyDoorRoomType,
+                    lockedKeyDoorHeadline,
+                    lockedKeyDoorDetail,
+                    lockedKeyDoorAccent,
+                    true,
+                    "KEY");
                 return;
             }
 

@@ -23,8 +23,16 @@ namespace CuteIssac.Player
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private PlayerVisual playerVisual;
         [SerializeField] private PlayerShieldState playerShieldState;
+        [SerializeField] private PlayerSpeedBuffState speedBuffState;
+
+        [Header("Speed Heart")]
+        [SerializeField] [Min(0)] private int maxSpeedHeartCount = 3;
+        [SerializeField] [Min(0.05f)] private float defaultSpeedHeartBuffDuration = 10f;
+        [SerializeField] [Min(0.05f)] private float defaultSpeedHeartMoveSpeedMultiplier = 1.2f;
+        [SerializeField] private PlayerSpeedBuffState.DuplicateBuffPolicy defaultSpeedHeartDuplicatePolicy = PlayerSpeedBuffState.DuplicateBuffPolicy.RefreshDuration;
 
         public event Action<float, float> HealthChanged;
+        public event Action<int> SpeedHeartChanged;
         public event Action Damaged;
         public event Action<DamageInfo> DamagedWithInfo;
         public event Action<float> InvulnerabilityGranted;
@@ -37,15 +45,24 @@ namespace CuteIssac.Player
         public bool IsInvulnerable { get; private set; }
         public bool IsDead { get; private set; }
         public bool IsDebugInvulnerable { get; private set; }
+        public int SpeedHeartCount => _speedHeartCount;
+        public int MaxSpeedHeartCount => Mathf.Max(0, maxSpeedHeartCount);
 
         private float _invulnerabilityRemaining;
         private float _runtimeMaxHealthBonus;
         private float _pickupMaxHealthBonus;
         private float _routeBreakthroughDamageMultiplier = 1f;
         private float _routeBreakthroughInvulnerabilityBonus;
+        private int _speedHeartCount;
+        private float _speedHeartBuffDuration;
+        private float _speedHeartMoveSpeedMultiplier;
+        private PlayerSpeedBuffState.DuplicateBuffPolicy _speedHeartDuplicatePolicy;
+        private Sprite _speedHeartIcon;
+        private string _speedHeartDisplayName = "스피드 하트";
 
         private void Awake()
         {
+            _speedHeartDuplicatePolicy = defaultSpeedHeartDuplicatePolicy;
             CurrentHealth = startingHealth >= 0f
                 ? Mathf.Min(MaxHealth, startingHealth)
                 : MaxHealth;
@@ -196,6 +213,45 @@ namespace CuteIssac.Player
             return granted;
         }
 
+        public bool TryGrantSpeedHeart(
+            int amount,
+            float buffDuration,
+            float moveSpeedMultiplier,
+            PlayerSpeedBuffState.DuplicateBuffPolicy duplicatePolicy,
+            Sprite statusIcon,
+            string displayName)
+        {
+            if (IsDead)
+            {
+                return false;
+            }
+
+            int resolvedAmount = Mathf.Max(0, amount);
+            int resolvedMax = MaxSpeedHeartCount;
+            int available = Mathf.Max(0, resolvedMax - _speedHeartCount);
+            int granted = Mathf.Min(resolvedAmount, available);
+
+            if (granted <= 0)
+            {
+                return false;
+            }
+
+            _speedHeartCount += granted;
+            _speedHeartBuffDuration = Mathf.Max(0.05f, buffDuration);
+            _speedHeartMoveSpeedMultiplier = Mathf.Max(0.05f, moveSpeedMultiplier);
+            _speedHeartDuplicatePolicy = duplicatePolicy;
+            _speedHeartIcon = statusIcon;
+            _speedHeartDisplayName = string.IsNullOrWhiteSpace(displayName) ? "스피드 하트" : displayName;
+            SpeedHeartChanged?.Invoke(_speedHeartCount);
+            HealthChanged?.Invoke(CurrentHealth, MaxHealth);
+            return true;
+        }
+
+        public bool CanReceiveSpeedHeart(int amount = 1)
+        {
+            return !IsDead && amount > 0 && _speedHeartCount < MaxSpeedHeartCount;
+        }
+
         /// <summary>
         /// Adds pickup-owned max health without being overwritten by PlayerStats recalculation.
         /// </summary>
@@ -299,6 +355,11 @@ namespace CuteIssac.Player
             {
                 playerShieldState = GetComponent<PlayerShieldState>();
             }
+
+            if (speedBuffState == null)
+            {
+                speedBuffState = GetComponent<PlayerSpeedBuffState>();
+            }
         }
 
         private void HandleDevelopmentHotkeys()
@@ -360,6 +421,11 @@ namespace CuteIssac.Player
                 return;
             }
 
+            if (!ignoreInvulnerability && TryConsumeSpeedHeart(in damageInfo, grantInvulnerability))
+            {
+                return;
+            }
+
             DamageInfo resolvedDamageInfo = new(damageAmount, damageInfo.HitDirection, damageInfo.Source, damageInfo.KnockbackForce);
             CurrentHealth = Mathf.Max(0f, CurrentHealth - damageAmount);
 
@@ -375,7 +441,7 @@ namespace CuteIssac.Player
             GameplayRuntimeEvents.RaisePlayerDamaged(new PlayerDamagedSignal(this, resolvedDamageInfo, CurrentHealth, MaxHealth));
             GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
                 ResolveDamageFeedbackPosition(in resolvedDamageInfo),
-                $"-{Mathf.CeilToInt(damageAmount)}",
+                FloatingFeedbackTextCache.GetNegativeCeil(damageAmount),
                 new Color(1f, 0.42f, 0.42f, 1f),
                 0.58f,
                 0.72f,
@@ -405,6 +471,75 @@ namespace CuteIssac.Player
             IsInvulnerable = true;
             _invulnerabilityRemaining = Mathf.Max(_invulnerabilityRemaining, resolvedDuration);
             return !wasInvulnerable || _invulnerabilityRemaining > previousRemaining + 0.001f;
+        }
+
+        private bool TryConsumeSpeedHeart(in DamageInfo damageInfo, bool grantInvulnerability)
+        {
+            if (_speedHeartCount <= 0)
+            {
+                return false;
+            }
+
+            _speedHeartCount--;
+            SpeedHeartChanged?.Invoke(_speedHeartCount);
+            HealthChanged?.Invoke(CurrentHealth, MaxHealth);
+
+            ResolveSpeedBuffState();
+            speedBuffState?.TryApplyBuff(
+                ResolveSpeedHeartBuffDuration(),
+                ResolveSpeedHeartMoveSpeedMultiplier(),
+                _speedHeartDuplicatePolicy,
+                _speedHeartIcon,
+                _speedHeartDisplayName);
+
+            float resolvedInvulnerabilityDuration = invulnerabilityDuration + _routeBreakthroughInvulnerabilityBonus;
+            if (grantInvulnerability && resolvedInvulnerabilityDuration > 0f)
+            {
+                GrantInvulnerabilityInternal(resolvedInvulnerabilityDuration);
+                InvulnerabilityGranted?.Invoke(resolvedInvulnerabilityDuration);
+            }
+
+            DamageInfo blockedDamageInfo = new(0f, damageInfo.HitDirection, damageInfo.Source, damageInfo.KnockbackForce);
+            DamagedWithInfo?.Invoke(blockedDamageInfo);
+            Damaged?.Invoke();
+            GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
+                ResolveDamageFeedbackPosition(in blockedDamageInfo),
+                "SPEED HEART",
+                new Color(0.42f, 0.82f, 1f, 1f),
+                0.62f,
+                0.72f,
+                1.16f,
+                visualProfile: FloatingFeedbackVisualProfile.Pickup));
+            GameAudioEvents.Raise(GameAudioEventType.PlayerDamaged, transform.position, false, 0.82f, 1.08f);
+            return true;
+        }
+
+        private void ResolveSpeedBuffState()
+        {
+            if (speedBuffState != null)
+            {
+                return;
+            }
+
+            speedBuffState = GetComponent<PlayerSpeedBuffState>();
+            if (speedBuffState == null)
+            {
+                speedBuffState = gameObject.AddComponent<PlayerSpeedBuffState>();
+            }
+        }
+
+        private float ResolveSpeedHeartBuffDuration()
+        {
+            return _speedHeartBuffDuration > 0f
+                ? _speedHeartBuffDuration
+                : defaultSpeedHeartBuffDuration;
+        }
+
+        private float ResolveSpeedHeartMoveSpeedMultiplier()
+        {
+            return _speedHeartMoveSpeedMultiplier > 0f
+                ? _speedHeartMoveSpeedMultiplier
+                : defaultSpeedHeartMoveSpeedMultiplier;
         }
 
         private Vector3 ResolveDamageFeedbackPosition(in DamageInfo damageInfo)

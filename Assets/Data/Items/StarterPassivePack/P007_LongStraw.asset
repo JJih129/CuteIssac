@@ -20,19 +20,22 @@ MonoBehaviour:
   damageModifier: 0
   tearsModifier: 0
   speedModifier: 0
-  rangeModifier: 1.2
+  rangeModifier: 1.6
   shotSpeedModifier: 0
   luckModifier: 0
   maxHealthModifier: 0
   projectileFlags: 
   itemId: P007
   displayName: Long Straw
-  description: Range up.
+  description: Range up. Shots last longer.
   icon: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1
   unlockKey: 
   itemTags: 
   statModifiers: []
-  projectileModifiers: []
+  projectileModifiers:
+  - modifierType: 1
+    operation: 0
+    value: 0.28
   gameplayEventEffects: []

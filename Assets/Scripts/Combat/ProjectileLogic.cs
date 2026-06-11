@@ -20,7 +20,106 @@ namespace CuteIssac.Combat
     [RequireComponent(typeof(Collider2D))]
     public sealed class ProjectileLogic : MonoBehaviour
     {
-        private static readonly Dictionary<int, List<ProjectileLogic>> ActiveOrbitProjectilesByInstigator = new();
+        private sealed class OrbitProjectileGroup
+        {
+            public readonly List<ProjectileLogic> Projectiles = new();
+            public readonly Dictionary<ProjectileLogic, int> Indices = new();
+
+            public int Count => Projectiles.Count;
+
+            public void Add(ProjectileLogic projectile)
+            {
+                if (projectile == null || Indices.ContainsKey(projectile))
+                {
+                    return;
+                }
+
+                Indices.Add(projectile, Projectiles.Count);
+                Projectiles.Add(projectile);
+            }
+
+            public bool TryGetIndex(ProjectileLogic projectile, out int index)
+            {
+                index = -1;
+                return projectile != null && Indices.TryGetValue(projectile, out index);
+            }
+
+            public void RemoveSwap(ProjectileLogic projectile)
+            {
+                if (!TryGetIndex(projectile, out int index))
+                {
+                    return;
+                }
+
+                RemoveAtSwap(index);
+            }
+
+            public ProjectileLogic RemoveOldest()
+            {
+                if (Projectiles.Count == 0)
+                {
+                    return null;
+                }
+
+                ProjectileLogic oldest = Projectiles[0];
+                RemoveAtStable(0);
+                return oldest;
+            }
+
+            public void CompactNulls()
+            {
+                for (int index = Projectiles.Count - 1; index >= 0; index--)
+                {
+                    if (Projectiles[index] == null)
+                    {
+                        RemoveAtSwap(index);
+                    }
+                }
+            }
+
+            private void RemoveAtSwap(int index)
+            {
+                int lastIndex = Projectiles.Count - 1;
+                ProjectileLogic removed = Projectiles[index];
+                if (removed != null)
+                {
+                    Indices.Remove(removed);
+                }
+
+                if (index != lastIndex)
+                {
+                    ProjectileLogic moved = Projectiles[lastIndex];
+                    Projectiles[index] = moved;
+                    if (moved != null)
+                    {
+                        Indices[moved] = index;
+                    }
+                }
+
+                Projectiles.RemoveAt(lastIndex);
+            }
+
+            private void RemoveAtStable(int index)
+            {
+                ProjectileLogic removed = Projectiles[index];
+                if (removed != null)
+                {
+                    Indices.Remove(removed);
+                }
+                Projectiles.RemoveAt(index);
+
+                for (int movedIndex = index; movedIndex < Projectiles.Count; movedIndex++)
+                {
+                    ProjectileLogic moved = Projectiles[movedIndex];
+                    if (moved != null)
+                    {
+                        Indices[moved] = movedIndex;
+                    }
+                }
+            }
+        }
+
+        private static readonly Dictionary<int, OrbitProjectileGroup> ActiveOrbitProjectilesByInstigator = new();
 
         [Header("Optional Presentation")]
         [Tooltip("Optional visual bridge for sprite, trail, and effects. The projectile still works without it.")]
@@ -94,6 +193,7 @@ namespace CuteIssac.Combat
         private bool _isInitialized;
         private bool _isDespawning;
         private bool _isOrbiting;
+        private int _orbitInstigatorId;
         private Vector3 _initialLocalScale;
         private readonly HashSet<int> _hitTargetIds = new();
         private readonly List<Collider2D> _ignoredColliders = new();
@@ -209,6 +309,7 @@ namespace CuteIssac.Combat
             _traits = default;
             _openingCadenceRole = OpeningCadenceVolleyRole.None;
             _openingCadenceRoleWeight = 0f;
+            _orbitInstigatorId = 0;
             _orbitDamageCooldowns.Clear();
             _isInitialized = false;
             _isDespawning = false;
@@ -323,16 +424,14 @@ namespace CuteIssac.Combat
                 return;
             }
 
-            if (DamageableResolver.TryResolve(other, out IDamageable damageable))
+            if (DamageableResolver.TryResolveTarget(other, out DamageableResolver.ResolvedTarget target))
             {
-                if (!CanDamage(other))
+                if (!CanDamage(in target))
                 {
                     return;
                 }
 
-                EnemyHealth enemyHealth = other.GetComponentInParent<EnemyHealth>();
-
-                int targetId = ResolveTargetId(other, damageable);
+                int targetId = target.TargetId;
 
                 if (_isOrbiting)
                 {
@@ -355,14 +454,14 @@ namespace CuteIssac.Combat
                     _hitTargetIds.Add(targetId);
                 }
 
-                damageable.ApplyDamage(new DamageInfo(_damage, _travelDirection, _instigator, _knockback));
+                target.Damageable.ApplyDamage(new DamageInfo(_damage, _travelDirection, _instigator, _knockback));
                 TryApplyLifestealReward(impactPosition);
-                if (enemyHealth != null)
+                if (target.EnemyHealth != null)
                 {
                     GameplayRuntimeEvents.RaisePlayerProjectileHit(new PlayerProjectileHitSignal(
                         _instigator,
                         this,
-                        enemyHealth,
+                        target.EnemyHealth,
                         impactPosition,
                         _travelDirection,
                         _damage,
@@ -507,56 +606,59 @@ namespace CuteIssac.Combat
             }
 
             int instigatorId = _instigator.GetInstanceID();
-            if (!ActiveOrbitProjectilesByInstigator.TryGetValue(instigatorId, out List<ProjectileLogic> orbitGroup))
+            if (!ActiveOrbitProjectilesByInstigator.TryGetValue(instigatorId, out OrbitProjectileGroup orbitGroup))
             {
-                orbitGroup = new List<ProjectileLogic>();
+                orbitGroup = new OrbitProjectileGroup();
                 ActiveOrbitProjectilesByInstigator.Add(instigatorId, orbitGroup);
             }
 
-            CompactOrbitGroup(orbitGroup);
+            orbitGroup.CompactNulls();
             int maxOrbitCount = ResolveMaxOrbitCount(traits.OrbitStrength);
 
             while (orbitGroup.Count >= maxOrbitCount && orbitGroup.Count > 0)
             {
-                ProjectileLogic oldest = orbitGroup[0];
-                orbitGroup.RemoveAt(0);
+                ProjectileLogic oldest = orbitGroup.RemoveOldest();
                 if (oldest != null && oldest != this)
                 {
                     oldest.ForceDissipate();
                 }
             }
 
-            if (!orbitGroup.Contains(this))
-            {
-                orbitGroup.Add(this);
-            }
-
+            orbitGroup.Add(this);
+            _orbitInstigatorId = instigatorId;
             return true;
         }
 
         private void UnregisterOrbit()
         {
-            if (_instigator == null)
+            int instigatorId = _orbitInstigatorId;
+            if (instigatorId == 0 && _instigator != null)
+            {
+                instigatorId = _instigator.GetInstanceID();
+            }
+
+            if (instigatorId == 0)
             {
                 _isOrbiting = false;
                 return;
             }
 
-            int instigatorId = _instigator.GetInstanceID();
-            if (!ActiveOrbitProjectilesByInstigator.TryGetValue(instigatorId, out List<ProjectileLogic> orbitGroup))
+            if (!ActiveOrbitProjectilesByInstigator.TryGetValue(instigatorId, out OrbitProjectileGroup orbitGroup))
             {
                 _isOrbiting = false;
+                _orbitInstigatorId = 0;
                 return;
             }
 
-            orbitGroup.Remove(this);
-            CompactOrbitGroup(orbitGroup);
+            orbitGroup.RemoveSwap(this);
+            orbitGroup.CompactNulls();
             if (orbitGroup.Count == 0)
             {
                 ActiveOrbitProjectilesByInstigator.Remove(instigatorId);
             }
 
             _isOrbiting = false;
+            _orbitInstigatorId = 0;
         }
 
         public void ForceDissipate(ProjectileImpactType impactType = ProjectileImpactType.None)
@@ -582,18 +684,16 @@ namespace CuteIssac.Combat
                 return;
             }
 
-            int instigatorId = _instigator.GetInstanceID();
-            if (!ActiveOrbitProjectilesByInstigator.TryGetValue(instigatorId, out List<ProjectileLogic> orbitGroup))
+            int instigatorId = _orbitInstigatorId != 0 ? _orbitInstigatorId : _instigator.GetInstanceID();
+            if (!ActiveOrbitProjectilesByInstigator.TryGetValue(instigatorId, out OrbitProjectileGroup orbitGroup))
             {
                 return;
             }
 
-            CompactOrbitGroup(orbitGroup);
-            int orbitIndex = orbitGroup.IndexOf(this);
-            if (orbitIndex < 0)
+            if (!orbitGroup.TryGetIndex(this, out int orbitIndex))
             {
                 orbitGroup.Add(this);
-                orbitIndex = orbitGroup.Count - 1;
+                orbitGroup.TryGetIndex(this, out orbitIndex);
             }
 
             int orbitCount = Mathf.Max(1, orbitGroup.Count);
@@ -664,23 +764,24 @@ namespace CuteIssac.Combat
             for (int index = 0; index < hitCount; index++)
             {
                 Collider2D hit = _laserHitBuffer[index];
-                if (hit == null || hit == _instigatorCollider || !CanDamage(hit))
+                if (hit == null || hit == _instigatorCollider)
                 {
                     continue;
                 }
 
-                if (!DamageableResolver.TryResolve(hit, out IDamageable damageable))
+                if (!DamageableResolver.TryResolveTarget(hit, out DamageableResolver.ResolvedTarget target)
+                    || !CanDamage(in target))
                 {
                     continue;
                 }
 
-                int targetId = ResolveTargetId(hit, damageable);
+                int targetId = target.TargetId;
                 if (_hitTargetIds.Contains(targetId) || !_laserProcessedTargets.Add(targetId))
                 {
                     continue;
                 }
 
-                damageable.ApplyDamage(new DamageInfo(damage, direction, _instigator, _knockback));
+                target.Damageable.ApplyDamage(new DamageInfo(damage, direction, _instigator, _knockback));
             }
 
             for (int index = 0; index < hitCount; index++)
@@ -998,22 +1099,6 @@ namespace CuteIssac.Combat
             return Vector2.Distance(point, closestPoint);
         }
 
-        private static void CompactOrbitGroup(List<ProjectileLogic> orbitGroup)
-        {
-            if (orbitGroup == null)
-            {
-                return;
-            }
-
-            for (int index = orbitGroup.Count - 1; index >= 0; index--)
-            {
-                if (orbitGroup[index] == null)
-                {
-                    orbitGroup.RemoveAt(index);
-                }
-            }
-        }
-
         private static Vector2 Rotate(Vector2 direction, float angleDegrees)
         {
             float radians = angleDegrees * Mathf.Deg2Rad;
@@ -1060,14 +1145,14 @@ namespace CuteIssac.Combat
             _ignoredColliders.Clear();
         }
 
-        private bool CanDamage(Collider2D other)
+        private bool CanDamage(in DamageableResolver.ResolvedTarget target)
         {
             switch (_damageTarget)
             {
                 case ProjectileDamageTarget.PlayerOnly:
-                    return other.GetComponentInParent<PlayerHealth>() != null;
+                    return target.IsPlayer;
                 case ProjectileDamageTarget.EnemyOnly:
-                    return other.GetComponentInParent<EnemyHealth>() != null;
+                    return target.IsEnemy;
                 default:
                     return true;
             }
@@ -1119,16 +1204,6 @@ namespace CuteIssac.Combat
             }
 
             return closestTarget;
-        }
-
-        private static int ResolveTargetId(Collider2D other, IDamageable damageable)
-        {
-            if (damageable is Object unityObject)
-            {
-                return unityObject.GetInstanceID();
-            }
-
-            return other.GetInstanceID();
         }
     }
 }

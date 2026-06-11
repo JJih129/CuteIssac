@@ -17,8 +17,8 @@ MonoBehaviour:
   flavorText: Sweet, but not kind.
   sourcePools: 0000000001000000
   eventFlags: 
-  damageModifier: -0.4
-  tearsModifier: 0.7
+  damageModifier: -0.55
+  tearsModifier: 0.82
   speedModifier: 0
   rangeModifier: 0
   shotSpeedModifier: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 
   itemId: P011
   displayName: White Sugar
-  description: Faster fire rate, slight damage down.
+  description: Extreme fire rate up, damage down.
   icon: {fileID: 0}
   rarity: 1
   unlockedByDefault: 1

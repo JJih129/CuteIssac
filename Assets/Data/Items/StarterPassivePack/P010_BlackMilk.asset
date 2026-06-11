@@ -17,8 +17,8 @@ MonoBehaviour:
   flavorText: Wrong color. Strong effect.
   sourcePools: 0000000004000000
   eventFlags: 
-  damageModifier: 1.5
-  tearsModifier: -0.3
+  damageModifier: 1.8
+  tearsModifier: -0.36
   speedModifier: 0
   rangeModifier: 0
   shotSpeedModifier: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 
   itemId: P010
   displayName: Black Milk
-  description: Damage up, slower fire rate.
+  description: Massive damage up, clearly slower fire rate.
   icon: {fileID: 0}
   rarity: 1
   unlockedByDefault: 1

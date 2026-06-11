@@ -31,14 +31,22 @@ namespace CuteIssac.Item
         [SerializeField] private Color pickupRangeIndicatorColor = new(1f, 0.86f, 0.34f, 0.66f);
 
         private bool _isCollected;
+        private bool _collectorCollisionsIgnored;
+        private bool _hasCachedPickupFeedbackLabel;
+        private string _cachedPickupFeedbackLabel;
         private Coroutine _releaseCoroutine;
         private LineRenderer _pickupRangeIndicator;
         private static Material s_RangeIndicatorMaterial;
+        private static PlayerController s_cachedCollectorController;
+        private static PlayerInventory s_cachedCollectorInventory;
+        private static PlayerHealth s_cachedCollectorHealth;
+        private static PlayerItemManager s_cachedCollectorItemManager;
+        private static Collider2D[] s_cachedCollectorColliders;
 
         public event Action<BasePickupLogic> Collected;
 
         protected PickupVisual PickupVisual => pickupVisual;
-        public string PreviewFeedbackLabel => BuildPickupFeedbackLabel();
+        public string PreviewFeedbackLabel => ResolvePickupFeedbackLabel();
         public Color PreviewFeedbackColor => ResolvePickupFeedbackColor();
 
         protected virtual void Awake()
@@ -51,6 +59,8 @@ namespace CuteIssac.Item
         protected virtual void OnEnable()
         {
             _isCollected = false;
+            _collectorCollisionsIgnored = false;
+            InvalidatePickupFeedbackCache();
 
             if (_releaseCoroutine != null)
             {
@@ -92,6 +102,11 @@ namespace CuteIssac.Item
                 return false;
             }
 
+            if (TryResolveActiveCollector(other, out playerInventory, out playerHealth, out playerItemManager))
+            {
+                return true;
+            }
+
             playerInventory = other.GetComponentInParent<PlayerInventory>();
             playerHealth = other.GetComponentInParent<PlayerHealth>();
             playerItemManager = other.GetComponentInParent<PlayerItemManager>();
@@ -105,8 +120,24 @@ namespace CuteIssac.Item
         /// </summary>
         protected void IgnoreCollectorCollisions(Collider2D other)
         {
-            if (pickupTrigger == null || other == null)
+            if (_collectorCollisionsIgnored || pickupTrigger == null || other == null)
             {
+                return;
+            }
+
+            if (TryResolveActiveCollectorColliders(other, out Collider2D[] cachedCollectorColliders))
+            {
+                for (int i = 0; i < cachedCollectorColliders.Length; i++)
+                {
+                    Collider2D collectorCollider = cachedCollectorColliders[i];
+
+                    if (collectorCollider != null && collectorCollider != pickupTrigger)
+                    {
+                        Physics2D.IgnoreCollision(pickupTrigger, collectorCollider, true);
+                    }
+                }
+
+                _collectorCollisionsIgnored = true;
                 return;
             }
 
@@ -121,6 +152,8 @@ namespace CuteIssac.Item
                     Physics2D.IgnoreCollision(pickupTrigger, collectorCollider, true);
                 }
             }
+
+            _collectorCollisionsIgnored = true;
         }
 
         protected void CompleteCollection()
@@ -133,7 +166,7 @@ namespace CuteIssac.Item
             _isCollected = true;
             GameplayFeedbackEvents.RaiseFloatingFeedback(new FloatingFeedbackRequest(
                 ResolvePickupFeedbackPosition(),
-                BuildPickupFeedbackLabel(),
+                ResolvePickupFeedbackLabel(),
                 ResolvePickupFeedbackColor(),
                 0.7f,
                 0.75f,
@@ -208,6 +241,120 @@ namespace CuteIssac.Item
         }
 
         protected abstract bool TryCollect(PlayerInventory inventory, PlayerHealth health, PlayerItemManager itemManager);
+
+        protected void InvalidatePickupFeedbackCache()
+        {
+            _hasCachedPickupFeedbackLabel = false;
+            _cachedPickupFeedbackLabel = null;
+        }
+
+        private string ResolvePickupFeedbackLabel()
+        {
+            if (_hasCachedPickupFeedbackLabel)
+            {
+                return _cachedPickupFeedbackLabel;
+            }
+
+            _cachedPickupFeedbackLabel = BuildPickupFeedbackLabel();
+            _hasCachedPickupFeedbackLabel = true;
+            return _cachedPickupFeedbackLabel;
+        }
+
+        private static bool TryResolveActiveCollector(
+            Collider2D other,
+            out PlayerInventory playerInventory,
+            out PlayerHealth playerHealth,
+            out PlayerItemManager playerItemManager)
+        {
+            playerInventory = null;
+            playerHealth = null;
+            playerItemManager = null;
+
+            PlayerController activeController = PlayerRegistry.ActiveController;
+            if (activeController == null || other == null || !IsColliderUnderActiveCollector(other, activeController))
+            {
+                return false;
+            }
+
+            RefreshActiveCollectorCache(activeController);
+            playerInventory = s_cachedCollectorInventory;
+            playerHealth = s_cachedCollectorHealth;
+            playerItemManager = s_cachedCollectorItemManager;
+            return playerInventory != null || playerHealth != null || playerItemManager != null;
+        }
+
+        private static bool TryResolveActiveCollectorColliders(Collider2D other, out Collider2D[] collectorColliders)
+        {
+            collectorColliders = null;
+
+            PlayerController activeController = PlayerRegistry.ActiveController;
+            if (activeController == null || other == null || !IsColliderUnderActiveCollector(other, activeController))
+            {
+                return false;
+            }
+
+            RefreshActiveCollectorCache(activeController);
+            collectorColliders = s_cachedCollectorColliders;
+            return collectorColliders != null && collectorColliders.Length > 0;
+        }
+
+        private static bool IsColliderUnderActiveCollector(Collider2D other, PlayerController activeController)
+        {
+            if (other == null || activeController == null)
+            {
+                return false;
+            }
+
+            Transform collectorRoot = activeController.transform;
+            Transform otherTransform = other.transform;
+            return otherTransform == collectorRoot || otherTransform.IsChildOf(collectorRoot);
+        }
+
+        private static void RefreshActiveCollectorCache(PlayerController activeController)
+        {
+            if (activeController == null)
+            {
+                s_cachedCollectorController = null;
+                s_cachedCollectorInventory = null;
+                s_cachedCollectorHealth = null;
+                s_cachedCollectorItemManager = null;
+                s_cachedCollectorColliders = null;
+                return;
+            }
+
+            if (s_cachedCollectorController != activeController)
+            {
+                s_cachedCollectorController = activeController;
+                s_cachedCollectorInventory = null;
+                s_cachedCollectorHealth = null;
+                s_cachedCollectorItemManager = null;
+                s_cachedCollectorColliders = activeController.GetComponentsInChildren<Collider2D>(true);
+            }
+
+            if (s_cachedCollectorInventory == null)
+            {
+                PlayerInventory activeInventory = PlayerRegistry.ActiveInventory;
+                s_cachedCollectorInventory = PlayerRegistry.IsComponentUnderTransform(activeInventory, activeController.transform)
+                    ? activeInventory
+                    : activeController.GetComponent<PlayerInventory>();
+            }
+
+            if (s_cachedCollectorHealth == null)
+            {
+                PlayerHealth activeHealth = PlayerRegistry.ActiveHealth;
+                s_cachedCollectorHealth = PlayerRegistry.IsComponentUnderTransform(activeHealth, activeController.transform)
+                    ? activeHealth
+                    : activeController.GetComponent<PlayerHealth>();
+            }
+
+            if (s_cachedCollectorItemManager == null)
+            {
+                PlayerItemManager activeItemManager = PlayerRegistry.ActiveItemManager;
+                s_cachedCollectorItemManager = PlayerRegistry.IsComponentUnderTransform(activeItemManager, activeController.transform)
+                    ? activeItemManager
+                    : activeController.GetComponent<PlayerItemManager>();
+            }
+        }
 
         protected virtual string BuildPickupFeedbackLabel()
         {
@@ -376,12 +523,14 @@ namespace CuteIssac.Item
 
         protected virtual void Reset()
         {
+            InvalidatePickupFeedbackCache();
             ResolveReferences();
             ConfigureTriggerCollider();
         }
 
         protected virtual void OnValidate()
         {
+            InvalidatePickupFeedbackCache();
             ResolveReferences();
             ConfigureTriggerCollider();
         }

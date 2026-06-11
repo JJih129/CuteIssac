@@ -18,4 +18,4 @@ MonoBehaviour:
   - enemyId: floor1_macaron_cat
     enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     count: 2
-    difficultyCost: 2
+    difficultyCost: 1

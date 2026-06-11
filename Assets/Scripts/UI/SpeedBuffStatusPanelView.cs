@@ -70,7 +70,7 @@ namespace CuteIssac.UI
 
             if (labelText != null)
             {
-                labelText.text = string.IsNullOrWhiteSpace(displayName) ? "스피드 사탕" : displayName;
+                labelText.text = string.IsNullOrWhiteSpace(displayName) ? "스피드 하트" : displayName;
             }
         }
 

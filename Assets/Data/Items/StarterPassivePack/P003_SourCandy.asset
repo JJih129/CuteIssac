@@ -18,16 +18,16 @@ MonoBehaviour:
   sourcePools: 0000000001000000
   eventFlags: 
   damageModifier: 0
-  tearsModifier: 0.35
+  tearsModifier: 0.34
   speedModifier: 0
   rangeModifier: 0
-  shotSpeedModifier: 0
+  shotSpeedModifier: 0.08
   luckModifier: 0
   maxHealthModifier: 0
   projectileFlags: 
   itemId: P003
   displayName: Sour Candy
-  description: Fire rate up.
+  description: Fire rate and shot speed up.
   icon: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1

@@ -1,2 +1,19 @@
 fileFormatVersion: 2
 guid: 2a9024ccd16f2af429dc94d7299f07fd
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - weaponAmmoUiSprite: {fileID: 8766029622200758570, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  - weaponPanelUiSprite: {fileID: -8825028299691005727, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  - weaponNamePlateUiSprite: {fileID: 4561509497542768799, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  - weaponAmmoBoxUiSprite: {fileID: -2923041028969560183, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  - weaponStatusTagUiSprite: {fileID: -250819814189389502, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  - weaponReloadTrackUiSprite: {fileID: 4925395011777349477, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  - weaponReloadFillUiSprite: {fileID: -2436204984005785915, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  - weaponActiveSlotUiSprite: {fileID: -2873731770067863720, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

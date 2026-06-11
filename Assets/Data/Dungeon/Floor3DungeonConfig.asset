@@ -83,7 +83,7 @@ MonoBehaviour:
     minimumCount: 0
     maximumCount: 1
   sharedLayoutSets:
-  - {fileID: 11400000, guid: 92d4a1cfb88e466f800693623c1cc852, type: 2}
+  - {fileID: 11400000, guid: 9653be560e55ffb45a0d4f1093551ce2, type: 2}
   enemyPool: {fileID: 11400000, guid: 1a3e3c3f4f214e1fa1d9f8194d9f0303, type: 2}
   roomTheme: {fileID: 11400000, guid: c7d8b5b64b08498fadf4ef5d46d8a303, type: 2}
   normalRoomEnemyBudget: 8

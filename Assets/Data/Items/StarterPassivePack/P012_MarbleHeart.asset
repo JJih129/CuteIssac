@@ -27,7 +27,7 @@ MonoBehaviour:
   projectileFlags: 
   itemId: P012
   displayName: Marble Heart
-  description: Max health up.
+  description: Max health up. Combat room clears can restore a small amount.
   icon: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1
@@ -35,4 +35,15 @@ MonoBehaviour:
   itemTags: 
   statModifiers: []
   projectileModifiers: []
-  gameplayEventEffects: []
+  gameplayEventEffects:
+  - triggerType: 3
+    effectType: 4
+    requirePlayerSource: 1
+    requireCombatEncounter: 1
+    triggerChance: 0.45
+    internalCooldown: 0
+    healAmount: 0.5
+    timedEffectDuration: 8
+    feedbackLabel: HEART +0.5
+    statModifiers: []
+    projectileModifiers: []

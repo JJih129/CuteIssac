@@ -90,6 +90,7 @@ namespace CuteIssac.Room
         [SerializeField] [Range(0f, 1f)] private float recentPreferredImpactHitBiasFloor = 0.64f;
 
         private readonly List<ArenaPressurePulseHazard> _activeHazards = new();
+        private readonly List<ArenaPressurePulseHazard> _pooledHazards = new();
         private readonly List<Vector2> _hazardPositionBuffer = new();
         private RoomController _boundRoom;
         private BossEnemyController _trackedBossController;
@@ -600,14 +601,57 @@ namespace CuteIssac.Room
         private void SpawnHazard(Vector2 position, float radius, Color color, float resolvedTelegraphDuration)
         {
             Transform parent = pressureRoot != null ? pressureRoot : transform;
-            GameObject hazardObject = new($"ArenaPulse_{_activeHazards.Count + 1}");
+            ArenaPressurePulseHazard hazard = GetOrCreateHazard();
+            GameObject hazardObject = hazard.gameObject;
+            hazardObject.name = $"ArenaPulse_{_activeHazards.Count + 1}";
             hazardObject.layer = gameObject.layer;
             hazardObject.transform.SetParent(parent, false);
             hazardObject.transform.position = new Vector3(position.x, position.y, 0f);
-
-            ArenaPressurePulseHazard hazard = hazardObject.AddComponent<ArenaPressurePulseHazard>();
+            hazardObject.SetActive(true);
             hazard.Configure(roomController, radius, resolvedTelegraphDuration, hazardDamage, hazardKnockback, color);
             _activeHazards.Add(hazard);
+        }
+
+        private ArenaPressurePulseHazard GetOrCreateHazard()
+        {
+            for (int index = _pooledHazards.Count - 1; index >= 0; index--)
+            {
+                ArenaPressurePulseHazard pooledHazard = _pooledHazards[index];
+                _pooledHazards.RemoveAt(index);
+
+                if (pooledHazard != null)
+                {
+                    return pooledHazard;
+                }
+            }
+
+            GameObject hazardObject = new("ArenaPulse");
+            ArenaPressurePulseHazard hazard = hazardObject.AddComponent<ArenaPressurePulseHazard>();
+            hazard.Completed += HandleHazardCompleted;
+            return hazard;
+        }
+
+        private void HandleHazardCompleted(ArenaPressurePulseHazard hazard)
+        {
+            ReturnHazardToPool(hazard);
+        }
+
+        private void ReturnHazardToPool(ArenaPressurePulseHazard hazard)
+        {
+            if (hazard == null)
+            {
+                return;
+            }
+
+            _activeHazards.Remove(hazard);
+            hazard.ResetForReuse();
+            hazard.transform.SetParent(pressureRoot != null ? pressureRoot : transform, false);
+            hazard.gameObject.SetActive(false);
+
+            if (!_pooledHazards.Contains(hazard))
+            {
+                _pooledHazards.Add(hazard);
+            }
         }
 
         private Vector2 ResolvePrimaryTarget(Bounds roomBounds, float resolvedCenterWeight, float resolvedHazardRadius)
@@ -1714,14 +1758,7 @@ namespace CuteIssac.Room
                     continue;
                 }
 
-                if (Application.isPlaying)
-                {
-                    Destroy(hazard.gameObject);
-                }
-                else
-                {
-                    DestroyImmediate(hazard.gameObject);
-                }
+                ReturnHazardToPool(hazard);
             }
 
             _activeHazards.Clear();

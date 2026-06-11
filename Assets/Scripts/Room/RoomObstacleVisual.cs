@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CuteIssac.Data.Room;
 using UnityEngine;
 
 namespace CuteIssac.Room
@@ -13,6 +14,10 @@ namespace CuteIssac.Room
         [Header("Authored Renderers")]
         [SerializeField] private SpriteRenderer bodyRenderer;
         [SerializeField] private SpriteRenderer accentRenderer;
+
+        [Header("Art Set")]
+        [SerializeField] private RoomObstacleArtSet artSet;
+        [SerializeField] private bool preferArtSet = true;
 
         [Header("Fallback Shape")]
         [SerializeField] private bool useProceduralVisual = true;
@@ -59,6 +64,9 @@ namespace CuteIssac.Room
         private float _flashRemaining;
         private Color _currentFlashColor;
         private RoomObstacleController _obstacleController;
+        private bool _hasCachedSortingOrders;
+        private int _baseBodySortingOrder;
+        private int _baseAccentSortingOrder;
         private readonly List<SpriteRenderer> _proceduralRenderers = new();
         private readonly List<Color> _proceduralBaseColors = new();
         private static Sprite s_whiteSprite;
@@ -120,8 +128,18 @@ namespace CuteIssac.Room
 
             if (!useProceduralVisual)
             {
+                if (TryApplyArtSetVisual())
+                {
+                    return;
+                }
+
                 SetProceduralRootActive(false);
                 SetAuthoredRenderersVisible(true);
+                return;
+            }
+
+            if (TryApplyArtSetVisual())
+            {
                 return;
             }
 
@@ -129,6 +147,126 @@ namespace CuteIssac.Room
             RebuildProceduralVisual();
             SetAuthoredRenderersVisible(false);
             SetProceduralRootActive(true);
+        }
+
+        private bool TryApplyArtSetVisual()
+        {
+            if (!preferArtSet || artSet == null || !artSet.TryGetEntry(ResolveObstacleType(), out RoomObstacleArtSet.Entry entry) || entry == null || !entry.HasBodySprite)
+            {
+                return false;
+            }
+
+            EnsureArtRenderers();
+            CacheSortingOrders();
+            SetProceduralRootActive(false);
+            ApplyRendererArt(bodyRenderer, entry.BodySprite, entry.BodyColor, entry.BodyLocalOffset, entry.BodyLocalScale, entry.BodyRotationZ, _baseBodySortingOrder, entry.BodySortingOffset, true);
+            ApplyRendererArt(accentRenderer, entry.AccentSprite, entry.AccentColor, entry.AccentLocalOffset, entry.AccentLocalScale, entry.AccentRotationZ, _baseAccentSortingOrder, entry.AccentSortingOffset, entry.HasAccentSprite);
+            return true;
+        }
+
+        private void EnsureArtRenderers()
+        {
+            SpriteRenderer rootRenderer = GetComponent<SpriteRenderer>();
+
+            if (bodyRenderer == null || bodyRenderer.transform == transform)
+            {
+                SpriteRenderer referenceRenderer = bodyRenderer != null ? bodyRenderer : rootRenderer;
+                bodyRenderer = CreateArtRenderer("ObstacleBody", 0, referenceRenderer);
+
+                if (rootRenderer != null && rootRenderer != bodyRenderer)
+                {
+                    rootRenderer.enabled = false;
+                }
+            }
+
+            if (accentRenderer == null)
+            {
+                accentRenderer = CreateArtRenderer("ObstacleAccent", 1);
+            }
+        }
+
+        private SpriteRenderer CreateArtRenderer(string childName, int sortingOffset, SpriteRenderer referenceRenderer = null)
+        {
+            Transform existingChild = transform.Find(childName);
+            GameObject childObject = existingChild != null ? existingChild.gameObject : new GameObject(childName);
+            childObject.transform.SetParent(transform, false);
+            childObject.transform.localPosition = Vector3.zero;
+            childObject.transform.localRotation = Quaternion.identity;
+            childObject.transform.localScale = Vector3.one;
+            childObject.layer = gameObject.layer;
+
+            SpriteRenderer renderer = childObject.GetComponent<SpriteRenderer>();
+
+            if (renderer == null)
+            {
+                renderer = childObject.AddComponent<SpriteRenderer>();
+            }
+
+            referenceRenderer ??= bodyRenderer != null ? bodyRenderer : GetComponent<SpriteRenderer>();
+
+            if (referenceRenderer != null)
+            {
+                renderer.sortingLayerID = referenceRenderer.sortingLayerID;
+                renderer.sortingOrder = referenceRenderer.sortingOrder + sortingOffset;
+            }
+            else
+            {
+                renderer.sortingOrder = proceduralSortingOrder + sortingOffset;
+            }
+
+            return renderer;
+        }
+
+        private void CacheSortingOrders()
+        {
+            if (_hasCachedSortingOrders)
+            {
+                return;
+            }
+
+            _baseBodySortingOrder = bodyRenderer != null ? bodyRenderer.sortingOrder : proceduralSortingOrder;
+            _baseAccentSortingOrder = accentRenderer != null ? accentRenderer.sortingOrder : _baseBodySortingOrder + 1;
+            _hasCachedSortingOrders = true;
+        }
+
+        private void ApplyRendererArt(
+            SpriteRenderer target,
+            Sprite sprite,
+            Color color,
+            Vector2 localOffset,
+            Vector2 localScale,
+            float rotationZ,
+            int baseSortingOrder,
+            int sortingOffset,
+            bool visible)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            target.enabled = visible;
+
+            if (!visible)
+            {
+                return;
+            }
+
+            target.sprite = sprite;
+            target.color = ApplyIdleTint(color);
+            target.transform.localPosition = new Vector3(localOffset.x, localOffset.y, 0f);
+            target.transform.localScale = new Vector3(localScale.x, localScale.y, 1f);
+            target.transform.localRotation = Quaternion.Euler(0f, 0f, rotationZ);
+
+            if (bodyRenderer != null && target != bodyRenderer)
+            {
+                target.sortingLayerID = bodyRenderer.sortingLayerID;
+                target.sortingOrder = _baseBodySortingOrder + sortingOffset;
+            }
+            else
+            {
+                target.sortingOrder = baseSortingOrder + sortingOffset;
+            }
         }
 
         private void EnsureProceduralRoot()

@@ -22,12 +22,12 @@ MonoBehaviour:
   speedModifier: 0
   rangeModifier: 0
   shotSpeedModifier: 0
-  luckModifier: 1
+  luckModifier: 1.5
   maxHealthModifier: 0
   projectileFlags: 
   itemId: P009
   displayName: Lucky Tooth
-  description: Luck up.
+  description: Luck up. Kills can pay out coins.
   icon: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1
@@ -35,4 +35,16 @@ MonoBehaviour:
   itemTags: 
   statModifiers: []
   projectileModifiers: []
-  gameplayEventEffects: []
+  gameplayEventEffects:
+  - triggerType: 1
+    effectType: 0
+    requirePlayerSource: 1
+    requireCombatEncounter: 1
+    triggerChance: 0.28
+    internalCooldown: 0.15
+    luckBonusChancePerPoint: 0.015
+    coinAmount: 1
+    timedEffectDuration: 8
+    feedbackLabel: LUCK +1C
+    statModifiers: []
+    projectileModifiers: []

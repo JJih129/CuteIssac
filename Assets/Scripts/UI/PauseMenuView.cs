@@ -1,3 +1,4 @@
+using CuteIssac.Core.Settings;
 using CuteIssac.Player;
 using UnityEngine;
 using UnityEngine.UI;
@@ -34,16 +35,16 @@ namespace CuteIssac.UI
         [SerializeField] private Text quitButtonText;
 
         [Header("Theme")]
-        [SerializeField] private Color dimmerColor = new(0f, 0f, 0f, 0.58f);
-        [SerializeField] private Color panelColor = new(0.9f, 0.82f, 0.68f, 0.98f);
-        [SerializeField] private Color titleColor = new(0.18f, 0.14f, 0.1f, 1f);
-        [SerializeField] private Color statLabelColor = new(0.34f, 0.25f, 0.17f, 0.95f);
-        [SerializeField] private Color statValueColor = new(0.18f, 0.14f, 0.1f, 1f);
-        [SerializeField] private Color enabledButtonTextColor = new(0.22f, 0.18f, 0.14f, 1f);
-        [SerializeField] private Color disabledButtonTextColor = new(0.22f, 0.18f, 0.14f, 0.6f);
-        [SerializeField] private Color buttonBaseColor = new(1f, 1f, 1f, 0.08f);
-        [SerializeField] private Color selectedButtonColor = new(0.42f, 0.56f, 0.7f, 0.24f);
-        [SerializeField] private Color selectedButtonTextColor = new(0.14f, 0.18f, 0.24f, 1f);
+        [SerializeField] private Color dimmerColor = new(0.02f, 0.02f, 0.025f, 0.72f);
+        [SerializeField] private Color panelColor = new(0.12f, 0.105f, 0.125f, 0.96f);
+        [SerializeField] private Color titleColor = new(0.98f, 0.93f, 0.86f, 1f);
+        [SerializeField] private Color statLabelColor = new(0.74f, 0.68f, 0.6f, 0.95f);
+        [SerializeField] private Color statValueColor = new(1f, 0.92f, 0.74f, 1f);
+        [SerializeField] private Color enabledButtonTextColor = new(0.98f, 0.94f, 0.88f, 1f);
+        [SerializeField] private Color disabledButtonTextColor = new(0.98f, 0.94f, 0.88f, 0.45f);
+        [SerializeField] private Color buttonBaseColor = new(1f, 1f, 1f, 0.075f);
+        [SerializeField] private Color selectedButtonColor = new(0.9f, 0.5f, 0.34f, 0.34f);
+        [SerializeField] private Color selectedButtonTextColor = new(1f, 0.96f, 0.88f, 1f);
         [SerializeField] [Min(1f)] private float selectedButtonScale = 1.035f;
 
         public Button SettingsButton => settingsButton;
@@ -205,8 +206,8 @@ namespace CuteIssac.UI
                 settingsButton,
                 ref settingsButtonText,
                 new Vector2(-230f, -662f),
-                "<size=15>메뉴</size>\n<b>설정</b>\n<size=13>준비 중</size>",
-                disabledButtonTextColor);
+                "<size=15>옵션</size>\n<b>설정</b>\n<size=13>볼륨 조정</size>",
+                enabledButtonTextColor);
 
             resumeButton = EnsureButton(
                 panelRect,
@@ -290,14 +291,14 @@ namespace CuteIssac.UI
 
             if (settingsButton != null)
             {
-                settingsButton.interactable = false;
+                settingsButton.interactable = true;
             }
 
             if (settingsButtonText != null)
             {
                 settingsButtonText.supportRichText = true;
-                settingsButtonText.text = "<size=15>메뉴</size>\n<b>설정</b>\n<size=13>준비 중</size>";
-                settingsButtonText.color = disabledButtonTextColor;
+                settingsButtonText.text = "<size=15>옵션</size>\n<b>설정</b>\n<size=13>볼륨 조정</size>";
+                settingsButtonText.color = enabledButtonTextColor;
             }
 
             if (resumeButtonText != null)
@@ -317,6 +318,80 @@ namespace CuteIssac.UI
             ApplyButtonTheme(settingsButton, false);
             ApplyButtonTheme(resumeButton, true);
             ApplyButtonTheme(quitButton, true);
+            ApplyOverviewCopy(snapshot);
+            RefreshSelectionState(resumeButton);
+        }
+
+        public void ShowSettings(GameOptionsData options)
+        {
+            if (overlayRoot != null)
+            {
+                overlayRoot.SetActive(true);
+            }
+
+            options ??= new GameOptionsData();
+
+            if (dimmerImage != null)
+            {
+                dimmerImage.color = dimmerColor;
+            }
+
+            if (panelImage != null)
+            {
+                panelImage.color = panelColor;
+            }
+
+            if (statsSectionImage != null)
+            {
+                statsSectionImage.color = new Color(1f, 1f, 1f, 0.1f);
+            }
+
+            if (actionSectionImage != null)
+            {
+                actionSectionImage.color = new Color(0.9f, 0.5f, 0.34f, 0.14f);
+            }
+
+            if (badgeText != null)
+            {
+                badgeText.supportRichText = true;
+                badgeText.text = "<b>OPTIONS</b>";
+                badgeText.color = new Color(1f, 0.88f, 0.76f, 1f);
+            }
+
+            if (titleText != null)
+            {
+                titleText.supportRichText = true;
+                titleText.text = "<size=18>ESC: 설정 닫기</size>\n<size=52><b>설정</b></size>";
+                titleText.color = titleColor;
+            }
+
+            if (statsHeaderText != null)
+            {
+                statsHeaderText.supportRichText = true;
+                statsHeaderText.text = "<size=18>현재 옵션</size>\n<b>게임 설정</b>";
+                statsHeaderText.color = titleColor;
+            }
+
+            if (actionHeaderText != null)
+            {
+                actionHeaderText.supportRichText = true;
+                actionHeaderText.text = "<size=18>볼륨 조정</size>\n<b>10% 단위</b>";
+                actionHeaderText.color = titleColor;
+            }
+
+            SetInfoLine(0, "마스터 볼륨", $"{Mathf.RoundToInt(Mathf.Clamp01(options.MasterVolume) * 100f)}%");
+            SetInfoLine(1, "음악 볼륨", $"{Mathf.RoundToInt(Mathf.Clamp01(options.MusicVolume) * 100f)}%");
+            SetInfoLine(2, "효과음 볼륨", $"{Mathf.RoundToInt(Mathf.Clamp01(options.SfxVolume) * 100f)}%");
+            SetInfoLine(3, "전체 화면", options.Fullscreen ? "켜짐" : "꺼짐");
+            SetInfoLine(4, "피해 숫자", options.DamageNumbersEnabled ? "켜짐" : "꺼짐");
+
+            SetButtonCopy(settingsButtonText, "<size=15>볼륨</size>\n<b>-10%</b>\n<size=13>낮추기</size>", enabledButtonTextColor);
+            SetButtonCopy(resumeButtonText, "<size=15>설정</size>\n<b>뒤로</b>\n<size=13>일시정지 메뉴</size>", enabledButtonTextColor);
+            SetButtonCopy(quitButtonText, "<size=15>볼륨</size>\n<b>+10%</b>\n<size=13>높이기</size>", enabledButtonTextColor);
+
+            ApplyButtonTheme(settingsButton, true);
+            ApplyButtonTheme(resumeButton, true);
+            ApplyButtonTheme(quitButton, true);
             RefreshSelectionState(resumeButton);
         }
 
@@ -328,9 +403,87 @@ namespace CuteIssac.UI
             }
         }
 
+        private void ApplyOverviewCopy(PlayerStatSnapshot snapshot)
+        {
+            if (badgeText != null)
+            {
+                badgeText.supportRichText = true;
+                badgeText.text = "<b>PAUSED</b>";
+                badgeText.color = new Color(1f, 0.88f, 0.76f, 1f);
+            }
+
+            if (titleText != null)
+            {
+                titleText.supportRichText = true;
+                titleText.text = "<size=18>현재 진행은 보존됩니다</size>\n<size=52><b>일시정지</b></size>";
+                titleText.color = titleColor;
+            }
+
+            if (statsHeaderText != null)
+            {
+                statsHeaderText.supportRichText = true;
+                statsHeaderText.text = "<size=18>현재 상태</size>\n<b>전투 수치</b>";
+                statsHeaderText.color = titleColor;
+            }
+
+            if (actionHeaderText != null)
+            {
+                actionHeaderText.supportRichText = true;
+                actionHeaderText.text = "<size=18>다음 행동</size>\n<b>메뉴 선택</b>";
+                actionHeaderText.color = titleColor;
+            }
+
+            SetInfoLine(0, "공격력", $"{snapshot.Damage:0.0}");
+            SetInfoLine(1, "초당 발사", $"{ResolveShotsPerSecond(snapshot.FireInterval):0.0}");
+            SetInfoLine(2, "이동 속도", $"{snapshot.MoveSpeed:0.0}");
+            SetInfoLine(3, "투사체 속도", $"{snapshot.ProjectileSpeed:0.0}");
+            SetInfoLine(4, "행운", $"{snapshot.Luck:0.0}");
+
+            SetButtonCopy(settingsButtonText, "<size=15>옵션</size>\n<b>설정</b>\n<size=13>볼륨 조정</size>", enabledButtonTextColor);
+            SetButtonCopy(resumeButtonText, "<size=15>게임</size>\n<b>계속하기</b>\n<size=13>즉시 복귀</size>", enabledButtonTextColor);
+            SetButtonCopy(quitButtonText, "<size=15>런</size>\n<b>종료</b>\n<size=13>현재 런 중단</size>", enabledButtonTextColor);
+
+            ApplyButtonTheme(settingsButton, true);
+            ApplyButtonTheme(resumeButton, true);
+            ApplyButtonTheme(quitButton, true);
+        }
+
+        private void SetInfoLine(int index, string label, string value)
+        {
+            if (statValueTexts == null || index < 0 || index >= statValueTexts.Length)
+            {
+                return;
+            }
+
+            Text statText = statValueTexts[index];
+
+            if (statText == null)
+            {
+                return;
+            }
+
+            statText.supportRichText = true;
+            statText.text =
+                $"<size=14><color=#{ColorUtility.ToHtmlStringRGBA(statLabelColor)}>{label}</color></size>\n" +
+                $"<size=30><b><color=#{ColorUtility.ToHtmlStringRGBA(statValueColor)}>{value}</color></b></size>";
+            statText.color = statValueColor;
+        }
+
+        private static void SetButtonCopy(Text label, string text, Color color)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.supportRichText = true;
+            label.text = text;
+            label.color = color;
+        }
+
         public void RefreshSelectionState(Button selectedButton)
         {
-            RefreshButtonVisual(settingsButton, settingsButtonText, false, selectedButton == settingsButton);
+            RefreshButtonVisual(settingsButton, settingsButtonText, settingsButton != null && settingsButton.interactable, selectedButton == settingsButton);
             RefreshButtonVisual(resumeButton, resumeButtonText, resumeButton != null && resumeButton.interactable, selectedButton == resumeButton);
             RefreshButtonVisual(quitButton, quitButtonText, quitButton != null && quitButton.interactable, selectedButton == quitButton);
         }

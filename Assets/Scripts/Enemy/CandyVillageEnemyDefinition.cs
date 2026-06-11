@@ -60,6 +60,7 @@ namespace CuteIssac.Enemy
         private MacaronChaserBrain _macaronChaserBrain;
         private DasherEnemyBrain _dasherBrain;
         private ShooterEnemyBrain _shooterBrain;
+        private CandyBatShooterBrain _candyBatShooterBrain;
 
         public CandyVillageEnemyKind EnemyKind => enemyKind;
         public string EnemyDisplayName => enemyDisplayName;
@@ -83,7 +84,7 @@ namespace CuteIssac.Enemy
             {
                 RecommendedBasePrefab.EnemyChaser => _chaserBrain != null || _macaronChaserBrain != null,
                 RecommendedBasePrefab.EnemyDasher => _dasherBrain != null,
-                RecommendedBasePrefab.EnemyShooter => _shooterBrain != null,
+                RecommendedBasePrefab.EnemyShooter => _shooterBrain != null || _candyBatShooterBrain != null,
                 _ => false
             };
         }
@@ -219,6 +220,11 @@ namespace CuteIssac.Enemy
             if (_shooterBrain == null)
             {
                 _shooterBrain = GetComponent<ShooterEnemyBrain>();
+            }
+
+            if (_candyBatShooterBrain == null)
+            {
+                _candyBatShooterBrain = GetComponent<CandyBatShooterBrain>();
             }
         }
 

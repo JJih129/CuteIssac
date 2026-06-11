@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using CuteIssac.Data.Combat;
 using CuteIssac.Core.Audio;
 using CuteIssac.Combat;
@@ -24,14 +23,27 @@ namespace CuteIssac.Enemy
         [SerializeField] private Vector2 muzzleOffset = new(0.42f, 0f);
         [SerializeField] [Min(0)] private int prewarmCount = 12;
         [SerializeField] [Range(0.1f, 2f)] private float runtimeProjectileSpeedMultiplier = 1f;
-
-        private static readonly Dictionary<GameObject, int> PrewarmedProjectileCounts = new();
+        [SerializeField] [Range(0.1f, 3f)] private float runtimeProjectileLifetimeMultiplier = 1f;
 
         public bool CanFire => projectileDefinition != null && projectileDefinition.IsValid;
+        public int PrewarmCount => Mathf.Max(0, prewarmCount);
 
         public void SetProjectileSpeedMultiplier(float multiplier)
         {
             runtimeProjectileSpeedMultiplier = Mathf.Clamp(multiplier, 0.1f, 2f);
+        }
+
+        public void SetProjectileLifetimeMultiplier(float multiplier)
+        {
+            runtimeProjectileLifetimeMultiplier = Mathf.Clamp(multiplier, 0.1f, 3f);
+        }
+
+        public void SetSpawnOrigin(Transform origin)
+        {
+            if (origin != null)
+            {
+                spawnOrigin = origin;
+            }
         }
 
         private void Awake()
@@ -49,15 +61,18 @@ namespace CuteIssac.Enemy
 
             GameObject projectilePrefab = projectileDefinition.ProjectilePrefab.gameObject;
             int desiredCount = Mathf.Max(0, count);
-            PrewarmedProjectileCounts.TryGetValue(projectilePrefab, out int currentCount);
+            PrefabPoolService.EnsurePrewarmed(projectilePrefab, desiredCount);
+        }
 
-            if (currentCount >= desiredCount)
+        public void PrewarmProjectilesForExpectedShooters(int expectedShooterCount)
+        {
+            if (expectedShooterCount <= 0)
             {
                 return;
             }
 
-            PrefabPoolService.Prewarm(projectilePrefab, desiredCount - currentCount);
-            PrewarmedProjectileCounts[projectilePrefab] = desiredCount;
+            int desiredCount = Mathf.Max(PrewarmCount, PrewarmCount * expectedShooterCount);
+            PrewarmProjectiles(desiredCount);
         }
 
         public EnemyProjectileLogic Fire(Vector2 direction)
@@ -78,7 +93,7 @@ namespace CuteIssac.Enemy
                 Direction = normalizedDirection,
                 Damage = projectileDefinition.Damage,
                 Speed = projectileDefinition.Speed * runtimeProjectileSpeedMultiplier,
-                Lifetime = projectileDefinition.Lifetime,
+                Lifetime = projectileDefinition.Lifetime * runtimeProjectileLifetimeMultiplier,
                 HomingStrength = projectileDefinition.HomingStrength,
                 HomingSearchRadius = projectileDefinition.HomingSearchRadius,
                 HomingTurnRateDegrees = projectileDefinition.HomingTurnRateDegrees,

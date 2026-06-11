@@ -90,7 +90,8 @@ namespace CuteIssac.Player
             int coinCount = Mathf.Max(1, count);
             for (int index = 0; index < coinCount; index++)
             {
-                CuteIssac.Item.RuntimePickupFactory.SpawnCoinPickup(
+                RuntimePickupFactory.SpawnResourcePickup(
+                    ResourcePickupType.Coin,
                     ResolveSpawnPosition(origin),
                     null,
                     pickupScale,
@@ -104,7 +105,8 @@ namespace CuteIssac.Player
 
         private void SpawnBombPickup(Vector3 position)
         {
-            CuteIssac.Item.RuntimePickupFactory.SpawnBombPickup(
+            RuntimePickupFactory.SpawnResourcePickup(
+                ResourcePickupType.Bomb,
                 position,
                 null,
                 pickupScale,
@@ -117,7 +119,8 @@ namespace CuteIssac.Player
 
         private void SpawnAmmoPickup(Vector3 position)
         {
-            CuteIssac.Item.RuntimePickupFactory.SpawnAmmoPickup(
+            RuntimePickupFactory.SpawnEnemyDropPickup(
+                EnemyDropKind.Ammo,
                 position,
                 null,
                 pickupScale,
@@ -125,9 +128,8 @@ namespace CuteIssac.Player
                 pickupSortingOrder,
                 ammoPickupBaseColor,
                 ammoPickupCollectedColor,
-                1,
-                true,
-                "AmmoPickup");
+                "AmmoPickup",
+                true);
         }
 
         private Vector3 ResolveSpawnPosition(Vector3 enemyPosition)

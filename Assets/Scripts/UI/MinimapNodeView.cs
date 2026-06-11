@@ -16,6 +16,8 @@ namespace CuteIssac.UI
                 Vector2 nodeSize,
                 float connectionLength,
                 float connectionThickness,
+                Sprite roomBaseSprite,
+                Sprite roomFillSprite,
                 Color frameColor,
                 Color fillColor,
                 bool pulseNode,
@@ -26,6 +28,8 @@ namespace CuteIssac.UI
                 Color connectionColor,
                 Color secretConnectionColor,
                 Sprite connectionSprite,
+                Sprite verticalConnectionSprite,
+                Sprite secretConnectionSprite,
                 Sprite specialIconSprite,
                 Color specialIconColor,
                 bool showCurrentMarker,
@@ -50,6 +54,8 @@ namespace CuteIssac.UI
                 NodeSize = nodeSize;
                 ConnectionLength = connectionLength;
                 ConnectionThickness = connectionThickness;
+                RoomBaseSprite = roomBaseSprite;
+                RoomFillSprite = roomFillSprite;
                 FrameColor = frameColor;
                 FillColor = fillColor;
                 PulseNode = pulseNode;
@@ -60,6 +66,8 @@ namespace CuteIssac.UI
                 ConnectionColor = connectionColor;
                 SecretConnectionColor = secretConnectionColor;
                 ConnectionSprite = connectionSprite;
+                VerticalConnectionSprite = verticalConnectionSprite;
+                SecretConnectionSprite = secretConnectionSprite;
                 SpecialIconSprite = specialIconSprite;
                 SpecialIconColor = specialIconColor;
                 ShowCurrentMarker = showCurrentMarker;
@@ -85,6 +93,8 @@ namespace CuteIssac.UI
             public Vector2 NodeSize { get; }
             public float ConnectionLength { get; }
             public float ConnectionThickness { get; }
+            public Sprite RoomBaseSprite { get; }
+            public Sprite RoomFillSprite { get; }
             public Color FrameColor { get; }
             public Color FillColor { get; }
             public bool PulseNode { get; }
@@ -95,6 +105,8 @@ namespace CuteIssac.UI
             public Color ConnectionColor { get; }
             public Color SecretConnectionColor { get; }
             public Sprite ConnectionSprite { get; }
+            public Sprite VerticalConnectionSprite { get; }
+            public Sprite SecretConnectionSprite { get; }
             public Sprite SpecialIconSprite { get; }
             public Color SpecialIconColor { get; }
             public bool ShowCurrentMarker { get; }
@@ -266,15 +278,17 @@ namespace CuteIssac.UI
         {
             RootRect.sizeDelta = presentation.NodeSize;
 
-            _roomBaseBaseColor = presentation.FrameColor;
-            _roomFillBaseColor = presentation.FillColor;
+            bool useRoomBaseSprite = presentation.RoomBaseSprite != null;
+            bool useRoomFillSprite = presentation.RoomFillSprite != null;
+            _roomBaseBaseColor = useRoomBaseSprite ? Color.white : presentation.FrameColor;
+            _roomFillBaseColor = useRoomFillSprite ? Color.white : presentation.FillColor;
             _pulseNode = presentation.PulseNode;
             _nodePulseColor = presentation.NodePulseColor;
             _nodePulseSpeedRuntime = presentation.NodePulseSpeed;
             _nodePulseTintStrengthRuntime = presentation.NodePulseTintStrength;
             _nodePulseScaleAmplitudeRuntime = presentation.NodePulseScaleAmplitude;
-            SetImage(roomBaseImage, true, null, presentation.FrameColor);
-            SetImage(roomFillImage, true, null, presentation.FillColor);
+            SetImage(roomBaseImage, true, presentation.RoomBaseSprite, _roomBaseBaseColor);
+            SetImage(roomFillImage, !useRoomBaseSprite || useRoomFillSprite, presentation.RoomFillSprite, _roomFillBaseColor);
 
             bool showSpecialIcon = presentation.SpecialIconSprite != null;
             SetImage(specialIconImage, showSpecialIcon, presentation.SpecialIconSprite, presentation.SpecialIconColor);
@@ -288,10 +302,10 @@ namespace CuteIssac.UI
             _pulseRewardMarker = presentation.ShowRewardMarker && presentation.PulseRewardMarker;
             SetImage(rewardMarkerImage, presentation.ShowRewardMarker, presentation.RewardMarkSprite, presentation.RewardMarkColor);
 
-            PresentConnection(upConnectionImage, presentation.ShowUpConnection, presentation.ShowUpSecretConnection, presentation.ConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, true);
-            PresentConnection(downConnectionImage, presentation.ShowDownConnection, presentation.ShowDownSecretConnection, presentation.ConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, true);
-            PresentConnection(leftConnectionImage, presentation.ShowLeftConnection, presentation.ShowLeftSecretConnection, presentation.ConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, false);
-            PresentConnection(rightConnectionImage, presentation.ShowRightConnection, presentation.ShowRightSecretConnection, presentation.ConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, false);
+            PresentConnection(upConnectionImage, presentation.ShowUpConnection, presentation.ShowUpSecretConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, true);
+            PresentConnection(downConnectionImage, presentation.ShowDownConnection, presentation.ShowDownSecretConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, true);
+            PresentConnection(leftConnectionImage, presentation.ShowLeftConnection, presentation.ShowLeftSecretConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, false);
+            PresentConnection(rightConnectionImage, presentation.ShowRightConnection, presentation.ShowRightSecretConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, false);
         }
 
         private static void SetImage(Image image, bool visible, Sprite sprite, Color color)
@@ -317,6 +331,8 @@ namespace CuteIssac.UI
             bool visible,
             bool secretConnection,
             Sprite sprite,
+            Sprite verticalSprite,
+            Sprite secretSprite,
             Color color,
             Color secretColor,
             float thickness,
@@ -335,7 +351,11 @@ namespace CuteIssac.UI
                 return;
             }
 
-            image.sprite = sprite;
+            image.sprite = secretConnection && secretSprite != null
+                ? secretSprite
+                : vertical && verticalSprite != null
+                    ? verticalSprite
+                    : sprite;
             image.color = secretConnection ? secretColor : color;
             RectTransform rectTransform = image.rectTransform;
             float resolvedThickness = secretConnection ? thickness * 1.35f : thickness;

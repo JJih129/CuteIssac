@@ -68,7 +68,7 @@ MonoBehaviour:
     minimumCount: 0
     maximumCount: 1
   sharedLayoutSets:
-  - {fileID: 11400000, guid: 92d4a1cfb88e466f800693623c1cc852, type: 2}
+  - {fileID: 11400000, guid: 5586f46b6dcb13e42a4b624f058d218e, type: 2}
   enemyPool: {fileID: 11400000, guid: 1a3e3c3f4f214e1fa1d9f8194d9f0101, type: 2}
   roomTheme: {fileID: 11400000, guid: c7d8b5b64b08498fadf4ef5d46d8a101, type: 2}
   normalRoomEnemyBudget: 4
@@ -77,26 +77,35 @@ MonoBehaviour:
   normalRoomDistanceBudgetBonusPerStep: 1
   encounterBudgetMultiplier: 1
   normalRoomWavePresets:
-  - presetId: f1_normal_gingerbread_3
-    waveData: {fileID: 11400000, guid: 71b32eb825df96f449c30e14538c3858, type: 2}
-    selectionWeight: 4
   - presetId: f1_normal_macaron_2
     waveData: {fileID: 11400000, guid: 069cbb1ecf915fb4da114f5060f5be2f, type: 2}
     selectionWeight: 3
-  - presetId: f1_normal_jelly_bear_1_gingerbread_2
-    waveData: {fileID: 11400000, guid: 9f282fee445d95f49a9708cf781c2b1a, type: 2}
+  - presetId: f1_normal_gingerbread_2
+    waveData: {fileID: 11400000, guid: 2304cbea413a9fb469b9dc8a991b0354, type: 2}
+    selectionWeight: 4
+  - presetId: f1_normal_gingerbread_3
+    waveData: {fileID: 11400000, guid: 71b32eb825df96f449c30e14538c3858, type: 2}
+    selectionWeight: 1
+  - presetId: f1_normal_pudding_jellyfish_2
+    waveData: {fileID: 11400000, guid: c69850915e4cee04d9e8df3d16ef8273, type: 2}
     selectionWeight: 3
-  - presetId: f1_normal_pudding_1_gingerbread_2
-    waveData: {fileID: 11400000, guid: 7e817248d13143042aa459266417534e, type: 2}
-    selectionWeight: 3
+  - presetId: f1_normal_jelly_bear_2
+    waveData: {fileID: 11400000, guid: 196a393559484b44dac0961e677ecf4b, type: 2}
+    selectionWeight: 2
   - presetId: f1_normal_macaron_1_jelly_bear_1
     waveData: {fileID: 11400000, guid: 720970df99455184c9c582c4d4feda7b, type: 2}
+    selectionWeight: 3
+  - presetId: f1_normal_macaron_1_gingerbread_1
+    waveData: {fileID: 11400000, guid: 855db843908738440acd6c78c808e7cb, type: 2}
+    selectionWeight: 3
+  - presetId: f1_normal_gingerbread_1_pudding_1
+    waveData: {fileID: 11400000, guid: 7e817248d13143042aa459266417534e, type: 2}
     selectionWeight: 2
-  - presetId: f1_normal_pudding_1_shooter_1_gingerbread_1
-    waveData: {fileID: 11400000, guid: cbab74dc599c6a34b8c2284599624248, type: 2}
-    selectionWeight: 1
+  - presetId: f1_normal_gingerbread_1_jelly_bear_1
+    waveData: {fileID: 11400000, guid: 9f282fee445d95f49a9708cf781c2b1a, type: 2}
+    selectionWeight: 2
   eliteRoomWavePresets:
-  - presetId: f1_elite_dasher_2_chaser_2
+  - presetId: f1_elite_macaron_2_jelly_bear_2
     waveData: {fileID: 11400000, guid: 321da90b120e49a483c9c567d4a322a5, type: 2}
     selectionWeight: 1
   bossRoomWavePresets:

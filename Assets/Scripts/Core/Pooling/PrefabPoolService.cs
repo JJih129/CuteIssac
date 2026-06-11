@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,6 +21,8 @@ namespace CuteIssac.Core.Pooling
             public GameObject Prefab { get; }
             public Transform Root { get; }
             public Queue<PooledObject> Available { get; } = new();
+            public int TotalCreated { get; set; }
+            public int ActiveCount { get; set; }
         }
 
         private static readonly Dictionary<GameObject, Pool> Pools = new();
@@ -27,18 +30,58 @@ namespace CuteIssac.Core.Pooling
 
         public static void Prewarm(GameObject prefab, int count)
         {
+            Prewarm(prefab, count, null);
+        }
+
+        public static void Prewarm(GameObject prefab, int count, Action<GameObject> initializeInstance)
+        {
             if (prefab == null || count <= 0)
             {
                 return;
             }
 
             Pool pool = GetOrCreatePool(prefab);
+            CreateAndReturn(pool, count, initializeInstance);
+        }
 
-            for (int index = 0; index < count; index++)
+        public static void EnsurePrewarmed(GameObject prefab, int desiredTotalCount)
+        {
+            EnsurePrewarmed(prefab, desiredTotalCount, null);
+        }
+
+        public static void EnsurePrewarmed(GameObject prefab, int desiredTotalCount, Action<GameObject> initializeInstance)
+        {
+            if (prefab == null || desiredTotalCount <= 0)
             {
-                PooledObject pooledObject = CreatePooledInstance(pool);
-                ReturnToPool(pool, pooledObject);
+                return;
             }
+
+            Pool pool = GetOrCreatePool(prefab);
+            int missingCount = Mathf.Max(0, desiredTotalCount - pool.TotalCreated);
+
+            if (missingCount <= 0)
+            {
+                return;
+            }
+
+            CreateAndReturn(pool, missingCount, initializeInstance);
+        }
+
+        public static bool TryGetStats(GameObject prefab, out int totalCreated, out int activeCount, out int availableCount)
+        {
+            totalCreated = 0;
+            activeCount = 0;
+            availableCount = 0;
+
+            if (prefab == null || !Pools.TryGetValue(prefab, out Pool pool))
+            {
+                return false;
+            }
+
+            totalCreated = pool.TotalCreated;
+            activeCount = pool.ActiveCount;
+            availableCount = pool.Available.Count;
+            return true;
         }
 
         public static T Spawn<T>(T prefab, Vector3 position, Quaternion rotation, Transform parent = null) where T : Component
@@ -85,6 +128,7 @@ namespace CuteIssac.Core.Pooling
             }
 
             pooledObject.MarkSpawned();
+            pool.ActiveCount++;
             pooledObject.NotifySpawned();
             pooledObject.gameObject.SetActive(true);
             return pooledObject.gameObject;
@@ -101,7 +145,7 @@ namespace CuteIssac.Core.Pooling
 
             if (pooledObject == null || pooledObject.SourcePrefab == null)
             {
-                Object.Destroy(instance);
+                UnityEngine.Object.Destroy(instance);
                 return;
             }
 
@@ -132,9 +176,24 @@ namespace CuteIssac.Core.Pooling
             return pool;
         }
 
+        private static void CreateAndReturn(Pool pool, int count, Action<GameObject> initializeInstance)
+        {
+            if (pool == null || count <= 0)
+            {
+                return;
+            }
+
+            for (int index = 0; index < count; index++)
+            {
+                PooledObject pooledObject = CreatePooledInstance(pool);
+                initializeInstance?.Invoke(pooledObject.gameObject);
+                ReturnToPool(pool, pooledObject);
+            }
+        }
+
         private static PooledObject CreatePooledInstance(Pool pool)
         {
-            GameObject instance = Object.Instantiate(pool.Prefab, pool.Root);
+            GameObject instance = UnityEngine.Object.Instantiate(pool.Prefab, pool.Root);
             PooledObject pooledObject = instance.GetComponent<PooledObject>();
 
             if (pooledObject == null)
@@ -143,6 +202,7 @@ namespace CuteIssac.Core.Pooling
             }
 
             pooledObject.AssignSourcePrefab(pool.Prefab);
+            pool.TotalCreated++;
             return pooledObject;
         }
 
@@ -153,6 +213,7 @@ namespace CuteIssac.Core.Pooling
                 return;
             }
 
+            pool.ActiveCount = Mathf.Max(0, pool.ActiveCount - 1);
             pooledObject.MarkReturned();
             pooledObject.NotifyDespawned();
             pooledObject.transform.SetParent(pool.Root, false);
@@ -168,7 +229,7 @@ namespace CuteIssac.Core.Pooling
             }
 
             GameObject rootObject = new("PrefabPoolService");
-            Object.DontDestroyOnLoad(rootObject);
+            UnityEngine.Object.DontDestroyOnLoad(rootObject);
             _serviceRoot = rootObject.transform;
         }
 

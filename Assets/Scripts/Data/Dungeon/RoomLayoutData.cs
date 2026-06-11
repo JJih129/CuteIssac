@@ -14,12 +14,14 @@ namespace CuteIssac.Data.Dungeon
     {
         [SerializeField] private string layoutId = "layout";
         [SerializeField] private RoomController roomPrefab;
+        [SerializeField] private RoomObstacleLayoutData obstacleLayout;
         [SerializeField] private List<RoomType> supportedRoomTypes = new() { RoomType.Normal };
         [SerializeField] private RoomDoorMask supportedDoorMask = RoomDoorMask.Up | RoomDoorMask.Right | RoomDoorMask.Down | RoomDoorMask.Left;
         [SerializeField] [Min(0)] private int selectionWeight = 1;
 
         public string LayoutId => layoutId;
         public RoomController RoomPrefab => roomPrefab;
+        public RoomObstacleLayoutData ObstacleLayout => obstacleLayout;
         public RoomDoorMask SupportedDoorMask => supportedDoorMask;
         public int SelectionWeight => selectionWeight;
         public bool HasPrefab => roomPrefab != null;

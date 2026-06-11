@@ -34,10 +34,23 @@ namespace CuteIssac.UI
         [SerializeField] private Sprite filledHeartSprite;
         [Tooltip("Optional sprite shown for empty hearts.")]
         [SerializeField] private Sprite emptyHeartSprite;
+        [Tooltip("Optional sprite shown when health has a partial slot.")]
+        [SerializeField] private Sprite halfHeartSprite;
         [Tooltip("Fallback tint used when no filled sprite is assigned.")]
         [SerializeField] private Color filledHeartColor = new(1f, 0.36f, 0.36f, 1f);
         [Tooltip("Fallback tint used when no empty sprite is assigned.")]
         [SerializeField] private Color emptyHeartColor = new(0.28f, 0.3f, 0.34f, 0.72f);
+        [Tooltip("Optional sprite shown for pending speed hearts. Falls back to the filled heart sprite.")]
+        [SerializeField] private Sprite speedHeartSprite;
+        [SerializeField] private Color speedHeartColor = new(0.42f, 0.82f, 1f, 1f);
+        [SerializeField] private Color speedHeartPulseColor = new(1f, 0.44f, 0.92f, 1f);
+
+        [Header("Speed Heart Feedback")]
+        [SerializeField] private Color speedHeartConsumedFlashColor = new(1f, 1f, 1f, 1f);
+        [SerializeField] [Min(0.05f)] private float speedHeartConsumedFeedbackDuration = 0.32f;
+        [SerializeField] [Min(0f)] private float speedHeartConsumedShakeAmplitude = 7f;
+        [SerializeField] [Min(1f)] private float speedHeartConsumedShakeFrequency = 46f;
+        [SerializeField] [Min(0f)] private float speedHeartConsumedScaleBonus = 0.08f;
 
         [Header("Top Bar Layout")]
         [SerializeField] private bool preferCompactSingleRow = true;
@@ -92,11 +105,18 @@ namespace CuteIssac.UI
         private int _currentHealth;
         private int _currentMaxHealth;
         private int _currentFilledSlots;
+        private int _currentHalfSlotIndex = -1;
         private int _currentTotalSlots;
+        private int _currentSpeedHeartSlots;
         private bool _hasChallengeThreatTheme;
         private Color _challengeThreatAccentColor = Color.white;
         private string _challengeThreatBadgeLabel = string.Empty;
         private ChallengeThreatStage _challengeThreatStage;
+        private float _speedHeartConsumedFeedbackRemaining;
+        private float _speedHeartConsumedFeedbackDuration;
+        private Vector2 _heartSlotParentBaseAnchoredPosition;
+        private Vector3 _heartSlotParentBaseScale = Vector3.one;
+        private bool _hasHeartSlotParentFeedbackBase;
 
         public void ConfigureDebugView(Text valueText, RectTransform slotParent, Image slotTemplate)
         {
@@ -107,6 +127,14 @@ namespace CuteIssac.UI
 
         public void SetHealth(float currentHealth, float maxHealth)
         {
+            SetHealth(currentHealth, maxHealth, _currentSpeedHeartSlots);
+        }
+
+        public void SetHealth(float currentHealth, float maxHealth, int speedHeartCount)
+        {
+            bool hadHealthSnapshot = _hasHealthSnapshot;
+            int previousSpeedHeartSlots = _currentSpeedHeartSlots;
+
             if (panelRoot != null && !panelRoot.activeSelf)
             {
                 panelRoot.SetActive(true);
@@ -125,9 +153,20 @@ namespace CuteIssac.UI
             }
 
             int totalSlots = Mathf.Max(0, Mathf.CeilToInt(Mathf.Max(0f, maxHealth)));
-            int filledSlots = Mathf.Clamp(Mathf.CeilToInt(Mathf.Max(0f, currentHealth)), 0, totalSlots);
-            _currentTotalSlots = totalSlots;
+            float clampedCurrentHealth = Mathf.Clamp(Mathf.Max(0f, currentHealth), 0f, totalSlots);
+            int filledSlots = Mathf.Clamp(Mathf.FloorToInt(clampedCurrentHealth), 0, totalSlots);
+            bool hasHalfSlot = clampedCurrentHealth - filledSlots > 0.001f && filledSlots < totalSlots;
+            int halfSlotIndex = hasHalfSlot ? filledSlots : -1;
+            int speedHeartSlots = Mathf.Max(0, speedHeartCount);
+            if (hadHealthSnapshot && speedHeartSlots < previousSpeedHeartSlots)
+            {
+                BeginSpeedHeartConsumedFeedback();
+            }
+
+            _currentTotalSlots = totalSlots + speedHeartSlots;
             _currentFilledSlots = filledSlots;
+            _currentHalfSlotIndex = halfSlotIndex;
+            _currentSpeedHeartSlots = speedHeartSlots;
             EnsureRuntimeHeartSprites();
 
             if (heartSlotParent == null || heartSlotTemplate == null)
@@ -141,12 +180,14 @@ namespace CuteIssac.UI
                 return;
             }
 
-            EnsureSlotCount(totalSlots);
+            EnsureSlotCount(_currentTotalSlots);
 
             for (int i = 0; i < _runtimeSlots.Count; i++)
             {
                 Image slotImage = _runtimeSlots[i];
+                bool isSpeedHeart = i >= totalSlots && i < totalSlots + speedHeartSlots;
                 bool isFilled = i < filledSlots;
+                bool isHalfHeart = i == halfSlotIndex;
 
                 if (slotImage == null)
                 {
@@ -155,7 +196,23 @@ namespace CuteIssac.UI
 
                 slotImage.gameObject.SetActive(true);
 
-                if (isFilled && filledHeartSprite != null)
+                if (isSpeedHeart && speedHeartSprite != null)
+                {
+                    slotImage.sprite = speedHeartSprite;
+                }
+                else if (isSpeedHeart && filledHeartSprite != null)
+                {
+                    slotImage.sprite = filledHeartSprite;
+                }
+                else if (isHalfHeart && halfHeartSprite != null)
+                {
+                    slotImage.sprite = halfHeartSprite;
+                }
+                else if (isHalfHeart && filledHeartSprite != null)
+                {
+                    slotImage.sprite = filledHeartSprite;
+                }
+                else if (isFilled && filledHeartSprite != null)
                 {
                     slotImage.sprite = filledHeartSprite;
                 }
@@ -164,7 +221,9 @@ namespace CuteIssac.UI
                     slotImage.sprite = emptyHeartSprite;
                 }
 
-                slotImage.color = ResolveHeartColor(isFilled, Time.unscaledTime);
+                slotImage.color = isSpeedHeart
+                    ? ResolveSpeedHeartColor(Time.unscaledTime)
+                    : ResolveHeartColor(isFilled || isHalfHeart, Time.unscaledTime);
             }
 
             ApplyThreatTheme(Time.unscaledTime);
@@ -256,12 +315,13 @@ namespace CuteIssac.UI
 
         private void Update()
         {
-            if (!_hasChallengeThreatTheme)
+            if (!_hasChallengeThreatTheme && _speedHeartConsumedFeedbackRemaining <= 0f)
             {
                 return;
             }
 
             ApplyThreatTheme(Time.unscaledTime);
+            ApplySpeedHeartConsumedFeedback(Time.unscaledDeltaTime, Time.unscaledTime);
         }
 
         private void EnsureSlotCount(int desiredCount)
@@ -421,7 +481,11 @@ namespace CuteIssac.UI
                     continue;
                 }
 
-                slotImage.color = ResolveHeartColor(i < _currentFilledSlots, unscaledTime);
+                bool isSpeedHeart = i >= Mathf.Max(0, _currentTotalSlots - _currentSpeedHeartSlots);
+                bool isHalfHeart = i == _currentHalfSlotIndex;
+                slotImage.color = isSpeedHeart
+                    ? ResolveSpeedHeartColor(unscaledTime)
+                    : ResolveHeartColor(i < _currentFilledSlots || isHalfHeart, unscaledTime);
             }
         }
 
@@ -462,6 +526,72 @@ namespace CuteIssac.UI
             return ApplyCompactAlpha(
                 Color.Lerp(baseColor, Color.Lerp(baseColor, _challengeThreatAccentColor, accentBlend), Mathf.Clamp01(tint)),
                 isFilled ? compactFilledHeartAlphaScale : compactEmptyHeartAlphaScale);
+        }
+
+        private Color ResolveSpeedHeartColor(float unscaledTime)
+        {
+            float pulse = 0.5f + (0.5f * Mathf.Sin(unscaledTime * 8.5f));
+            Color color = Color.Lerp(speedHeartColor, speedHeartPulseColor, pulse * 0.62f);
+            if (_speedHeartConsumedFeedbackRemaining > 0f)
+            {
+                float normalized = Mathf.Clamp01(_speedHeartConsumedFeedbackRemaining / Mathf.Max(0.01f, _speedHeartConsumedFeedbackDuration));
+                color = Color.Lerp(color, speedHeartConsumedFlashColor, normalized * 0.68f);
+            }
+
+            return ApplyCompactAlpha(color, compactFilledHeartAlphaScale);
+        }
+
+        private void BeginSpeedHeartConsumedFeedback()
+        {
+            _speedHeartConsumedFeedbackDuration = Mathf.Max(0.05f, speedHeartConsumedFeedbackDuration);
+            _speedHeartConsumedFeedbackRemaining = _speedHeartConsumedFeedbackDuration;
+
+            if (heartSlotParent == null)
+            {
+                return;
+            }
+
+            _heartSlotParentBaseAnchoredPosition = heartSlotParent.anchoredPosition;
+            _heartSlotParentBaseScale = heartSlotParent.localScale;
+            _hasHeartSlotParentFeedbackBase = true;
+        }
+
+        private void ApplySpeedHeartConsumedFeedback(float unscaledDeltaTime, float unscaledTime)
+        {
+            if (_speedHeartConsumedFeedbackRemaining <= 0f)
+            {
+                RestoreSpeedHeartFeedbackTransform();
+                return;
+            }
+
+            _speedHeartConsumedFeedbackRemaining = Mathf.Max(0f, _speedHeartConsumedFeedbackRemaining - unscaledDeltaTime);
+
+            if (heartSlotParent == null || !_hasHeartSlotParentFeedbackBase)
+            {
+                return;
+            }
+
+            float normalized = _speedHeartConsumedFeedbackRemaining / Mathf.Max(0.01f, _speedHeartConsumedFeedbackDuration);
+            float shake = Mathf.Sin(unscaledTime * speedHeartConsumedShakeFrequency) * speedHeartConsumedShakeAmplitude * normalized;
+            heartSlotParent.anchoredPosition = _heartSlotParentBaseAnchoredPosition + new Vector2(shake, 0f);
+            heartSlotParent.localScale = _heartSlotParentBaseScale * (1f + (speedHeartConsumedScaleBonus * normalized));
+
+            if (_speedHeartConsumedFeedbackRemaining <= 0f)
+            {
+                RestoreSpeedHeartFeedbackTransform();
+            }
+        }
+
+        private void RestoreSpeedHeartFeedbackTransform()
+        {
+            if (heartSlotParent == null || !_hasHeartSlotParentFeedbackBase)
+            {
+                return;
+            }
+
+            heartSlotParent.anchoredPosition = _heartSlotParentBaseAnchoredPosition;
+            heartSlotParent.localScale = _heartSlotParentBaseScale;
+            _hasHeartSlotParentFeedbackBase = false;
         }
 
         private Color ResolveLabelColor(float unscaledTime)
