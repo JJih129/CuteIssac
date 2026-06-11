@@ -378,19 +378,20 @@ namespace CuteIssac.UI
             if (actionHeaderText != null)
             {
                 actionHeaderText.supportRichText = true;
-                actionHeaderText.text = "<size=18>Volume Adjust</size>\n<b>10% Step</b>";
+                actionHeaderText.text = "<size=18>Adjust</size>\n<b>Value / Toggle</b>";
                 actionHeaderText.color = titleColor;
             }
 
-            SetInfoLine(0, FormatOptionLabel("Master Volume", selectedOptionLabel), $"{Mathf.RoundToInt(Mathf.Clamp01(options.MasterVolume) * 100f)}%");
-            SetInfoLine(1, FormatOptionLabel("Music Volume", selectedOptionLabel), $"{Mathf.RoundToInt(Mathf.Clamp01(options.MusicVolume) * 100f)}%");
-            SetInfoLine(2, FormatOptionLabel("SFX Volume", selectedOptionLabel), $"{Mathf.RoundToInt(Mathf.Clamp01(options.SfxVolume) * 100f)}%");
-            SetInfoLine(3, "Fullscreen", options.Fullscreen ? "On" : "Off");
-            SetInfoLine(4, "Damage Numbers", options.DamageNumbersEnabled ? "On" : "Off");
+            bool selectedIsToggle = IsToggleOption(selectedOptionLabel);
+            SetInfoLine(0, FormatOptionLabel(selectedOptionLabel, selectedOptionLabel), ResolveSelectedOptionValue(options, selectedOptionLabel));
+            SetInfoLine(1, "Volume", $"M {FormatPercent(options.MasterVolume)} / BGM {FormatPercent(options.MusicVolume)} / SFX {FormatPercent(options.SfxVolume)}");
+            SetInfoLine(2, "Display", $"{options.ResolutionWidth}x{options.ResolutionHeight}  UI {options.UiScale:0.00}  FS {FormatOnOff(options.Fullscreen)}");
+            SetInfoLine(3, "Feedback", $"Shake {FormatOnOff(options.CameraShakeEnabled)}  Damage {FormatOnOff(options.DamageNumbersEnabled)}  Flash {FormatOnOff(options.ReduceFlashes)}");
+            SetInfoLine(4, "Accessibility", $"Contrast {FormatOnOff(options.HighContrastUi)}  Color {FormatOnOff(options.ColorBlindAssist)}");
 
-            SetButtonCopy(settingsButtonText, "<size=15>Value</size>\n<b>-10%</b>\n<size=13>Lower selected</size>", enabledButtonTextColor);
-            SetButtonCopy(resumeButtonText, "<size=15>Target</size>\n<b>Next</b>\n<size=13>Master/Music/SFX</size>", enabledButtonTextColor);
-            SetButtonCopy(quitButtonText, "<size=15>Value</size>\n<b>+10%</b>\n<size=13>Raise selected</size>", enabledButtonTextColor);
+            SetButtonCopy(settingsButtonText, selectedIsToggle ? "<size=15>Value</size>\n<b>Toggle</b>\n<size=13>Switch selected</size>" : "<size=15>Value</size>\n<b>-</b>\n<size=13>Lower selected</size>", enabledButtonTextColor);
+            SetButtonCopy(resumeButtonText, "<size=15>Target</size>\n<b>Next</b>\n<size=13>Cycle option</size>", enabledButtonTextColor);
+            SetButtonCopy(quitButtonText, selectedIsToggle ? "<size=15>Value</size>\n<b>Toggle</b>\n<size=13>Switch selected</size>" : "<size=15>Value</size>\n<b>+</b>\n<size=13>Raise selected</size>", enabledButtonTextColor);
 
             ApplyButtonTheme(settingsButton, true);
             ApplyButtonTheme(resumeButton, true);
@@ -466,9 +467,10 @@ namespace CuteIssac.UI
             }
 
             statText.supportRichText = true;
+            int valueSize = !string.IsNullOrEmpty(value) && value.Length > 22 ? 22 : 30;
             statText.text =
                 $"<size=14><color=#{ColorUtility.ToHtmlStringRGBA(statLabelColor)}>{label}</color></size>\n" +
-                $"<size=30><b><color=#{ColorUtility.ToHtmlStringRGBA(statValueColor)}>{value}</color></b></size>";
+                $"<size={valueSize}><b><color=#{ColorUtility.ToHtmlStringRGBA(statValueColor)}>{value}</color></b></size>";
             statText.color = statValueColor;
         }
 
@@ -489,6 +491,43 @@ namespace CuteIssac.UI
             return string.Equals(label, selectedOptionLabel, System.StringComparison.Ordinal)
                 ? $"> {label}"
                 : label;
+        }
+
+        private static string ResolveSelectedOptionValue(GameOptionsData options, string selectedOptionLabel)
+        {
+            return selectedOptionLabel switch
+            {
+                "Music Volume" => FormatPercent(options.MusicVolume),
+                "SFX Volume" => FormatPercent(options.SfxVolume),
+                "UI Scale" => options.UiScale.ToString("0.00"),
+                "Fullscreen" => FormatOnOff(options.Fullscreen),
+                "Camera Shake" => FormatOnOff(options.CameraShakeEnabled),
+                "Damage Numbers" => FormatOnOff(options.DamageNumbersEnabled),
+                "Reduce Flashes" => FormatOnOff(options.ReduceFlashes),
+                "High Contrast" => FormatOnOff(options.HighContrastUi),
+                "Color Assist" => FormatOnOff(options.ColorBlindAssist),
+                _ => FormatPercent(options.MasterVolume)
+            };
+        }
+
+        private static bool IsToggleOption(string selectedOptionLabel)
+        {
+            return selectedOptionLabel == "Fullscreen"
+                || selectedOptionLabel == "Camera Shake"
+                || selectedOptionLabel == "Damage Numbers"
+                || selectedOptionLabel == "Reduce Flashes"
+                || selectedOptionLabel == "High Contrast"
+                || selectedOptionLabel == "Color Assist";
+        }
+
+        private static string FormatPercent(float value)
+        {
+            return $"{Mathf.RoundToInt(Mathf.Clamp01(value) * 100f)}%";
+        }
+
+        private static string FormatOnOff(bool value)
+        {
+            return value ? "On" : "Off";
         }
 
         public void RefreshSelectionState(Button selectedButton)

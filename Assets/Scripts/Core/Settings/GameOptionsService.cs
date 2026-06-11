@@ -31,6 +31,12 @@ namespace CuteIssac.Core.Settings
 
         public event Action<GameOptionsData> OptionsChanged;
 
+        public static bool CameraShakeEnabled { get; private set; } = true;
+        public static bool DamageNumbersEnabled { get; private set; } = true;
+        public static bool HighContrastUiEnabled { get; private set; }
+        public static bool ReduceFlashesEnabled { get; private set; }
+        public static bool ColorBlindAssistEnabled { get; private set; }
+
         public GameOptionsData CurrentOptions { get; private set; }
 
         private void Awake()
@@ -118,6 +124,17 @@ namespace CuteIssac.Core.Settings
             int height = Mathf.Clamp(options.ResolutionHeight <= 0 ? Screen.height : options.ResolutionHeight, 360, 4320);
             Screen.SetResolution(width, height, options.Fullscreen);
             ApplyUiScaleToOpenCanvases(options.UiScale);
+            ApplyAccessibilityState(options);
+        }
+
+        public static void ApplyAccessibilityState(GameOptionsData options)
+        {
+            options ??= new GameOptionsData();
+            CameraShakeEnabled = options.CameraShakeEnabled;
+            DamageNumbersEnabled = options.DamageNumbersEnabled;
+            HighContrastUiEnabled = options.HighContrastUi;
+            ReduceFlashesEnabled = options.ReduceFlashes;
+            ColorBlindAssistEnabled = options.ColorBlindAssist;
         }
 
         public static void ApplyUiScale(CanvasScaler scaler, float uiScale)

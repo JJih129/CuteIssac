@@ -37,6 +37,7 @@ namespace CuteIssac.UI
         private Text _titleText;
         private CanvasScaler _canvasScaler;
         private ScrollRect _contentScrollRect;
+        private RectTransform _shellRoot;
         private Button _continueButton;
         private CharacterProfileCatalog _characterCatalog;
         private MetaCollectionCatalog _collectionCatalog;
@@ -140,6 +141,7 @@ namespace CuteIssac.UI
 
             MetaProgressionSaveData progression = _metaSaveData?.Progression ?? new MetaProgressionSaveData();
             UnlockData[] unlockDefinitions = Resources.LoadAll<UnlockData>("Unlocks");
+            RectTransform characterGrid = CreateCharacterGridRoot(_characterCatalog.Profiles.Count);
 
             for (int index = 0; index < _characterCatalog.Profiles.Count; index++)
             {
@@ -149,27 +151,9 @@ namespace CuteIssac.UI
                     continue;
                 }
 
-                string label = profile.CharacterId == _selectedCharacterId
-                    ? $"{profile.DisplayName}  SELECTED"
-                    : profile.DisplayName;
-                string id = profile.CharacterId;
                 bool unlocked = IsCharacterUnlocked(profile);
-                CreateButton(_contentRoot, unlocked ? label : $"{profile.DisplayName}  LOCKED", () =>
-                {
-                    if (unlocked)
-                    {
-                        SelectCharacter(id);
-                    }
-                });
-                string lockLine = unlocked
-                    ? string.Empty
-                    : $"\nUnlock: {ResolveUnlockLabel(profile.UnlockKey)}\nProgress: {ResolveUnlockProgressLine(profile.UnlockKey, progression, unlockDefinitions)}";
                 CharacterProgressionRecord record = FindCharacterRecord(progression, profile.CharacterId);
-                string markLine = $"\n{FormatClearMarkSummary(record)}";
-                string recordLine = record != null
-                    ? $"\nRuns {record.Runs}  Wins {record.Wins}  Best F{record.BestFloor}"
-                    : "\nRuns 0  Wins 0  Best F0";
-                CreateBodyText(_contentRoot, $"{(string.IsNullOrWhiteSpace(profile.Description) ? profile.CharacterId : profile.Description)}{recordLine}{markLine}{lockLine}", 18);
+                CreateCharacterCard(characterGrid, profile, record, progression, unlockDefinitions, unlocked, profile.CharacterId == _selectedCharacterId);
             }
         }
 
@@ -187,6 +171,185 @@ namespace CuteIssac.UI
             PlayerPrefs.SetInt(HardModePrefKey, _hardModeSelected ? 1 : 0);
             PlayerPrefs.Save();
             ShowCharacters();
+        }
+
+        private RectTransform CreateCharacterGridRoot(int itemCount)
+        {
+            GameObject gridObject = new("CharacterGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement));
+            gridObject.transform.SetParent(_contentRoot, false);
+
+            RectTransform gridRoot = gridObject.GetComponent<RectTransform>();
+            gridRoot.localScale = Vector3.one;
+
+            GridLayoutGroup grid = gridObject.GetComponent<GridLayoutGroup>();
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 2;
+            grid.cellSize = new Vector2(438f, 302f);
+            grid.spacing = new Vector2(16f, 16f);
+            grid.childAlignment = TextAnchor.UpperLeft;
+
+            int rows = Mathf.CeilToInt(Mathf.Max(1, itemCount) / 2f);
+            LayoutElement layoutElement = gridObject.GetComponent<LayoutElement>();
+            layoutElement.preferredHeight = rows * 302f + Mathf.Max(0, rows - 1) * 16f + 8f;
+            layoutElement.minHeight = layoutElement.preferredHeight;
+            return gridRoot;
+        }
+
+        private void CreateCharacterCard(
+            RectTransform parent,
+            CharacterProfileData profile,
+            CharacterProgressionRecord record,
+            MetaProgressionSaveData progression,
+            UnlockData[] unlockDefinitions,
+            bool unlocked,
+            bool selected)
+        {
+            GameObject cardObject = new(profile.CharacterId, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            cardObject.transform.SetParent(parent, false);
+
+            RectTransform cardRect = cardObject.GetComponent<RectTransform>();
+            cardRect.localScale = Vector3.one;
+
+            Image cardImage = cardObject.GetComponent<Image>();
+            cardImage.color = selected
+                ? new Color(0.15f, 0.24f, 0.25f, 0.98f)
+                : unlocked ? new Color(0.14f, 0.155f, 0.17f, 0.96f) : new Color(0.07f, 0.075f, 0.085f, 0.96f);
+
+            CreateCharacterIcon(cardRect, profile, unlocked);
+
+            string title = unlocked ? ResolveSafeLabel(profile.DisplayName, profile.CharacterId) : "LOCKED";
+            Text nameText = CreateCardText(cardRect, "Name", selected ? $"{title}  SELECTED" : title, 20, FontStyle.Bold, TextAnchor.UpperLeft, Color.white);
+            Anchor(nameText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            nameText.rectTransform.pivot = new Vector2(0f, 1f);
+            nameText.rectTransform.offsetMin = new Vector2(104f, -46f);
+            nameText.rectTransform.offsetMax = new Vector2(-14f, -12f);
+
+            string summary = unlocked
+                ? BuildCharacterLoadoutSummary(profile)
+                : $"Unlock: {ResolveUnlockLabel(profile.UnlockKey)}\n{ResolveUnlockProgressLine(profile.UnlockKey, progression, unlockDefinitions)}";
+            Text loadoutText = CreateCardText(cardRect, "Loadout", summary, 13, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.84f, 0.88f, 0.92f, 1f));
+            Anchor(loadoutText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            loadoutText.rectTransform.pivot = new Vector2(0f, 1f);
+            loadoutText.rectTransform.offsetMin = new Vector2(14f, -140f);
+            loadoutText.rectTransform.offsetMax = new Vector2(-14f, -78f);
+
+            Text recordText = CreateCardText(cardRect, "Record", BuildCharacterRecordSummary(record), 13, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.62f, 0.96f, 1f, 1f));
+            Anchor(recordText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            recordText.rectTransform.pivot = new Vector2(0f, 1f);
+            recordText.rectTransform.offsetMin = new Vector2(14f, -198f);
+            recordText.rectTransform.offsetMax = new Vector2(-14f, -148f);
+
+            Text markText = CreateCardText(cardRect, "Marks", BuildCompactClearMarkSummary(record), 12, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.86f, 0.9f, 0.94f, 1f));
+            Anchor(markText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            markText.rectTransform.pivot = new Vector2(0f, 1f);
+            markText.rectTransform.offsetMin = new Vector2(14f, -244f);
+            markText.rectTransform.offsetMax = new Vector2(-14f, -202f);
+
+            Button selectButton = CreateCardButton(cardRect, unlocked ? selected ? "Selected" : "Select" : "Locked", unlocked && !selected);
+            if (unlocked && !selected)
+            {
+                string id = profile.CharacterId;
+                selectButton.onClick.AddListener(() => SelectCharacter(id));
+            }
+        }
+
+        private static void CreateCharacterIcon(RectTransform parent, CharacterProfileData profile, bool unlocked)
+        {
+            GameObject iconObject = new("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            iconObject.transform.SetParent(parent, false);
+            RectTransform iconRect = iconObject.GetComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0f, 1f);
+            iconRect.anchorMax = new Vector2(0f, 1f);
+            iconRect.pivot = new Vector2(0f, 1f);
+            iconRect.anchoredPosition = new Vector2(14f, -16f);
+            iconRect.sizeDelta = new Vector2(76f, 76f);
+
+            Image iconImage = iconObject.GetComponent<Image>();
+            iconImage.sprite = unlocked ? profile.Icon : null;
+            iconImage.preserveAspect = true;
+            iconImage.color = unlocked && profile.Icon != null ? Color.white : new Color(0.18f, 0.19f, 0.2f, 1f);
+
+            if (!unlocked || profile.Icon == null)
+            {
+                Text iconText = CreateCardText(iconRect, "IconText", unlocked ? "?" : "???", 20, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white);
+                Stretch(iconText.rectTransform, Vector2.zero, Vector2.one);
+            }
+        }
+
+        private static Button CreateCardButton(RectTransform parent, string label, bool interactable)
+        {
+            GameObject buttonObject = new("SelectButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            buttonObject.transform.SetParent(parent, false);
+            RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+            Anchor(buttonRect, new Vector2(1f, 0f), new Vector2(1f, 0f));
+            buttonRect.pivot = new Vector2(1f, 0f);
+            buttonRect.anchoredPosition = new Vector2(-14f, 14f);
+            buttonRect.sizeDelta = new Vector2(128f, 40f);
+
+            Image image = buttonObject.GetComponent<Image>();
+            image.color = interactable ? ResolveButtonColor() : new Color(0.12f, 0.13f, 0.14f, 0.9f);
+
+            Button button = buttonObject.GetComponent<Button>();
+            button.targetGraphic = image;
+            button.interactable = interactable;
+
+            Text text = CreateCardText(buttonRect, "Label", label, 16, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white);
+            Stretch(text.rectTransform, Vector2.zero, Vector2.one);
+            return button;
+        }
+
+        private static string BuildCharacterLoadoutSummary(CharacterProfileData profile)
+        {
+            if (profile == null)
+            {
+                return "No profile.";
+            }
+
+            string weapon = profile.StartingWeaponItem != null ? profile.StartingWeaponItem.DisplayName : "Default weapon";
+            string active = profile.StartingActiveItem != null ? profile.StartingActiveItem.DisplayName : "No active";
+            int passiveCount = profile.StartingPassiveItems != null ? profile.StartingPassiveItems.Count : 0;
+            return $"Coins {profile.StartingCoins}  Keys {profile.StartingKeys}  Bombs {profile.StartingBombs}\nWeapon: {weapon}\nActive: {active}  Passive x{passiveCount}";
+        }
+
+        private static string BuildCharacterRecordSummary(CharacterProgressionRecord record)
+        {
+            if (record == null)
+            {
+                return "Runs 0  Wins 0  Best F0  Streak 0/0";
+            }
+
+            return $"Runs {record.Runs}  Wins {record.Wins}  Best F{record.BestFloor}  Streak {record.CurrentWinStreak}/{record.BestWinStreak}";
+        }
+
+        private static string BuildCompactClearMarkSummary(CharacterProgressionRecord record)
+        {
+            if (record?.ClearMarks == null || record.ClearMarks.Count == 0)
+            {
+                return "F1 [ ]  F2 [ ]  Final [ ]  Hard [ ]";
+            }
+
+            return $"F1 {MarkToken(record.ClearMarks, "floor_1_boss")}  F2 {MarkToken(record.ClearMarks, "floor_2_boss")}  Final {MarkToken(record.ClearMarks, "final_boss")}  Hard {MarkToken(record.ClearMarks, "hard_victory")}\nChallenge {MarkToken(record.ClearMarks, "challenge_room")}  Devil {AnyMarkToken(record.ClearMarks, "deal_devil", "deal_devil_accepted", "deal_devil_declined")}  Angel {AnyMarkToken(record.ClearMarks, "deal_angel", "deal_angel_accepted")}";
+        }
+
+        private static string MarkToken(List<string> marks, string markId)
+        {
+            return ContainsId(marks, markId) ? "[x]" : "[ ]";
+        }
+
+        private static string AnyMarkToken(List<string> marks, params string[] markIds)
+        {
+            if (markIds != null)
+            {
+                for (int index = 0; index < markIds.Length; index++)
+                {
+                    if (ContainsId(marks, markIds[index]))
+                    {
+                        return "[x]";
+                    }
+                }
+            }
+
+            return "[ ]";
         }
 
         private void ShowCollection()
@@ -222,9 +385,9 @@ namespace CuteIssac.UI
         private void ShowCollectionItemsBody()
         {
             MetaProgressionSaveData progression = _metaSaveData?.Progression ?? new MetaProgressionSaveData();
-            StringBuilder weapons = new();
-            StringBuilder actives = new();
-            StringBuilder passives = new();
+            List<MetaCollectionEntry> weapons = new();
+            List<MetaCollectionEntry> actives = new();
+            List<MetaCollectionEntry> passives = new();
             int knownItems = 0;
             int discoveredItems = 0;
 
@@ -247,28 +410,33 @@ namespace CuteIssac.UI
                         discoveredItems++;
                     }
 
-                    AppendCollectionEntry(ResolveItemBuilder(entry.Kind, passives, actives, weapons), entry, discovered, 0, unlocked);
+                    ResolveItemList(entry.Kind, passives, actives, weapons).Add(entry);
                 }
             }
 
             if (knownItems == 0 && progression.DiscoveredItemIds.Count > 0)
             {
-                AppendRawIds(passives, progression.DiscoveredItemIds);
+                StringBuilder rawIds = new();
+                AppendRawIds(rawIds, progression.DiscoveredItemIds);
                 knownItems = progression.DiscoveredItemIds.Count;
                 discoveredItems = progression.DiscoveredItemIds.Count;
+                CreateBodyText(_contentRoot, $"Items {discoveredItems}/{Mathf.Max(knownItems, discoveredItems)}", 28, FontStyle.Bold);
+                CreateBodyText(_contentRoot, BuildSectionText(rawIds), 18);
+                ResetContentScroll();
+                return;
             }
 
             CreateBodyText(_contentRoot, $"Items {discoveredItems}/{Mathf.Max(knownItems, discoveredItems)}", 28, FontStyle.Bold);
-            CreateBodyText(_contentRoot,
-                $"Weapons\n{BuildSectionText(weapons)}\n\nActives\n{BuildSectionText(actives)}\n\nPassives\n{BuildSectionText(passives)}",
-                18);
+            CreateCollectionSection("Weapons", weapons, progression, false);
+            CreateCollectionSection("Actives", actives, progression, false);
+            CreateCollectionSection("Passives", passives, progression, false);
             ResetContentScroll();
         }
 
         private void ShowEnemyCodexBody()
         {
             MetaProgressionSaveData progression = _metaSaveData?.Progression ?? new MetaProgressionSaveData();
-            StringBuilder enemies = new();
+            List<MetaCollectionEntry> enemies = new();
             int knownEnemies = 0;
             int seenEnemies = 0;
 
@@ -291,19 +459,24 @@ namespace CuteIssac.UI
                         seenEnemies++;
                     }
 
-                    AppendCollectionEntry(enemies, entry, seen, killCount, true);
+                    enemies.Add(entry);
                 }
             }
 
             if (knownEnemies == 0 && progression.SeenEnemyIds.Count > 0)
             {
-                AppendRawIds(enemies, progression.SeenEnemyIds);
+                StringBuilder rawIds = new();
+                AppendRawIds(rawIds, progression.SeenEnemyIds);
                 knownEnemies = progression.SeenEnemyIds.Count;
                 seenEnemies = progression.SeenEnemyIds.Count;
+                CreateBodyText(_contentRoot, $"Enemy Codex {seenEnemies}/{Mathf.Max(knownEnemies, seenEnemies)}", 28, FontStyle.Bold);
+                CreateBodyText(_contentRoot, BuildSectionText(rawIds), 18);
+                ResetContentScroll();
+                return;
             }
 
             CreateBodyText(_contentRoot, $"Enemy Codex {seenEnemies}/{Mathf.Max(knownEnemies, seenEnemies)}", 28, FontStyle.Bold);
-            CreateBodyText(_contentRoot, BuildSectionText(enemies), 18);
+            CreateCollectionSection("Enemies", enemies, progression, true);
             ResetContentScroll();
         }
 
@@ -311,10 +484,13 @@ namespace CuteIssac.UI
         {
             LoadMeta();
             SetTitle("Achievements");
+            ClearContent();
             MetaProgressionSaveData progression = _metaSaveData?.Progression ?? new MetaProgressionSaveData();
             AchievementData[] achievements = Resources.LoadAll<AchievementData>("Achievements");
-            StringBuilder builder = new();
+            List<AchievementData> completedAchievements = new();
+            List<AchievementData> pendingAchievements = new();
             int completedCount = 0;
+            int validCount = 0;
 
             for (int index = 0; index < achievements.Length; index++)
             {
@@ -324,56 +500,68 @@ namespace CuteIssac.UI
                     continue;
                 }
 
+                validCount++;
                 bool completed = ContainsId(progression.CompletedAchievementIds, achievement.AchievementId);
                 if (completed)
                 {
                     completedCount++;
+                    completedAchievements.Add(achievement);
                 }
-
-                if (builder.Length > 0)
+                else
                 {
-                    builder.Append('\n');
-                    builder.Append('\n');
-                }
-
-                builder.Append(completed ? "[DONE] " : "[----] ");
-                builder.Append(string.IsNullOrWhiteSpace(achievement.DisplayName) ? achievement.AchievementId : achievement.DisplayName);
-                if (completed)
-                {
-                    string completedAt = ResolveAchievementCompletedAtLabel(progression, achievement.AchievementId);
-                    if (!string.IsNullOrWhiteSpace(completedAt))
-                    {
-                        builder.Append("  ");
-                        builder.Append(completedAt);
-                    }
-                }
-
-                builder.Append('\n');
-                builder.Append(string.IsNullOrWhiteSpace(achievement.Description) ? achievement.AchievementId : achievement.Description);
-                builder.Append('\n');
-                builder.Append("Progress: ");
-                builder.Append(ResolveAchievementProgress(achievement, progression));
-
-                if (achievement.RewardTargetType == AchievementRewardTargetType.UnlockKey && !string.IsNullOrWhiteSpace(achievement.RewardUnlockKey))
-                {
-                    builder.Append('\n');
-                    builder.Append("Reward: ");
-                    builder.Append(UnlockDisplayNameResolver.Resolve(achievement.RewardUnlockKey));
+                    pendingAchievements.Add(achievement);
                 }
             }
 
-            ShowText(
-                $"Achievements {completedCount}/{Mathf.Max(achievements.Length, completedCount)}",
-                builder.Length > 0 ? builder.ToString() : "No achievement definitions found.");
+            CreateBodyText(_contentRoot, $"Achievements {completedCount}/{Mathf.Max(validCount, completedCount)}", 28, FontStyle.Bold);
+            if (validCount == 0)
+            {
+                CreateBodyText(_contentRoot, "No achievement definitions found.", 18);
+                ResetContentScroll();
+                return;
+            }
+
+            CreateAchievementSection("Completed", completedAchievements, progression, true);
+            CreateAchievementSection("In Progress", pendingAchievements, progression, false);
+            ResetContentScroll();
         }
 
         private void ShowStats()
         {
             LoadMeta();
             SetTitle("Stats");
+            ClearContent();
             MetaProgressionSaveData progression = _metaSaveData?.Progression ?? new MetaProgressionSaveData();
-            ShowText("Meta Progress",
-                $"Runs: {progression.TotalRuns}\nWins: {progression.TotalWins}\nDefeats: {progression.TotalDefeats}\nAbandons: {progression.TotalAbandons}\nCurrent Streak: {progression.CurrentWinStreak}\nBest Streak: {progression.BestWinStreak}\nBest Floor: {progression.BestFloor}\nRooms Cleared: {progression.TotalRoomsCleared}\nBoss Clears: {progression.TotalBossRoomsCleared}\nTotal Kills: {progression.TotalEnemyKills}\nNo-Hit Rooms: {progression.NoHitCombatRoomClears}\nNo-Bomb Boss Clears: {progression.BossClearsWithoutBombs}\nSeen Enemies: {progression.SeenEnemyIds.Count}\nPlay Time: {FormatSeconds(progression.TotalRunSeconds)}\n\nEnemy Kills\n{FormatCounterRecords(progression.EnemyKillCounts)}\n\nRoom Type Clears\n{FormatCounterRecords(progression.RoomTypeClearCounts)}\n\nChallenge Ranks\n{FormatCounterRecords(progression.ChallengeClearRankCounts)}\n\nChallenge Pressure\n{FormatCounterRecords(progression.ChallengePressureTierCounts)}\n\nSpecial Reward Offers\n{FormatCounterRecords(progression.SpecialRewardOfferCounts)}\n\nSpecial Deal Offers\n{FormatCounterRecords(progression.SpecialDealOfferCounts)}\n\nSpecial Deal Purchases\n{FormatCounterRecords(progression.SpecialDealPurchaseCounts)}\n\nSpecial Deal Declines\n{FormatCounterRecords(progression.SpecialDealDeclineCounts)}\n\nCharacters\n{FormatCharacterRecords(progression.CharacterRecords)}");
+
+            CreateBodyText(_contentRoot, "Account Summary", 28, FontStyle.Bold);
+            RectTransform accountGrid = CreateStatsGridRoot("AccountStats", 9, 3, 132f);
+            CreateStatCard(accountGrid, "Runs", progression.TotalRuns.ToString(), $"Win rate {FormatRatioPercent(progression.TotalWins, progression.TotalRuns)}");
+            CreateStatCard(accountGrid, "Wins", progression.TotalWins.ToString(), $"Defeats {Mathf.Max(0, progression.TotalDefeats)}");
+            CreateStatCard(accountGrid, "Abandons", progression.TotalAbandons.ToString(), "Run exits");
+            CreateStatCard(accountGrid, "Best Floor", progression.BestFloor.ToString(), "Highest route reached");
+            CreateStatCard(accountGrid, "Play Time", FormatSeconds(progression.TotalRunSeconds), "Total run time");
+            CreateStatCard(accountGrid, "Streak", $"{progression.CurrentWinStreak}/{progression.BestWinStreak}", "Current / best");
+            CreateStatCard(accountGrid, "Rooms", progression.TotalRoomsCleared.ToString(), $"Resolved {Mathf.Max(0, progression.TotalRoomsResolved)}");
+            CreateStatCard(accountGrid, "Boss Clears", progression.TotalBossRoomsCleared.ToString(), $"No-bomb {Mathf.Max(0, progression.BossClearsWithoutBombs)}");
+            CreateStatCard(accountGrid, "Kills", progression.TotalEnemyKills.ToString(), $"Seen enemies {progression.SeenEnemyIds.Count}");
+
+            CreateBodyText(_contentRoot, "Resources & Discoveries", 24, FontStyle.Bold);
+            RectTransform resourceGrid = CreateStatsGridRoot("ResourceStats", 6, 3, 120f);
+            CreateStatCard(resourceGrid, "Coins", progression.TotalCoinsCollected.ToString(), "Collected");
+            CreateStatCard(resourceGrid, "Keys", progression.TotalKeysCollected.ToString(), "Collected");
+            CreateStatCard(resourceGrid, "Bombs", progression.TotalBombsCollected.ToString(), "Collected");
+            CreateStatCard(resourceGrid, "Items", progression.DiscoveredItemIds.Count.ToString(), "Discovered");
+            CreateStatCard(resourceGrid, "Achievements", progression.CompletedAchievementIds.Count.ToString(), "Completed");
+            CreateStatCard(resourceGrid, "No-Hit Rooms", progression.NoHitCombatRoomClears.ToString(), "Clean clears");
+
+            CreateCounterRecordSection("Enemy Kills", progression.EnemyKillCounts, 6);
+            CreateCounterRecordSection("Room Type Clears", progression.RoomTypeClearCounts, 6);
+            CreateCounterRecordSection("Challenge Ranks", progression.ChallengeClearRankCounts, 6);
+            CreateCounterRecordSection("Challenge Pressure", progression.ChallengePressureTierCounts, 6);
+            CreateCounterRecordSection("Special Deals", progression.SpecialDealOfferCounts, 6);
+            CreateCounterRecordSection("Special Purchases", progression.SpecialDealPurchaseCounts, 6);
+            CreateCharacterStatsSection(progression.CharacterRecords);
+            ResetContentScroll();
         }
 
         private void ShowOptions()
@@ -381,7 +569,7 @@ namespace CuteIssac.UI
             ClearContent();
             SetTitle("Options");
             GameOptionsData options = ResolveOptions();
-            CreateBodyText(_contentRoot, $"Resolution: {options.ResolutionWidth}x{options.ResolutionHeight}\nUI Scale: {options.UiScale:0.00}\nMaster Volume: {Mathf.RoundToInt(options.MasterVolume * 100f)}%\nMusic Volume: {Mathf.RoundToInt(options.MusicVolume * 100f)}%\nSFX Volume: {Mathf.RoundToInt(options.SfxVolume * 100f)}%\nFullscreen: {options.Fullscreen}");
+            CreateBodyText(_contentRoot, $"Resolution: {options.ResolutionWidth}x{options.ResolutionHeight}\nUI Scale: {options.UiScale:0.00}\nMaster Volume: {Mathf.RoundToInt(options.MasterVolume * 100f)}%\nMusic Volume: {Mathf.RoundToInt(options.MusicVolume * 100f)}%\nSFX Volume: {Mathf.RoundToInt(options.SfxVolume * 100f)}%\nFullscreen: {options.Fullscreen}\nCamera Shake: {FormatOnOff(options.CameraShakeEnabled)}\nDamage Numbers: {FormatOnOff(options.DamageNumbersEnabled)}\nHigh Contrast: {FormatOnOff(options.HighContrastUi)}\nReduce Flashes: {FormatOnOff(options.ReduceFlashes)}\nColor Assist: {FormatOnOff(options.ColorBlindAssist)}");
             CreateButton(_contentRoot, "Resolution 1280x720", () => SetResolution(1280, 720));
             CreateButton(_contentRoot, "Resolution 1920x1080", () => SetResolution(1920, 1080));
             CreateButton(_contentRoot, "Toggle Fullscreen", ToggleFullscreen);
@@ -399,6 +587,7 @@ namespace CuteIssac.UI
             CreateButton(_contentRoot, $"Reduce Flashes: {(options.ReduceFlashes ? "On" : "Off")}", ToggleReduceFlashes);
             CreateButton(_contentRoot, $"Color Assist: {(options.ColorBlindAssist ? "On" : "Off")}", ToggleColorAssist);
             CreateButton(_contentRoot, _resetArmed ? "CONFIRM DATA RESET" : "Reset Data", ResetData);
+            ApplyAccessibilityThemeToOpenMenu(options);
         }
 
         private void ShowCredits()
@@ -423,16 +612,16 @@ namespace CuteIssac.UI
             _canvasScaler = canvas.GetComponent<CanvasScaler>();
             CreateBackground(canvas.transform);
 
-            RectTransform shell = CreatePanel("TitleShell", canvas.transform, new Color(0.09f, 0.09f, 0.1f, 0.94f));
-            Stretch(shell, new Vector2(0.12f, 0.1f), new Vector2(0.88f, 0.9f));
+            _shellRoot = CreatePanel("TitleShell", canvas.transform, new Color(0.09f, 0.09f, 0.1f, 0.94f));
+            Stretch(_shellRoot, new Vector2(0.12f, 0.1f), new Vector2(0.88f, 0.9f));
 
-            _titleText = CreateText("Title", shell, "CUTE ISSAC", 46, FontStyle.Bold, TextAnchor.MiddleLeft, Color.white);
+            _titleText = CreateText("Title", _shellRoot, "CUTE ISSAC", 46, FontStyle.Bold, TextAnchor.MiddleLeft, Color.white);
             Anchor(_titleText.rectTransform, new Vector2(0.05f, 0.84f), new Vector2(0.95f, 0.96f));
 
-            RectTransform sidebar = CreatePanel("Sidebar", shell, new Color(0.16f, 0.18f, 0.2f, 0.96f));
+            RectTransform sidebar = CreatePanel("Sidebar", _shellRoot, new Color(0.16f, 0.18f, 0.2f, 0.96f));
             Anchor(sidebar, new Vector2(0.04f, 0.06f), new Vector2(0.29f, 0.82f));
 
-            _contentRoot = CreateScrollContent("ContentScroll", shell, new Vector2(0.32f, 0.06f), new Vector2(0.96f, 0.82f), out _contentScrollRect);
+            _contentRoot = CreateScrollContent("ContentScroll", _shellRoot, new Vector2(0.32f, 0.06f), new Vector2(0.96f, 0.82f), out _contentScrollRect);
             AddVerticalLayout(_contentRoot, 16, 24);
             ContentSizeFitter contentFitter = _contentRoot.gameObject.AddComponent<ContentSizeFitter>();
             contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -594,7 +783,47 @@ namespace CuteIssac.UI
                 Mathf.Clamp(options.ResolutionWidth <= 0 ? 1920 : options.ResolutionWidth, 640, 7680),
                 Mathf.Clamp(options.ResolutionHeight <= 0 ? 1080 : options.ResolutionHeight, 360, 4320),
                 options.Fullscreen);
+            GameOptionsService.ApplyAccessibilityState(options);
             GameOptionsService.ApplyUiScale(_canvasScaler, options.UiScale);
+            ApplyAccessibilityThemeToOpenMenu(options);
+        }
+
+        private void ApplyAccessibilityThemeToOpenMenu(GameOptionsData options)
+        {
+            if (_shellRoot == null)
+            {
+                return;
+            }
+
+            GameOptionsService.ApplyAccessibilityState(options);
+            Image[] images = _shellRoot.GetComponentsInChildren<Image>(true);
+            for (int index = 0; index < images.Length; index++)
+            {
+                Image image = images[index];
+                if (image == null)
+                {
+                    continue;
+                }
+
+                if (image.GetComponent<Button>() != null)
+                {
+                    image.color = ResolveButtonColor();
+                }
+                else
+                {
+                    image.color = ResolvePanelColor(image.gameObject.name, image.color);
+                }
+            }
+
+            Text[] texts = _shellRoot.GetComponentsInChildren<Text>(true);
+            for (int index = 0; index < texts.Length; index++)
+            {
+                Text text = texts[index];
+                if (text != null)
+                {
+                    text.color = ResolveTextColor(text.gameObject.name, text.color);
+                }
+            }
         }
 
         private void SetResolution(int width, int height)
@@ -986,6 +1215,171 @@ namespace CuteIssac.UI
             return builder.Length > 0 ? builder.ToString() : "None";
         }
 
+        private RectTransform CreateStatsGridRoot(string name, int itemCount, int columns, float cellHeight)
+        {
+            GameObject gridObject = new(name, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement));
+            gridObject.transform.SetParent(_contentRoot, false);
+
+            RectTransform gridRoot = gridObject.GetComponent<RectTransform>();
+            gridRoot.localScale = Vector3.one;
+
+            GridLayoutGroup grid = gridObject.GetComponent<GridLayoutGroup>();
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = Mathf.Max(1, columns);
+            grid.cellSize = new Vector2(columns <= 2 ? 438f : 286f, cellHeight);
+            grid.spacing = new Vector2(14f, 14f);
+            grid.childAlignment = TextAnchor.UpperLeft;
+
+            int rows = Mathf.CeilToInt(Mathf.Max(1, itemCount) / (float)Mathf.Max(1, columns));
+            LayoutElement layoutElement = gridObject.GetComponent<LayoutElement>();
+            layoutElement.preferredHeight = rows * cellHeight + Mathf.Max(0, rows - 1) * 14f + 8f;
+            layoutElement.minHeight = layoutElement.preferredHeight;
+            return gridRoot;
+        }
+
+        private static void CreateStatCard(RectTransform parent, string label, string value, string detail)
+        {
+            GameObject cardObject = new(label, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            cardObject.transform.SetParent(parent, false);
+
+            RectTransform cardRect = cardObject.GetComponent<RectTransform>();
+            cardRect.localScale = Vector3.one;
+
+            Image image = cardObject.GetComponent<Image>();
+            image.color = new Color(0.14f, 0.155f, 0.17f, 0.96f);
+
+            Text labelText = CreateCardText(cardRect, "Label", label, 14, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.62f, 0.96f, 1f, 1f));
+            Anchor(labelText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            labelText.rectTransform.pivot = new Vector2(0f, 1f);
+            labelText.rectTransform.offsetMin = new Vector2(14f, -34f);
+            labelText.rectTransform.offsetMax = new Vector2(-14f, -10f);
+
+            Text valueText = CreateCardText(cardRect, "Value", string.IsNullOrWhiteSpace(value) ? "0" : value, ResolveStatValueSize(value), FontStyle.Bold, TextAnchor.MiddleLeft, Color.white);
+            Anchor(valueText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f));
+            valueText.rectTransform.offsetMin = new Vector2(14f, 38f);
+            valueText.rectTransform.offsetMax = new Vector2(-14f, -42f);
+
+            Text detailText = CreateCardText(cardRect, "Detail", string.IsNullOrWhiteSpace(detail) ? " " : detail, 12, FontStyle.Normal, TextAnchor.LowerLeft, new Color(0.78f, 0.82f, 0.86f, 1f));
+            Anchor(detailText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f));
+            detailText.rectTransform.pivot = new Vector2(0f, 0f);
+            detailText.rectTransform.offsetMin = new Vector2(14f, 10f);
+            detailText.rectTransform.offsetMax = new Vector2(-14f, 34f);
+        }
+
+        private static int ResolveStatValueSize(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return 30;
+            }
+
+            return value.Length > 12 ? 21 : value.Length > 7 ? 25 : 30;
+        }
+
+        private void CreateCounterRecordSection(string title, List<MetaProgressionCounterRecord> records, int maxCards)
+        {
+            CreateBodyText(_contentRoot, title, 24, FontStyle.Bold);
+            int count = CountCounterRecords(records);
+            if (count == 0)
+            {
+                CreateBodyText(_contentRoot, "None", 18);
+                return;
+            }
+
+            int visibleCount = Mathf.Min(Mathf.Max(1, maxCards), count);
+            RectTransform gridRoot = CreateStatsGridRoot($"{title}Stats", visibleCount, 3, 104f);
+            int emitted = 0;
+            for (int index = 0; index < records.Count && emitted < visibleCount; index++)
+            {
+                MetaProgressionCounterRecord record = records[index];
+                if (record == null || string.IsNullOrWhiteSpace(record.Id))
+                {
+                    continue;
+                }
+
+                CreateStatCard(gridRoot, record.Id, Mathf.Max(0, record.Count).ToString(), "Recorded");
+                emitted++;
+            }
+        }
+
+        private static int CountCounterRecords(List<MetaProgressionCounterRecord> records)
+        {
+            if (records == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int index = 0; index < records.Count; index++)
+            {
+                if (records[index] != null && !string.IsNullOrWhiteSpace(records[index].Id))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private void CreateCharacterStatsSection(List<CharacterProgressionRecord> records)
+        {
+            CreateBodyText(_contentRoot, "Characters", 24, FontStyle.Bold);
+            int count = CountCharacterRecords(records);
+            if (count == 0)
+            {
+                CreateBodyText(_contentRoot, "None", 18);
+                return;
+            }
+
+            RectTransform gridRoot = CreateStatsGridRoot("CharacterStats", count, 2, 150f);
+            for (int index = 0; index < records.Count; index++)
+            {
+                CharacterProgressionRecord record = records[index];
+                if (record == null || string.IsNullOrWhiteSpace(record.CharacterId))
+                {
+                    continue;
+                }
+
+                string value = $"{record.Wins}W / {record.Defeats}D";
+                string detail = $"Runs {record.Runs}  Floor {record.BestFloor}  Kills {record.EnemyKills}  Streak {record.CurrentWinStreak}/{record.BestWinStreak}";
+                if (record.ClearMarks != null && record.ClearMarks.Count > 0)
+                {
+                    detail = $"{detail}\nMarks {string.Join(", ", record.ClearMarks)}";
+                }
+
+                CreateStatCard(gridRoot, record.CharacterId, value, detail);
+            }
+        }
+
+        private static int CountCharacterRecords(List<CharacterProgressionRecord> records)
+        {
+            if (records == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int index = 0; index < records.Count; index++)
+            {
+                if (records[index] != null && !string.IsNullOrWhiteSpace(records[index].CharacterId))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static string FormatRatioPercent(int value, int total)
+        {
+            if (total <= 0)
+            {
+                return "0%";
+            }
+
+            return $"{Mathf.RoundToInt(Mathf.Clamp01((float)value / total) * 100f)}%";
+        }
+
         private IReadOnlyList<MetaCollectionEntry> GetRuntimeCollectionEntries()
         {
             if (_runtimeCollectionEntries.Count == 0)
@@ -1249,6 +1643,7 @@ namespace CuteIssac.UI
                 Id = itemData.ItemId,
                 DisplayName = string.IsNullOrWhiteSpace(itemData.DisplayName) ? itemData.ItemId : itemData.DisplayName,
                 Description = itemData.Description,
+                Icon = itemData.Icon,
                 Kind = itemData.IsWeaponRelic || itemData.ItemType == ItemType.Weapon
                     ? MetaCollectionEntryKind.Weapon
                     : MetaCollectionEntryKind.PassiveItem,
@@ -1274,6 +1669,7 @@ namespace CuteIssac.UI
                 Id = activeItemData.ItemId,
                 DisplayName = string.IsNullOrWhiteSpace(activeItemData.DisplayName) ? activeItemData.ItemId : activeItemData.DisplayName,
                 Description = activeItemData.Description,
+                Icon = activeItemData.Icon,
                 Kind = MetaCollectionEntryKind.ActiveItem,
                 UnlockedByDefault = true
             });
@@ -1302,6 +1698,7 @@ namespace CuteIssac.UI
                     ? ResolvePrefabDisplayName(enemyEntry.EnemyPrefab.gameObject)
                     : enemyId,
                 Description = $"{enemyEntry.EncounterTier} enemy. Cost {Mathf.Max(1, enemyEntry.DifficultyCost)}.",
+                Icon = ResolveEnemyIcon(enemyEntry.EnemyPrefab),
                 Kind = MetaCollectionEntryKind.Enemy
             });
         }
@@ -1324,8 +1721,20 @@ namespace CuteIssac.UI
                 Id = enemyId,
                 DisplayName = ResolvePrefabDisplayName(enemyController.gameObject),
                 Description = "Encountered enemy.",
+                Icon = ResolveEnemyIcon(enemyController),
                 Kind = MetaCollectionEntryKind.Enemy
             });
+        }
+
+        private static Sprite ResolveEnemyIcon(EnemyController enemyController)
+        {
+            if (enemyController == null)
+            {
+                return null;
+            }
+
+            SpriteRenderer spriteRenderer = enemyController.GetComponentInChildren<SpriteRenderer>(true);
+            return spriteRenderer != null ? spriteRenderer.sprite : null;
         }
 
         private static string ResolvePrefabDisplayName(GameObject gameObject)
@@ -1338,11 +1747,11 @@ namespace CuteIssac.UI
             return gameObject.name.Replace("(Clone)", string.Empty).Trim();
         }
 
-        private static StringBuilder ResolveItemBuilder(
+        private static List<MetaCollectionEntry> ResolveItemList(
             MetaCollectionEntryKind kind,
-            StringBuilder passives,
-            StringBuilder actives,
-            StringBuilder weapons)
+            List<MetaCollectionEntry> passives,
+            List<MetaCollectionEntry> actives,
+            List<MetaCollectionEntry> weapons)
         {
             return kind switch
             {
@@ -1350,6 +1759,295 @@ namespace CuteIssac.UI
                 MetaCollectionEntryKind.Weapon => weapons,
                 _ => passives
             };
+        }
+
+        private void CreateCollectionSection(string title, IReadOnlyList<MetaCollectionEntry> entries, MetaProgressionSaveData progression, bool enemySection)
+        {
+            int count = entries != null ? entries.Count : 0;
+            CreateBodyText(_contentRoot, $"{title} ({count})", 24, FontStyle.Bold);
+
+            if (count == 0)
+            {
+                CreateBodyText(_contentRoot, "None", 18);
+                return;
+            }
+
+            RectTransform gridRoot = CreateCollectionGridRoot(title, count);
+            for (int index = 0; index < count; index++)
+            {
+                MetaCollectionEntry entry = entries[index];
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                bool discovered = enemySection
+                    ? ContainsId(progression.SeenEnemyIds, entry.Id)
+                    : ContainsId(progression.DiscoveredItemIds, entry.Id);
+                bool unlocked = enemySection || IsCollectionEntryUnlocked(entry, _metaSaveData?.Unlocks);
+                int killCount = enemySection ? GetCounterValue(progression.EnemyKillCounts, entry.Id) : 0;
+                CreateCollectionCard(gridRoot, entry, discovered, unlocked, killCount, enemySection);
+            }
+        }
+
+        private RectTransform CreateCollectionGridRoot(string title, int itemCount)
+        {
+            GameObject gridObject = new($"{title}Grid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement));
+            gridObject.transform.SetParent(_contentRoot, false);
+
+            RectTransform gridRoot = gridObject.GetComponent<RectTransform>();
+            gridRoot.localScale = Vector3.one;
+
+            GridLayoutGroup grid = gridObject.GetComponent<GridLayoutGroup>();
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 3;
+            grid.cellSize = new Vector2(286f, 170f);
+            grid.spacing = new Vector2(14f, 14f);
+            grid.childAlignment = TextAnchor.UpperLeft;
+
+            int rows = Mathf.CeilToInt(Mathf.Max(1, itemCount) / 3f);
+            LayoutElement layoutElement = gridObject.GetComponent<LayoutElement>();
+            layoutElement.preferredHeight = rows * 170f + Mathf.Max(0, rows - 1) * 14f + 8f;
+            layoutElement.minHeight = layoutElement.preferredHeight;
+            return gridRoot;
+        }
+
+        private static void CreateCollectionCard(
+            RectTransform parent,
+            MetaCollectionEntry entry,
+            bool discovered,
+            bool unlocked,
+            int killCount,
+            bool enemyCard)
+        {
+            bool visible = discovered && unlocked;
+            GameObject cardObject = new(entry.Id, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            cardObject.transform.SetParent(parent, false);
+
+            RectTransform cardRect = cardObject.GetComponent<RectTransform>();
+            cardRect.localScale = Vector3.one;
+
+            Image cardImage = cardObject.GetComponent<Image>();
+            cardImage.color = visible
+                ? new Color(0.18f, 0.2f, 0.22f, 0.96f)
+                : new Color(0.07f, 0.075f, 0.085f, 0.96f);
+
+            GameObject iconObject = new("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            iconObject.transform.SetParent(cardRect, false);
+            RectTransform iconRect = iconObject.GetComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0f, 1f);
+            iconRect.anchorMax = new Vector2(0f, 1f);
+            iconRect.pivot = new Vector2(0f, 1f);
+            iconRect.anchoredPosition = new Vector2(14f, -16f);
+            iconRect.sizeDelta = new Vector2(72f, 72f);
+
+            Image iconImage = iconObject.GetComponent<Image>();
+            iconImage.sprite = visible ? entry.Icon : null;
+            iconImage.preserveAspect = true;
+            iconImage.color = visible && entry.Icon != null
+                ? Color.white
+                : new Color(0.18f, 0.19f, 0.2f, 1f);
+
+            if (!visible || entry.Icon == null)
+            {
+                Text iconText = CreateCardText(iconRect, "IconText", visible ? "?" : "???", 20, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white);
+                Stretch(iconText.rectTransform, Vector2.zero, Vector2.one);
+            }
+
+            string name = visible ? ResolveSafeLabel(entry.DisplayName, entry.Id) : unlocked ? "???" : "LOCKED";
+            Text nameText = CreateCardText(cardRect, "Name", name, 18, FontStyle.Bold, TextAnchor.UpperLeft, Color.white);
+            Anchor(nameText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            nameText.rectTransform.pivot = new Vector2(0f, 1f);
+            nameText.rectTransform.offsetMin = new Vector2(96f, -58f);
+            nameText.rectTransform.offsetMax = new Vector2(-12f, -14f);
+
+            string detail = visible
+                ? BuildCardDescription(entry.Description)
+                : unlocked ? "Not discovered yet." : $"Unlock: {UnlockDisplayNameResolver.Resolve(entry.UnlockKey)}";
+            Text detailText = CreateCardText(cardRect, "Detail", detail, 14, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.82f, 0.86f, 0.9f, 1f));
+            Anchor(detailText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f));
+            detailText.rectTransform.offsetMin = new Vector2(14f, 34f);
+            detailText.rectTransform.offsetMax = new Vector2(-14f, -98f);
+
+            string footer = enemyCard
+                ? $"Kills {Mathf.Max(0, killCount)}"
+                : ResolveCollectionKindLabel(entry.Kind);
+            Text footerText = CreateCardText(cardRect, "Footer", footer, 13, FontStyle.Bold, TextAnchor.MiddleLeft, new Color(0.62f, 0.96f, 1f, 1f));
+            Anchor(footerText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f));
+            footerText.rectTransform.pivot = new Vector2(0f, 0f);
+            footerText.rectTransform.offsetMin = new Vector2(14f, 10f);
+            footerText.rectTransform.offsetMax = new Vector2(-14f, 32f);
+        }
+
+        private static Text CreateCardText(Transform parent, string name, string value, int size, FontStyle style, TextAnchor anchor, Color color)
+        {
+            GameObject textObject = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            textObject.transform.SetParent(parent, false);
+            Text text = textObject.GetComponent<Text>();
+            text.text = value;
+            text.color = color;
+            LocalizedUiFontProvider.ApplyReadableDefaults(
+                text,
+                size,
+                anchor,
+                style,
+                horizontalOverflow: HorizontalWrapMode.Wrap,
+                verticalOverflow: VerticalWrapMode.Truncate);
+            return text;
+        }
+
+        private static string BuildCardDescription(string description)
+        {
+            if (string.IsNullOrWhiteSpace(description))
+            {
+                return "No description recorded.";
+            }
+
+            string text = description.Replace('\n', ' ').Replace('\r', ' ').Trim();
+            return text.Length <= 92 ? text : text.Substring(0, 89).TrimEnd() + "...";
+        }
+
+        private static string ResolveCollectionKindLabel(MetaCollectionEntryKind kind)
+        {
+            return kind switch
+            {
+                MetaCollectionEntryKind.ActiveItem => "Active",
+                MetaCollectionEntryKind.Weapon => "Weapon",
+                MetaCollectionEntryKind.Enemy => "Enemy",
+                _ => "Passive"
+            };
+        }
+
+        private static string ResolveSafeLabel(string value, string fallback)
+        {
+            return !string.IsNullOrWhiteSpace(value) ? value : fallback;
+        }
+
+        private void CreateAchievementSection(
+            string title,
+            IReadOnlyList<AchievementData> achievements,
+            MetaProgressionSaveData progression,
+            bool completedSection)
+        {
+            int count = achievements != null ? achievements.Count : 0;
+            CreateBodyText(_contentRoot, $"{title} ({count})", 24, FontStyle.Bold);
+
+            if (count == 0)
+            {
+                CreateBodyText(_contentRoot, "None", 18);
+                return;
+            }
+
+            RectTransform gridRoot = CreateAchievementGridRoot(title, count);
+            for (int index = 0; index < count; index++)
+            {
+                AchievementData achievement = achievements[index];
+                if (achievement != null)
+                {
+                    CreateAchievementCard(gridRoot, achievement, progression, completedSection);
+                }
+            }
+        }
+
+        private RectTransform CreateAchievementGridRoot(string title, int itemCount)
+        {
+            GameObject gridObject = new($"{title}AchievementGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement));
+            gridObject.transform.SetParent(_contentRoot, false);
+
+            RectTransform gridRoot = gridObject.GetComponent<RectTransform>();
+            gridRoot.localScale = Vector3.one;
+
+            GridLayoutGroup grid = gridObject.GetComponent<GridLayoutGroup>();
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 2;
+            grid.cellSize = new Vector2(438f, 188f);
+            grid.spacing = new Vector2(16f, 16f);
+            grid.childAlignment = TextAnchor.UpperLeft;
+
+            int rows = Mathf.CeilToInt(Mathf.Max(1, itemCount) / 2f);
+            LayoutElement layoutElement = gridObject.GetComponent<LayoutElement>();
+            layoutElement.preferredHeight = rows * 188f + Mathf.Max(0, rows - 1) * 16f + 8f;
+            layoutElement.minHeight = layoutElement.preferredHeight;
+            return gridRoot;
+        }
+
+        private static void CreateAchievementCard(
+            RectTransform parent,
+            AchievementData achievement,
+            MetaProgressionSaveData progression,
+            bool completed)
+        {
+            GameObject cardObject = new(achievement.AchievementId, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            cardObject.transform.SetParent(parent, false);
+
+            RectTransform cardRect = cardObject.GetComponent<RectTransform>();
+            cardRect.localScale = Vector3.one;
+
+            Image cardImage = cardObject.GetComponent<Image>();
+            cardImage.color = completed
+                ? new Color(0.16f, 0.23f, 0.18f, 0.96f)
+                : new Color(0.13f, 0.14f, 0.16f, 0.96f);
+
+            Text statusText = CreateCardText(cardRect, "Status", completed ? "DONE" : "TODO", 14, FontStyle.Bold, TextAnchor.MiddleCenter, completed ? new Color(0.52f, 1f, 0.62f, 1f) : new Color(1f, 0.78f, 0.34f, 1f));
+            Anchor(statusText.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f));
+            statusText.rectTransform.pivot = new Vector2(0f, 1f);
+            statusText.rectTransform.anchoredPosition = new Vector2(14f, -14f);
+            statusText.rectTransform.sizeDelta = new Vector2(64f, 24f);
+
+            Text nameText = CreateCardText(cardRect, "Name", ResolveSafeLabel(achievement.DisplayName, achievement.AchievementId), 19, FontStyle.Bold, TextAnchor.UpperLeft, Color.white);
+            Anchor(nameText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            nameText.rectTransform.pivot = new Vector2(0f, 1f);
+            nameText.rectTransform.offsetMin = new Vector2(88f, -46f);
+            nameText.rectTransform.offsetMax = new Vector2(-14f, -12f);
+
+            string detail = BuildCardDescription(string.IsNullOrWhiteSpace(achievement.Description)
+                ? achievement.AchievementId
+                : achievement.Description);
+            Text detailText = CreateCardText(cardRect, "Detail", detail, 14, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.84f, 0.88f, 0.92f, 1f));
+            Anchor(detailText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            detailText.rectTransform.pivot = new Vector2(0f, 1f);
+            detailText.rectTransform.offsetMin = new Vector2(14f, -106f);
+            detailText.rectTransform.offsetMax = new Vector2(-14f, -52f);
+
+            float normalized = ResolveAchievementProgress01(achievement, progression, completed);
+            CreateProgressBar(cardRect, normalized, completed);
+
+            string footer = completed
+                ? ResolveAchievementCompletedAtLabel(progression, achievement.AchievementId)
+                : ResolveAchievementProgress(achievement, progression);
+            if (achievement.RewardTargetType == AchievementRewardTargetType.UnlockKey && !string.IsNullOrWhiteSpace(achievement.RewardUnlockKey))
+            {
+                footer = $"{footer}  Reward: {UnlockDisplayNameResolver.Resolve(achievement.RewardUnlockKey)}";
+            }
+
+            Text footerText = CreateCardText(cardRect, "Footer", footer, 12, FontStyle.Bold, TextAnchor.MiddleLeft, new Color(0.62f, 0.96f, 1f, 1f));
+            Anchor(footerText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f));
+            footerText.rectTransform.pivot = new Vector2(0f, 0f);
+            footerText.rectTransform.offsetMin = new Vector2(14f, 10f);
+            footerText.rectTransform.offsetMax = new Vector2(-14f, 32f);
+        }
+
+        private static void CreateProgressBar(RectTransform parent, float normalized, bool completed)
+        {
+            GameObject trackObject = new("ProgressTrack", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            trackObject.transform.SetParent(parent, false);
+            RectTransform trackRect = trackObject.GetComponent<RectTransform>();
+            Anchor(trackRect, new Vector2(0f, 0f), new Vector2(1f, 0f));
+            trackRect.pivot = new Vector2(0f, 0f);
+            trackRect.offsetMin = new Vector2(14f, 42f);
+            trackRect.offsetMax = new Vector2(-14f, 54f);
+            trackObject.GetComponent<Image>().color = new Color(0.04f, 0.045f, 0.05f, 1f);
+
+            GameObject fillObject = new("ProgressFill", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            fillObject.transform.SetParent(trackRect, false);
+            RectTransform fillRect = fillObject.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = new Vector2(Mathf.Clamp01(normalized), 1f);
+            fillRect.offsetMin = Vector2.zero;
+            fillRect.offsetMax = Vector2.zero;
+            fillObject.GetComponent<Image>().color = completed
+                ? new Color(0.42f, 1f, 0.52f, 1f)
+                : new Color(1f, 0.72f, 0.28f, 1f);
         }
 
         private static bool IsCollectionEntryUnlocked(MetaCollectionEntry entry, UnlockSaveData unlocks)
@@ -1360,47 +2058,6 @@ namespace CuteIssac.UI
             }
 
             return ContainsId(unlocks?.UnlockedKeys, entry.UnlockKey);
-        }
-
-        private static void AppendCollectionEntry(StringBuilder builder, MetaCollectionEntry entry, bool discovered, int killCount, bool unlocked)
-        {
-            if (builder == null || entry == null || string.IsNullOrWhiteSpace(entry.Id))
-            {
-                return;
-            }
-
-            if (builder.Length > 0)
-            {
-                builder.Append('\n');
-            }
-
-            if (!discovered)
-            {
-                builder.Append(unlocked ? "???" : "LOCKED ???");
-                builder.Append("  [");
-                builder.Append(entry.Id);
-                builder.Append(']');
-                if (!unlocked && !string.IsNullOrWhiteSpace(entry.UnlockKey))
-                {
-                    builder.Append("  ");
-                    builder.Append(ResolveUnlockLabel(entry.UnlockKey));
-                }
-                return;
-            }
-
-            builder.Append(string.IsNullOrWhiteSpace(entry.DisplayName) ? entry.Id : entry.DisplayName);
-
-            if (entry.Kind == MetaCollectionEntryKind.Enemy)
-            {
-                builder.Append("  Kills ");
-                builder.Append(Mathf.Max(0, killCount));
-            }
-
-            if (!string.IsNullOrWhiteSpace(entry.Description))
-            {
-                builder.Append('\n');
-                builder.Append(entry.Description);
-            }
         }
 
         private static void AppendRawIds(StringBuilder builder, List<string> ids)
@@ -1438,8 +2095,35 @@ namespace CuteIssac.UI
                 return "0/1";
             }
 
-            int required = achievement.RequiredCount;
-            int current = achievement.ConditionType switch
+            int required = ResolveAchievementRequiredValue(achievement);
+            int current = ResolveAchievementCurrentValue(achievement, progression);
+            return $"{Mathf.Min(current, required)}/{required}";
+        }
+
+        private static float ResolveAchievementProgress01(AchievementData achievement, MetaProgressionSaveData progression, bool completed)
+        {
+            if (completed)
+            {
+                return 1f;
+            }
+
+            if (achievement == null || progression == null)
+            {
+                return 0f;
+            }
+
+            int required = ResolveAchievementRequiredValue(achievement);
+            return Mathf.Clamp01((float)ResolveAchievementCurrentValue(achievement, progression) / Mathf.Max(1, required));
+        }
+
+        private static int ResolveAchievementCurrentValue(AchievementData achievement, MetaProgressionSaveData progression)
+        {
+            if (achievement == null || progression == null)
+            {
+                return 0;
+            }
+
+            return achievement.ConditionType switch
             {
                 AchievementConditionType.TotalRuns => progression.TotalRuns,
                 AchievementConditionType.TotalWins => progression.TotalWins,
@@ -1464,8 +2148,22 @@ namespace CuteIssac.UI
                 AchievementConditionType.BestWinStreak => progression.BestWinStreak,
                 _ => 0
             };
+        }
 
-            return $"{Mathf.Min(current, required)}/{required}";
+        private static int ResolveAchievementRequiredValue(AchievementData achievement)
+        {
+            if (achievement == null)
+            {
+                return 1;
+            }
+
+            return achievement.ConditionType switch
+            {
+                AchievementConditionType.EnemySeen => 1,
+                AchievementConditionType.ItemDiscovered => 1,
+                AchievementConditionType.CharacterClearMark => 1,
+                _ => Mathf.Max(1, achievement.RequiredCount)
+            };
         }
 
         private static string ResolveAchievementCompletedAtLabel(MetaProgressionSaveData progression, string achievementId)
@@ -1837,7 +2535,7 @@ namespace CuteIssac.UI
             element.minHeight = 48f;
 
             Image image = buttonObject.GetComponent<Image>();
-            image.color = new Color(0.27f, 0.32f, 0.36f, 0.96f);
+            image.color = ResolveButtonColor();
 
             Button button = buttonObject.GetComponent<Button>();
             button.targetGraphic = image;
@@ -1850,7 +2548,7 @@ namespace CuteIssac.UI
 
         private static Text CreateBodyText(RectTransform parent, string value, int size = 22, FontStyle style = FontStyle.Normal)
         {
-            Text text = CreateText("Text", parent, value, size, style, TextAnchor.UpperLeft, new Color(0.92f, 0.94f, 0.96f, 1f));
+            Text text = CreateText("Text", parent, value, size, style, TextAnchor.UpperLeft, ResolveBodyTextColor());
             LayoutElement element = text.gameObject.AddComponent<LayoutElement>();
             element.preferredHeight = Mathf.Max(52f, size * Mathf.Max(3.2f, CountLines(value) * 1.35f));
             return text;
@@ -1882,7 +2580,7 @@ namespace CuteIssac.UI
             textObject.transform.SetParent(parent, false);
             Text text = textObject.GetComponent<Text>();
             text.text = value;
-            text.color = color;
+            text.color = ResolveTextColor(name, color);
             LocalizedUiFontProvider.ApplyReadableDefaults(
                 text,
                 fontSize,
@@ -1898,9 +2596,104 @@ namespace CuteIssac.UI
             GameObject panelObject = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panelObject.transform.SetParent(parent, false);
             Image image = panelObject.GetComponent<Image>();
-            image.color = color;
+            image.color = ResolvePanelColor(name, color);
             image.raycastTarget = true;
             return panelObject.GetComponent<RectTransform>();
+        }
+
+        private static string FormatOnOff(bool value)
+        {
+            return value ? "On" : "Off";
+        }
+
+        private static Color ResolveButtonColor()
+        {
+            if (GameOptionsService.HighContrastUiEnabled)
+            {
+                return GameOptionsService.ColorBlindAssistEnabled
+                    ? new Color(0.02f, 0.18f, 0.24f, 1f)
+                    : new Color(0.04f, 0.04f, 0.04f, 1f);
+            }
+
+            return GameOptionsService.ColorBlindAssistEnabled
+                ? new Color(0.12f, 0.34f, 0.42f, 0.96f)
+                : new Color(0.27f, 0.32f, 0.36f, 0.96f);
+        }
+
+        private static Color ResolveBodyTextColor()
+        {
+            if (GameOptionsService.HighContrastUiEnabled)
+            {
+                return Color.white;
+            }
+
+            return GameOptionsService.ColorBlindAssistEnabled
+                ? new Color(0.9f, 0.98f, 1f, 1f)
+                : new Color(0.92f, 0.94f, 0.96f, 1f);
+        }
+
+        private static Color ResolveTextColor(string name, Color fallback)
+        {
+            if (!GameOptionsService.HighContrastUiEnabled && !GameOptionsService.ColorBlindAssistEnabled)
+            {
+                return string.Equals(name, "Text", StringComparison.OrdinalIgnoreCase)
+                    ? new Color(0.92f, 0.94f, 0.96f, 1f)
+                    : Color.white;
+            }
+
+            if (string.Equals(name, "Title", StringComparison.OrdinalIgnoreCase))
+            {
+                return GameOptionsService.ColorBlindAssistEnabled
+                    ? new Color(0.24f, 0.95f, 1f, 1f)
+                    : new Color(1f, 0.96f, 0.34f, 1f);
+            }
+
+            return ResolveBodyTextColor();
+        }
+
+        private static Color ResolvePanelColor(string name, Color fallback)
+        {
+            if (fallback.a <= 0.02f)
+            {
+                return fallback;
+            }
+
+            if (GameOptionsService.HighContrastUiEnabled)
+            {
+                return string.Equals(name, "Sidebar", StringComparison.OrdinalIgnoreCase)
+                    ? new Color(0f, 0f, 0f, Mathf.Max(0.96f, fallback.a))
+                    : new Color(0.015f, 0.015f, 0.015f, Mathf.Max(0.9f, fallback.a));
+            }
+
+            Color baseColor = ResolveDefaultPanelColor(name, fallback);
+            return GameOptionsService.ColorBlindAssistEnabled
+                ? new Color(Mathf.Min(1f, baseColor.r * 0.75f), Mathf.Min(1f, baseColor.g * 1.05f), Mathf.Min(1f, baseColor.b * 1.22f), baseColor.a)
+                : baseColor;
+        }
+
+        private static Color ResolveDefaultPanelColor(string name, Color fallback)
+        {
+            if (string.Equals(name, "Backdrop", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Color(0.18f, 0.2f, 0.22f, 1f);
+            }
+
+            if (string.Equals(name, "TitleShell", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Color(0.09f, 0.09f, 0.1f, 0.94f);
+            }
+
+            if (string.Equals(name, "Sidebar", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Color(0.16f, 0.18f, 0.2f, 0.96f);
+            }
+
+            if (string.Equals(name, "ContentScroll", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Color(0.13f, 0.13f, 0.14f, 0.9f);
+            }
+
+            return fallback;
         }
 
         private static void Stretch(RectTransform rectTransform, Vector2 anchorMin, Vector2 anchorMax)

@@ -317,6 +317,13 @@ namespace CuteIssac.UI
             {
                 PauseSettingsTarget.Master => PauseSettingsTarget.Music,
                 PauseSettingsTarget.Music => PauseSettingsTarget.Sfx,
+                PauseSettingsTarget.Sfx => PauseSettingsTarget.UiScale,
+                PauseSettingsTarget.UiScale => PauseSettingsTarget.Fullscreen,
+                PauseSettingsTarget.Fullscreen => PauseSettingsTarget.CameraShake,
+                PauseSettingsTarget.CameraShake => PauseSettingsTarget.DamageNumbers,
+                PauseSettingsTarget.DamageNumbers => PauseSettingsTarget.ReduceFlashes,
+                PauseSettingsTarget.ReduceFlashes => PauseSettingsTarget.HighContrast,
+                PauseSettingsTarget.HighContrast => PauseSettingsTarget.ColorAssist,
                 _ => PauseSettingsTarget.Master
             };
 
@@ -335,6 +342,27 @@ namespace CuteIssac.UI
                     break;
                 case PauseSettingsTarget.Sfx:
                     nextOptions.SfxVolume = Mathf.Clamp01(nextOptions.SfxVolume + delta);
+                    break;
+                case PauseSettingsTarget.UiScale:
+                    nextOptions.UiScale = Mathf.Clamp(nextOptions.UiScale + Mathf.Sign(delta) * 0.1f, 0.75f, 1.5f);
+                    break;
+                case PauseSettingsTarget.Fullscreen:
+                    nextOptions.Fullscreen = !nextOptions.Fullscreen;
+                    break;
+                case PauseSettingsTarget.CameraShake:
+                    nextOptions.CameraShakeEnabled = !nextOptions.CameraShakeEnabled;
+                    break;
+                case PauseSettingsTarget.DamageNumbers:
+                    nextOptions.DamageNumbersEnabled = !nextOptions.DamageNumbersEnabled;
+                    break;
+                case PauseSettingsTarget.ReduceFlashes:
+                    nextOptions.ReduceFlashes = !nextOptions.ReduceFlashes;
+                    break;
+                case PauseSettingsTarget.HighContrast:
+                    nextOptions.HighContrastUi = !nextOptions.HighContrastUi;
+                    break;
+                case PauseSettingsTarget.ColorAssist:
+                    nextOptions.ColorBlindAssist = !nextOptions.ColorBlindAssist;
                     break;
                 default:
                     nextOptions.MasterVolume = Mathf.Clamp01(nextOptions.MasterVolume + delta);
@@ -360,6 +388,13 @@ namespace CuteIssac.UI
             {
                 PauseSettingsTarget.Music => "Music Volume",
                 PauseSettingsTarget.Sfx => "SFX Volume",
+                PauseSettingsTarget.UiScale => "UI Scale",
+                PauseSettingsTarget.Fullscreen => "Fullscreen",
+                PauseSettingsTarget.CameraShake => "Camera Shake",
+                PauseSettingsTarget.DamageNumbers => "Damage Numbers",
+                PauseSettingsTarget.ReduceFlashes => "Reduce Flashes",
+                PauseSettingsTarget.HighContrast => "High Contrast",
+                PauseSettingsTarget.ColorAssist => "Color Assist",
                 _ => "Master Volume"
             };
         }
@@ -642,7 +677,14 @@ namespace CuteIssac.UI
         {
             Master,
             Music,
-            Sfx
+            Sfx,
+            UiScale,
+            Fullscreen,
+            CameraShake,
+            DamageNumbers,
+            ReduceFlashes,
+            HighContrast,
+            ColorAssist
         }
     }
 }

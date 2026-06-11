@@ -686,7 +686,7 @@ namespace CuteIssac.UI
             float pulseFrequencyScale = request.PulseFrequencyScale;
             float decaySoftness = request.DecaySoftness;
 
-            if (gameOptionsService != null && gameOptionsService.CurrentOptions != null && gameOptionsService.CurrentOptions.ReduceFlashes)
+            if (GameOptionsService.ReduceFlashesEnabled)
             {
                 opacity *= 0.35f;
                 duration *= 0.5f;
@@ -781,9 +781,7 @@ namespace CuteIssac.UI
 
         private bool ShouldRenderFloatingFeedback(FloatingFeedbackVisualProfile visualProfile)
         {
-            if (gameOptionsService != null
-                && gameOptionsService.CurrentOptions != null
-                && !gameOptionsService.CurrentOptions.DamageNumbersEnabled
+            if (!GameOptionsService.DamageNumbersEnabled
                 && (visualProfile == FloatingFeedbackVisualProfile.EnemyDamage || visualProfile == FloatingFeedbackVisualProfile.PlayerDamage))
             {
                 return false;
@@ -801,8 +799,14 @@ namespace CuteIssac.UI
 
         private void PlayPresentationScreenFeedback(float scale)
         {
+            if (!GameOptionsService.CameraShakeEnabled)
+            {
+                return;
+            }
+
             ResolveReferences();
-            playerScreenFeedback?.PlayHitFeedback(scale);
+            float resolvedScale = GameOptionsService.ReduceFlashesEnabled ? scale * 0.35f : scale;
+            playerScreenFeedback?.PlayHitFeedback(resolvedScale);
         }
 
         private static string ResolveMomentumExecutionLabel(MomentumExecutionSignal signal)

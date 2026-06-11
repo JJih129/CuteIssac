@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace CuteIssac.Core.Meta
 {
@@ -8,6 +9,7 @@ namespace CuteIssac.Core.Meta
         public string Id;
         public string DisplayName;
         public string Description;
+        public Sprite Icon;
         public MetaCollectionEntryKind Kind;
         public string UnlockKey;
         public bool UnlockedByDefault = true;
