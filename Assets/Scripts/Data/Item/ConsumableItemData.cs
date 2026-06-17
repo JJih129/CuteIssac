@@ -14,7 +14,13 @@ namespace CuteIssac.Data.Item
         [SerializeField] private string itemId = "consumable";
         [SerializeField] private string displayName = "Consumable";
         [SerializeField] [TextArea] private string description;
+        [Header("Visuals")]
+        [Tooltip("Inventory and HUD icon. Keep this small and readable for UI.")]
         [SerializeField] private Sprite icon;
+        [Tooltip("Optional world pickup sprite. Falls back to Icon when empty.")]
+        [SerializeField] private Sprite worldDropSprite;
+        [Tooltip("Optional shop display sprite. Falls back to World Drop Sprite, then Icon when empty.")]
+        [SerializeField] private Sprite shopDisplaySprite;
         [SerializeField] private ConsumablePickupMode pickupMode = ConsumablePickupMode.StoreInHolder;
         [SerializeField] [Min(0f)] private float healAmount;
         [SerializeField] [Min(0)] private int coinGain;
@@ -28,6 +34,8 @@ namespace CuteIssac.Data.Item
         public string DisplayName => displayName;
         public string Description => description;
         public Sprite Icon => icon;
+        public Sprite WorldDropSprite => worldDropSprite != null ? worldDropSprite : icon;
+        public Sprite ShopDisplaySprite => shopDisplaySprite != null ? shopDisplaySprite : WorldDropSprite;
         public ConsumablePickupMode PickupMode => pickupMode;
         public float HealAmount => healAmount;
         public int CoinGain => coinGain;

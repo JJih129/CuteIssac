@@ -12,17 +12,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 971b35e7528a79a49ba40271396635ed, type: 3}
   m_Name: BossPassiveItem
   m_EditorClassIdentifier: 
+  itemType: 0
+  itemCategory: 5
+  flavorText: 
+  sourcePools: 02000000040000000600000007000000
+  eventFlags: 
+  damageModifier: 0
+  tearsModifier: 0
+  speedModifier: 0
+  rangeModifier: 0
+  shotSpeedModifier: 0
+  luckModifier: 0
+  maxHealthModifier: 0
+  projectileFlags: 
   itemId: boss_crown
   displayName: Boss Crown
-  description: Boss-room passive reward that grants piercing, light homing, and a strong damage spike.
+  description: Boss-room passive reward that grants piercing, light homing, and a
+    strong damage spike.
   icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10010, type: 3}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 2
   unlockedByDefault: 0
   unlockKey: unlock.item.boss_crown
-  synergyTags:
-  - 4
-  - 5
-  - 1
+  itemTags: 040000000500000001000000
   statModifiers:
   - statType: 1
     operation: 0
@@ -41,3 +54,20 @@ MonoBehaviour:
     operation: 0
     value: 0.7
   gameplayEventEffects: []
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
+    projectileModifiers: []

@@ -15,6 +15,10 @@ MonoBehaviour:
   startingFloorIndex: 1
   useFixedSeed: 0
   fixedSeed: 31415
+  stageSequence:
+  - {fileID: 11400000, guid: e32be0521c91112468df1d5abd8d9eb5, type: 2}
+  - {fileID: 11400000, guid: 0d658c2be6e657f4bac663fdfb9eb592, type: 2}
+  - {fileID: 11400000, guid: a28b5a27c0e6a65498be9c74ea1d1f80, type: 2}
   floorSequence:
   - {fileID: 11400000, guid: 7f1b8f7fcd404463918c5ef327d8f101, type: 2}
   - {fileID: 11400000, guid: 7f1b8f7fcd404463918c5ef327d8f202, type: 2}

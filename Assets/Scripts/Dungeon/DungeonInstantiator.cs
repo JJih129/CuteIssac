@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Player;
 using CuteIssac.Room;
@@ -15,6 +16,7 @@ namespace CuteIssac.Dungeon
     public sealed class DungeonInstantiator : MonoBehaviour
     {
         [Header("Scene Targets")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private Transform roomsRoot;
         [SerializeField] private RoomNavigationController roomNavigationController;
         [SerializeField] private PlayerController playerController;
@@ -174,7 +176,8 @@ namespace CuteIssac.Dungeon
                         continue;
                     }
 
-                    SpecialRoomRuleData targetSpecialRule = targetNode.SpecialRoomRule ?? ResolveSpecialRoomRule(dungeonMap.FloorConfig, targetNode.RoomType);
+                    SpecialRoomRuleData targetSpecialRule = targetNode.SpecialRoomRule
+                        ?? ResolveSpecialRoomRule(ResolveStageProfile(dungeonMap.FloorConfig), dungeonMap.FloorConfig, targetNode.RoomType);
 
                     sourceDoor.SetConnection(targetRoom, targetDoor);
                     sourceDoor.ConfigureEntryCost(
@@ -203,6 +206,8 @@ namespace CuteIssac.Dungeon
                 return;
             }
 
+            ResolveReferencesFromSceneContext();
+
             if (roomNavigationController == null)
             {
                 roomNavigationController = FindFirstObjectByType<RoomNavigationController>(FindObjectsInactive.Exclude);
@@ -210,7 +215,9 @@ namespace CuteIssac.Dungeon
 
             if (playerController == null)
             {
-                playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+                playerController = PlayerRegistry.ActiveController != null
+                    ? PlayerRegistry.ActiveController
+                    : FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
             }
 
             if (roomNavigationController != null)
@@ -223,6 +230,23 @@ namespace CuteIssac.Dungeon
             {
                 playerController.transform.position = result.StartRoom.DefaultPlayerSpawnPosition;
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            roomNavigationController ??= sceneContext.RoomNavigationController;
+            playerController ??= sceneContext.PlayerController;
         }
 
         private Vector3 ToWorldPosition(GridPosition gridPosition)
@@ -242,7 +266,8 @@ namespace CuteIssac.Dungeon
                 : roomInstance.RoomId;
 
             roomInstance.ConfigureRuntimeMetadata(runtimeRoomId, roomNode.RoomType);
-            SpecialRoomRuleData specialRoomRule = roomNode.SpecialRoomRule ?? ResolveSpecialRoomRule(floorConfig, roomNode.RoomType);
+            StageProfile stageProfile = ResolveStageProfile(floorConfig);
+            SpecialRoomRuleData specialRoomRule = roomNode.SpecialRoomRule ?? ResolveSpecialRoomRule(stageProfile, floorConfig, roomNode.RoomType);
             ConfigureSpecialRoomRuntimeMetadata(roomInstance, specialRoomRule);
 
             RoomEnemySpawner roomEnemySpawner = roomInstance.GetComponent<RoomEnemySpawner>();
@@ -252,7 +277,7 @@ namespace CuteIssac.Dungeon
                 roomEnemySpawner.ConfigureEncounter(
                     roomNode.RoomType,
                     roomNode.AssignedEnemyWave,
-                    floorConfig != null ? floorConfig.GetEncounterPacing(roomNode.RoomType) : null);
+                    stageProfile != null ? stageProfile.GetEncounterPacing(roomNode.RoomType) : floorConfig != null ? floorConfig.GetEncounterPacing(roomNode.RoomType) : null);
             }
 
             RoomRewardSpawner roomRewardSpawner = roomInstance.GetComponent<RoomRewardSpawner>();
@@ -261,20 +286,20 @@ namespace CuteIssac.Dungeon
             {
                 roomRewardSpawner.ConfigureFloorRewardPool(
                     roomNode.RoomType,
-                    floorConfig != null ? floorConfig.GetRewardPool(roomNode.RoomType) : null);
+                    stageProfile != null ? stageProfile.GetRewardPool(roomNode.RoomType) : floorConfig != null ? floorConfig.GetRewardPool(roomNode.RoomType) : null);
                 roomRewardSpawner.ConfigureChallengeRewards(
                     roomNode.RoomType,
-                    floorConfig != null ? floorConfig.ChallengeRewardSettings : null);
+                    stageProfile != null ? stageProfile.ChallengeRewardSettings : floorConfig != null ? floorConfig.ChallengeRewardSettings : null);
                 roomRewardSpawner.ConfigureSecretRewards(
                     roomNode.RoomType,
-                    floorConfig != null ? floorConfig.SecretRoomRewardSettings : null);
+                    stageProfile != null ? stageProfile.SecretRoomRewardSettings : floorConfig != null ? floorConfig.SecretRoomRewardSettings : null);
             }
 
             RoomThemeController roomThemeController = roomInstance.GetComponent<RoomThemeController>();
 
             if (roomThemeController != null)
             {
-                roomThemeController.ApplyTheme(floorConfig != null ? floorConfig.RoomTheme : null);
+                roomThemeController.ApplyTheme(stageProfile != null ? stageProfile.RoomTheme : floorConfig != null ? floorConfig.RoomTheme : null);
             }
 
             RoomTypeContentController roomTypeContentController = roomInstance.GetComponent<RoomTypeContentController>();
@@ -284,7 +309,7 @@ namespace CuteIssac.Dungeon
                 roomTypeContentController.ConfigureRoom(
                     roomNode.RoomType,
                     roomNode.RoomData,
-                    floorConfig != null ? floorConfig.GetItemPool(roomNode.RoomType) : null);
+                    stageProfile != null ? stageProfile.GetItemPool(roomNode.RoomType) : floorConfig != null ? floorConfig.GetItemPool(roomNode.RoomType) : null);
                 roomTypeContentController.ConfigureSpecialRoomRule(specialRoomRule);
             }
 
@@ -381,8 +406,18 @@ namespace CuteIssac.Dungeon
             return sourceNode.RoomType != RoomType.Curse && targetNode.RoomType == RoomType.Curse;
         }
 
-        private static SpecialRoomRuleData ResolveSpecialRoomRule(FloorConfig floorConfig, RoomType roomType)
+        private static StageProfile ResolveStageProfile(FloorConfig floorConfig)
         {
+            return floorConfig != null ? floorConfig.StageProfile : null;
+        }
+
+        private static SpecialRoomRuleData ResolveSpecialRoomRule(StageProfile stageProfile, FloorConfig floorConfig, RoomType roomType)
+        {
+            if (stageProfile != null && stageProfile.TryGetSpecialRoomRule(roomType, out SpecialRoomRuleData stageRule))
+            {
+                return stageRule;
+            }
+
             FloorSpecialRoomRules rules = floorConfig != null ? floorConfig.SpecialRoomRules : null;
             IReadOnlyList<SpecialRoomRuleData> ruleList = rules != null ? rules.Rules : null;
             if (ruleList == null)

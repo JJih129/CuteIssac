@@ -2,6 +2,7 @@ using System;
 using CuteIssac.Core.Audio;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Pooling;
+using CuteIssac.Data.Visual;
 using CuteIssac.Player;
 using UnityEngine;
 
@@ -27,6 +28,8 @@ namespace CuteIssac.Item
         [SerializeField] [Min(12)] private int pickupRangeIndicatorSegments = 48;
         [SerializeField] [Min(0.005f)] private float pickupRangeIndicatorWidth = 0.025f;
         [SerializeField] [Min(0f)] private float pickupRangeIndicatorPadding = 0.03f;
+        [Tooltip("비워두면 Resources/Sorting/DefaultSortingOrderProfile 기준을 사용합니다. 픽업 표시선이 픽업 본체와 같은 계층 기준을 따르게 합니다.")]
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
         [SerializeField] private int pickupRangeIndicatorSortingOrder = 9;
         [SerializeField] private Color pickupRangeIndicatorColor = new(1f, 0.86f, 0.34f, 0.66f);
 
@@ -473,7 +476,7 @@ namespace CuteIssac.Item
             _pickupRangeIndicator.numCapVertices = 2;
             _pickupRangeIndicator.numCornerVertices = 2;
             _pickupRangeIndicator.widthMultiplier = pickupRangeIndicatorWidth;
-            _pickupRangeIndicator.sortingOrder = pickupRangeIndicatorSortingOrder;
+            _pickupRangeIndicator.sortingOrder = ResolvePickupRangeIndicatorSortingOrder();
 
             int segmentCount = Mathf.Max(12, pickupRangeIndicatorSegments);
             float radius = Mathf.Max(0.01f, circleCollider.radius + pickupRangeIndicatorPadding);
@@ -498,6 +501,11 @@ namespace CuteIssac.Item
             {
                 _pickupRangeIndicator.gameObject.SetActive(active);
             }
+        }
+
+        private int ResolvePickupRangeIndicatorSortingOrder()
+        {
+            return SortingOrderProfile.ResolvePickupOrder(sortingOrderProfile, pickupRangeIndicatorSortingOrder);
         }
 
         private static Material ResolveRangeIndicatorMaterial()

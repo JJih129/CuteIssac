@@ -15,9 +15,7 @@ MonoBehaviour:
   definitions:
   - synergyId: scatter_breach
     displayName: Scatter Breach
-    requiredTags:
-    - 3
-    - 4
+    requiredTags: 0300000004000000
     statModifiers:
     - statType: 7
       operation: 0
@@ -31,9 +29,7 @@ MonoBehaviour:
       value: 0.2
   - synergyId: seeker_rush
     displayName: Seeker Rush
-    requiredTags:
-    - 5
-    - 0
+    requiredTags: 0500000000000000
     statModifiers:
     - statType: 4
       operation: 0
@@ -47,9 +43,7 @@ MonoBehaviour:
       value: 1.2
   - synergyId: blood_rhythm
     displayName: Blood Tempo
-    requiredTags:
-    - 1
-    - 2
+    requiredTags: 0100000002000000
     statModifiers:
     - statType: 0
       operation: 0
@@ -64,3 +58,198 @@ MonoBehaviour:
     - modifierType: 2
       operation: 0
       value: 0.15
+  - synergyId: kinetic_overdrive
+    displayName: Kinetic Overdrive
+    requiredTags: 0000000002000000
+    statModifiers:
+    - statType: 1
+      operation: 0
+      value: 0.25
+    - statType: 2
+      operation: 0
+      value: -0.035
+    projectileModifiers:
+    - modifierType: 0
+      operation: 1
+      value: 1.1
+    - modifierType: 1
+      operation: 0
+      value: 0.12
+  - synergyId: guided_barrage
+    displayName: Guided Barrage
+    requiredTags: 0500000003000000
+    statModifiers:
+    - statType: 6
+      operation: 0
+      value: 1
+    projectileModifiers:
+    - modifierType: 5
+      operation: 0
+      value: 0.8
+    - modifierType: 3
+      operation: 0
+      value: 1
+    - modifierType: 2
+      operation: 0
+      value: -0.05
+  - synergyId: needle_storm
+    displayName: Needle Storm
+    requiredTags: 0400000002000000
+    statModifiers:
+    - statType: 2
+      operation: 0
+      value: -0.03
+    - statType: 4
+      operation: 0
+      value: 1.5
+    projectileModifiers:
+    - modifierType: 4
+      operation: 0
+      value: 1
+    - modifierType: 0
+      operation: 1
+      value: 1.08
+  - synergyId: glass_cannon_flow
+    displayName: Glass Cannon Flow
+    requiredTags: 0100000000000000
+    statModifiers:
+    - statType: 0
+      operation: 0
+      value: 0.9
+    - statType: 1
+      operation: 0
+      value: 0.22
+    projectileModifiers:
+    - modifierType: 2
+      operation: 0
+      value: 0.1
+    - modifierType: 1
+      operation: 0
+      value: -0.08
+  - synergyId: heavy_rain
+    displayName: Heavy Rain
+    requiredTags: 0100000003000000
+    statModifiers:
+    - statType: 0
+      operation: 0
+      value: 0.75
+    - statType: 7
+      operation: 0
+      value: 0.5
+    projectileModifiers:
+    - modifierType: 3
+      operation: 0
+      value: 1
+    - modifierType: 2
+      operation: 0
+      value: 0.12
+  - synergyId: seeker_lance
+    displayName: Seeker Lance
+    requiredTags: 0500000004000000
+    statModifiers:
+    - statType: 4
+      operation: 0
+      value: 2.5
+    projectileModifiers:
+    - modifierType: 5
+      operation: 0
+      value: 0.9
+    - modifierType: 4
+      operation: 0
+      value: 1
+  - synergyId: momentum_volley
+    displayName: Momentum Volley
+    requiredTags: 0000000003000000
+    statModifiers:
+    - statType: 1
+      operation: 0
+      value: 0.18
+    projectileModifiers:
+    - modifierType: 3
+      operation: 0
+      value: 1
+    - modifierType: 0
+      operation: 1
+      value: 1.15
+  - synergyId: sharp_focus
+    displayName: Sharp Focus
+    requiredTags: 0100000005000000
+    statModifiers:
+    - statType: 0
+      operation: 0
+      value: 0.8
+    - statType: 5
+      operation: 0
+      value: 1
+    projectileModifiers:
+    - modifierType: 5
+      operation: 0
+      value: 0.6
+    - modifierType: 2
+      operation: 0
+      value: 0.1
+  - synergyId: rapid_breach
+    displayName: Rapid Breach
+    requiredTags: 0400000003000000
+    statModifiers:
+    - statType: 7
+      operation: 0
+      value: 0.5
+    projectileModifiers:
+    - modifierType: 4
+      operation: 0
+      value: 1
+    - modifierType: 3
+      operation: 0
+      value: 1
+  - synergyId: hot_pursuit
+    displayName: Hot Pursuit
+    requiredTags: 0200000005000000
+    statModifiers:
+    - statType: 2
+      operation: 0
+      value: -0.04
+    - statType: 3
+      operation: 0
+      value: 0.75
+    projectileModifiers:
+    - modifierType: 5
+      operation: 0
+      value: 0.75
+    - modifierType: 0
+      operation: 1
+      value: 1.1
+  - synergyId: skirmisher_point
+    displayName: Skirmisher Point
+    requiredTags: 0000000004000000
+    statModifiers:
+    - statType: 1
+      operation: 0
+      value: 0.3
+    - statType: 4
+      operation: 0
+      value: 1.5
+    projectileModifiers:
+    - modifierType: 4
+      operation: 0
+      value: 1
+    - modifierType: 1
+      operation: 0
+      value: 0.15
+  - synergyId: echo_chamber
+    displayName: Echo Chamber
+    requiredTags: 010000000200000003000000
+    statModifiers:
+    - statType: 0
+      operation: 0
+      value: 0.6
+    - statType: 2
+      operation: 0
+      value: -0.025
+    projectileModifiers:
+    - modifierType: 8
+      operation: 0
+      value: 1
+    - modifierType: 2
+      operation: 0
+      value: 0.08

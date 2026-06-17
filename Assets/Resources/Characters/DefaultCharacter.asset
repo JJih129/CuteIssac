@@ -21,7 +21,7 @@ MonoBehaviour:
   startingCoins: 0
   startingKeys: 1
   startingBombs: 0
-  startingWeaponItem: {fileID: 11400000, guid: 91a1a7c47f9442b7b2db57d2ba833e09, type: 2}
+  startingWeaponItem: {fileID: 0}
   startingActiveItem: {fileID: 0}
   startingPassiveItems: []
   statModifiers: []

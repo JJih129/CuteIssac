@@ -18,11 +18,18 @@ namespace CuteIssac.UI
         [SerializeField] private Image ammoBackdropImage;
         [SerializeField] private Image reloadTrackImage;
         [SerializeField] private Image reloadFillImage;
+        [SerializeField] private Sprite fallbackWeaponIcon;
         [SerializeField] private Text titleText;
         [SerializeField] private Text statusText;
         [SerializeField] private Text ammoText;
         [SerializeField] private Text detailText;
         [SerializeField] private Text loadoutText;
+
+        [Header("Minimal Layout")]
+        [Tooltip("Shows only the weapon slot, current weapon icon, ammo text, and optional reload bar.")]
+        [SerializeField] private bool useMinimalLayout = true;
+        [SerializeField] private bool showReloadBarInMinimalLayout = true;
+        [SerializeField] private Color minimalAmmoTextColor = Color.white;
 
         [Header("Styling")]
         [SerializeField] private Color panelTint = new(0.03f, 0.06f, 0.1f, 0.9f);
@@ -37,6 +44,19 @@ namespace CuteIssac.UI
         [SerializeField] private Color authoredPrimaryTextColor = new(0.30f, 0.19f, 0.12f, 1f);
         [SerializeField] private Color authoredSecondaryTextColor = new(0.42f, 0.29f, 0.19f, 0.98f);
         [SerializeField] private Color authoredMutedTextColor = new(0.52f, 0.38f, 0.27f, 0.94f);
+
+        public bool UsesMinimalLayout => useMinimalLayout;
+
+        private void Awake()
+        {
+            EnsureTextSetup();
+            ApplyMinimalElementVisibility();
+        }
+
+        private void OnValidate()
+        {
+            ApplyMinimalElementVisibility();
+        }
 
         public void ConfigureRuntimeView(
             GameObject root,
@@ -67,6 +87,7 @@ namespace CuteIssac.UI
             detailText = detail;
             loadoutText = loadout;
             EnsureTextSetup();
+            ApplyMinimalElementVisibility();
         }
 
         public void HidePanel()
@@ -88,67 +109,84 @@ namespace CuteIssac.UI
 
             if (frameImage != null)
             {
+                frameImage.gameObject.SetActive(!useMinimalLayout || iconBackdropImage == null);
                 frameImage.color = ResolveImageColor(frameImage, panelTint);
             }
 
             if (iconBackdropImage != null)
             {
+                iconBackdropImage.gameObject.SetActive(true);
                 iconBackdropImage.color = ResolveImageColor(iconBackdropImage, iconBackdropTint);
             }
 
             if (iconImage != null)
             {
-                iconImage.enabled = false;
-                iconImage.sprite = null;
+                iconImage.enabled = fallbackWeaponIcon != null;
+                iconImage.sprite = fallbackWeaponIcon;
+                iconImage.color = Color.white;
             }
 
             if (statusBackdropImage != null)
             {
+                statusBackdropImage.gameObject.SetActive(!useMinimalLayout);
                 statusBackdropImage.color = ResolveImageColor(statusBackdropImage, chipBackdropTint);
             }
 
             if (ammoBackdropImage != null)
             {
+                ammoBackdropImage.gameObject.SetActive(true);
+                ammoBackdropImage.enabled = !useMinimalLayout;
                 ammoBackdropImage.color = ResolveImageColor(ammoBackdropImage, ammoBackdropTint);
             }
 
             if (titleText != null)
             {
+                titleText.gameObject.SetActive(!useMinimalLayout);
                 titleText.text = "WEAPON RELIC";
                 titleText.color = HasAuthoredSkin ? authoredTitleTextColor : placeholderTextColor;
             }
 
             if (statusText != null)
             {
+                statusText.gameObject.SetActive(!useMinimalLayout);
                 statusText.text = "NO LOADOUT";
                 statusText.color = HasAuthoredSkin ? authoredPrimaryTextColor : placeholderTextColor;
             }
 
             if (ammoText != null)
             {
+                ammoText.gameObject.SetActive(true);
                 ammoText.text = "--/--";
-                ammoText.color = HasAuthoredSkin ? authoredPrimaryTextColor : placeholderTextColor;
+                ammoText.color = useMinimalLayout
+                    ? minimalAmmoTextColor
+                    : HasAuthoredSkin
+                        ? authoredPrimaryTextColor
+                        : placeholderTextColor;
             }
 
             if (detailText != null)
             {
+                detailText.gameObject.SetActive(!useMinimalLayout);
                 detailText.text = "Modern firearm relics will appear here.";
                 detailText.color = HasAuthoredSkin ? authoredSecondaryTextColor : placeholderTextColor;
             }
 
             if (loadoutText != null)
             {
+                loadoutText.gameObject.SetActive(!useMinimalLayout);
                 loadoutText.text = "LOADOUT 0/0";
                 loadoutText.color = HasAuthoredSkin ? authoredMutedTextColor : placeholderTextColor;
             }
 
             if (reloadTrackImage != null)
             {
+                reloadTrackImage.gameObject.SetActive(!useMinimalLayout || showReloadBarInMinimalLayout);
                 reloadTrackImage.color = ResolveImageColor(reloadTrackImage, reloadTrackTint);
             }
 
             if (reloadFillImage != null)
             {
+                reloadFillImage.gameObject.SetActive(!useMinimalLayout || showReloadBarInMinimalLayout);
                 reloadFillImage.fillAmount = 0f;
                 reloadFillImage.color = ResolveImageColor(reloadFillImage, reloadTrackTint);
             }
@@ -176,33 +214,40 @@ namespace CuteIssac.UI
 
             if (frameImage != null)
             {
+                frameImage.gameObject.SetActive(!useMinimalLayout || iconBackdropImage == null);
                 frameImage.color = ResolveImageColor(frameImage, Color.Lerp(panelTint, accentColor, 0.14f));
             }
 
             if (iconBackdropImage != null)
             {
+                iconBackdropImage.gameObject.SetActive(true);
                 iconBackdropImage.color = ResolveImageColor(iconBackdropImage, Color.Lerp(iconBackdropTint, accentColor, 0.18f));
             }
 
             if (statusBackdropImage != null)
             {
+                statusBackdropImage.gameObject.SetActive(!useMinimalLayout);
                 statusBackdropImage.color = ResolveImageColor(statusBackdropImage, Color.Lerp(chipBackdropTint, accentColor, 0.24f));
             }
 
             if (ammoBackdropImage != null)
             {
+                ammoBackdropImage.gameObject.SetActive(true);
+                ammoBackdropImage.enabled = !useMinimalLayout;
                 ammoBackdropImage.color = ResolveImageColor(ammoBackdropImage, Color.Lerp(ammoBackdropTint, accentColor, 0.12f));
             }
 
             if (iconImage != null)
             {
-                iconImage.enabled = state.Icon != null;
-                iconImage.sprite = state.Icon;
+                Sprite resolvedIcon = state.Icon != null ? state.Icon : fallbackWeaponIcon;
+                iconImage.enabled = resolvedIcon != null;
+                iconImage.sprite = resolvedIcon;
                 iconImage.color = Color.white;
             }
 
             if (titleText != null)
             {
+                titleText.gameObject.SetActive(!useMinimalLayout);
                 titleText.text = state.DisplayName;
                 titleText.color = HasAuthoredSkin
                     ? authoredTitleTextColor
@@ -211,6 +256,7 @@ namespace CuteIssac.UI
 
             if (statusText != null)
             {
+                statusText.gameObject.SetActive(!useMinimalLayout);
                 statusText.text = state.StatusLabel;
                 statusText.color = HasAuthoredSkin
                     ? authoredPrimaryTextColor
@@ -221,31 +267,38 @@ namespace CuteIssac.UI
 
             if (ammoText != null)
             {
+                ammoText.gameObject.SetActive(true);
                 ammoText.text = state.AmmoLabel;
-                ammoText.color = HasAuthoredSkin
-                    ? authoredPrimaryTextColor
-                    : Color.Lerp(accentColor, Color.white, 0.24f);
+                ammoText.color = useMinimalLayout
+                    ? minimalAmmoTextColor
+                    : HasAuthoredSkin
+                        ? authoredPrimaryTextColor
+                        : Color.Lerp(accentColor, Color.white, 0.24f);
             }
 
             if (detailText != null)
             {
+                detailText.gameObject.SetActive(!useMinimalLayout);
                 detailText.text = state.DetailLabel;
                 detailText.color = HasAuthoredSkin ? authoredSecondaryTextColor : detailTextColor;
             }
 
             if (loadoutText != null)
             {
+                loadoutText.gameObject.SetActive(!useMinimalLayout);
                 loadoutText.text = state.LoadoutLabel;
                 loadoutText.color = HasAuthoredSkin ? authoredMutedTextColor : loadoutTextColor;
             }
 
             if (reloadTrackImage != null)
             {
+                reloadTrackImage.gameObject.SetActive(!useMinimalLayout || (showReloadBarInMinimalLayout && state.IsReloading));
                 reloadTrackImage.color = ResolveImageColor(reloadTrackImage, Color.Lerp(reloadTrackTint, accentColor, 0.16f));
             }
 
             if (reloadFillImage != null)
             {
+                reloadFillImage.gameObject.SetActive(!useMinimalLayout || (showReloadBarInMinimalLayout && state.IsReloading));
                 reloadFillImage.fillAmount = state.IsReloading
                     ? Mathf.Clamp01(state.ReloadNormalized)
                     : 0f;
@@ -264,6 +317,17 @@ namespace CuteIssac.UI
 
         private void ApplyLayoutMode(bool carouselOpen)
         {
+            if (useMinimalLayout)
+            {
+                if (ammoText != null)
+                {
+                    ammoText.alignment = TextAnchor.MiddleCenter;
+                    ammoText.fontSize = 17;
+                }
+
+                return;
+            }
+
             bool authoredSkin = HasAuthoredSkin;
 
             if (titleText != null)
@@ -309,6 +373,44 @@ namespace CuteIssac.UI
             ConfigureBestFit(ammoText, 28, 46);
             ConfigureBestFit(detailText, 10, 15);
             ConfigureBestFit(loadoutText, 8, 12);
+        }
+
+        private void ApplyMinimalElementVisibility()
+        {
+            if (!useMinimalLayout)
+            {
+                return;
+            }
+
+            SetActiveIfNotNull(frameImage, iconBackdropImage == null);
+            SetActiveIfNotNull(iconBackdropImage, true);
+            SetActiveIfNotNull(iconImage, true);
+            SetActiveIfNotNull(statusBackdropImage, false);
+            SetImageEnabledIfNotNull(ammoBackdropImage, false);
+            SetActiveIfNotNull(titleText, false);
+            SetActiveIfNotNull(statusText, false);
+            SetActiveIfNotNull(ammoText, true);
+            SetActiveIfNotNull(detailText, false);
+            SetActiveIfNotNull(loadoutText, false);
+            SetActiveIfNotNull(reloadTrackImage, showReloadBarInMinimalLayout);
+            SetActiveIfNotNull(reloadFillImage, showReloadBarInMinimalLayout);
+        }
+
+        private static void SetActiveIfNotNull(Graphic graphic, bool active)
+        {
+            if (graphic != null)
+            {
+                graphic.gameObject.SetActive(active);
+            }
+        }
+
+        private static void SetImageEnabledIfNotNull(Image image, bool enabled)
+        {
+            if (image != null)
+            {
+                image.gameObject.SetActive(true);
+                image.enabled = enabled;
+            }
         }
 
         private static void ConfigureBestFit(Text text, int minSize, int maxSize)

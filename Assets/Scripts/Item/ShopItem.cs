@@ -5,6 +5,7 @@ using CuteIssac.Core.Pooling;
 using CuteIssac.Core.Spawning;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
+using CuteIssac.Data.Visual;
 using CuteIssac.Player;
 using UnityEngine;
 
@@ -56,6 +57,16 @@ namespace CuteIssac.Item
         {
             shopItemView = runtimeShopItemView;
             rewardSpawnAnchor = runtimeRewardSpawnAnchor != null ? runtimeRewardSpawnAnchor : transform;
+        }
+
+        public void ConfigureVisualProfile(ShopItemVisualProfile visualProfile)
+        {
+            if (shopItemView == null)
+            {
+                shopItemView = GetComponent<ShopItemView>();
+            }
+
+            shopItemView?.ConfigureVisualProfile(visualProfile);
         }
 
         public void ConfigureWorldPriceOnly()
@@ -222,7 +233,9 @@ namespace CuteIssac.Item
             bool canPurchase = CanPurchase(playerInventory, playerItemManager, playerHealth);
             int effectivePrice = ResolveEffectivePrice(playerItemManager);
             string displayName = isVisible ? shopItemData.DisplayName : string.Empty;
-            string basePriceLabel = isVisible ? $"{GetCurrencyLabel(shopItemData.CurrencyType)} {effectivePrice}" : string.Empty;
+            string basePriceLabel = isVisible
+                ? ShopPriceLabelFormatter.FormatPrice(effectivePrice, shopItemData.CurrencyType, ShopPriceLabelStyle.Ui)
+                : string.Empty;
             string priceLabel = isVisible ? ResolvePresentationPriceLabel(basePriceLabel, effectivePrice) : string.Empty;
             string statusLabel = _isSold
                 ? "판매 완료"
@@ -236,7 +249,7 @@ namespace CuteIssac.Item
                 displayName,
                 priceLabel,
                 statusLabel,
-                isVisible ? shopItemData.Icon : null,
+                isVisible ? shopItemData.ShopDisplaySprite : null,
                 isVisible ? shopItemData.CurrencyType : ShopCurrencyType.Coins,
                 isVisible,
                 canPurchase,
@@ -470,39 +483,6 @@ namespace CuteIssac.Item
                 ShopOfferRewardType.Ammo when ResolveWeaponLoadout(playerInventory, playerHealth, playerItemManager) == null => "No weapon",
                 ShopOfferRewardType.Ammo when !CanReceiveAmmo(playerInventory, playerItemManager, playerHealth) => "Ammo full",
                 ShopOfferRewardType.SpeedHeart when playerHealth != null && !playerHealth.CanReceiveSpeedHeart(offer.ResourceAmount) => "Speed full",
-                _ => string.Empty
-            };
-        }
-
-        private static string GetCurrencyLabel(ShopCurrencyType currencyType)
-        {
-            string englishLabel = ResolveCurrencyLabelEnglish(currencyType);
-            if (!string.IsNullOrWhiteSpace(englishLabel))
-            {
-                return englishLabel;
-            }
-
-            if (currencyType == ShopCurrencyType.Health)
-            {
-                return "HP";
-            }
-
-            return currencyType switch
-            {
-                ShopCurrencyType.Keys => "열쇠",
-                ShopCurrencyType.Bombs => "폭탄",
-                _ => "코인"
-            };
-        }
-
-        private static string ResolveCurrencyLabelEnglish(ShopCurrencyType currencyType)
-        {
-            return currencyType switch
-            {
-                ShopCurrencyType.Keys => "KEY",
-                ShopCurrencyType.Bombs => "BOMB",
-                ShopCurrencyType.Health => "HP",
-                ShopCurrencyType.Coins => "COIN",
                 _ => string.Empty
             };
         }

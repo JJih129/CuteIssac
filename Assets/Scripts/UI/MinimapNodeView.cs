@@ -30,6 +30,7 @@ namespace CuteIssac.UI
                 Sprite connectionSprite,
                 Sprite verticalConnectionSprite,
                 Sprite secretConnectionSprite,
+                Color lockedConnectionColor,
                 Sprite specialIconSprite,
                 Color specialIconColor,
                 bool showCurrentMarker,
@@ -44,12 +45,16 @@ namespace CuteIssac.UI
                 bool pulseRewardMarker,
                 bool showUpConnection,
                 bool showUpSecretConnection,
+                bool showUpLockedConnection,
                 bool showDownConnection,
                 bool showDownSecretConnection,
+                bool showDownLockedConnection,
                 bool showLeftConnection,
                 bool showLeftSecretConnection,
+                bool showLeftLockedConnection,
                 bool showRightConnection,
-                bool showRightSecretConnection)
+                bool showRightSecretConnection,
+                bool showRightLockedConnection)
             {
                 NodeSize = nodeSize;
                 ConnectionLength = connectionLength;
@@ -68,6 +73,7 @@ namespace CuteIssac.UI
                 ConnectionSprite = connectionSprite;
                 VerticalConnectionSprite = verticalConnectionSprite;
                 SecretConnectionSprite = secretConnectionSprite;
+                LockedConnectionColor = lockedConnectionColor;
                 SpecialIconSprite = specialIconSprite;
                 SpecialIconColor = specialIconColor;
                 ShowCurrentMarker = showCurrentMarker;
@@ -82,12 +88,16 @@ namespace CuteIssac.UI
                 PulseRewardMarker = pulseRewardMarker;
                 ShowUpConnection = showUpConnection;
                 ShowUpSecretConnection = showUpSecretConnection;
+                ShowUpLockedConnection = showUpLockedConnection;
                 ShowDownConnection = showDownConnection;
                 ShowDownSecretConnection = showDownSecretConnection;
+                ShowDownLockedConnection = showDownLockedConnection;
                 ShowLeftConnection = showLeftConnection;
                 ShowLeftSecretConnection = showLeftSecretConnection;
+                ShowLeftLockedConnection = showLeftLockedConnection;
                 ShowRightConnection = showRightConnection;
                 ShowRightSecretConnection = showRightSecretConnection;
+                ShowRightLockedConnection = showRightLockedConnection;
             }
 
             public Vector2 NodeSize { get; }
@@ -107,6 +117,7 @@ namespace CuteIssac.UI
             public Sprite ConnectionSprite { get; }
             public Sprite VerticalConnectionSprite { get; }
             public Sprite SecretConnectionSprite { get; }
+            public Color LockedConnectionColor { get; }
             public Sprite SpecialIconSprite { get; }
             public Color SpecialIconColor { get; }
             public bool ShowCurrentMarker { get; }
@@ -121,12 +132,16 @@ namespace CuteIssac.UI
             public bool PulseRewardMarker { get; }
             public bool ShowUpConnection { get; }
             public bool ShowUpSecretConnection { get; }
+            public bool ShowUpLockedConnection { get; }
             public bool ShowDownConnection { get; }
             public bool ShowDownSecretConnection { get; }
+            public bool ShowDownLockedConnection { get; }
             public bool ShowLeftConnection { get; }
             public bool ShowLeftSecretConnection { get; }
+            public bool ShowLeftLockedConnection { get; }
             public bool ShowRightConnection { get; }
             public bool ShowRightSecretConnection { get; }
+            public bool ShowRightLockedConnection { get; }
         }
 
         [Header("Structure")]
@@ -302,10 +317,10 @@ namespace CuteIssac.UI
             _pulseRewardMarker = presentation.ShowRewardMarker && presentation.PulseRewardMarker;
             SetImage(rewardMarkerImage, presentation.ShowRewardMarker, presentation.RewardMarkSprite, presentation.RewardMarkColor);
 
-            PresentConnection(upConnectionImage, presentation.ShowUpConnection, presentation.ShowUpSecretConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, true);
-            PresentConnection(downConnectionImage, presentation.ShowDownConnection, presentation.ShowDownSecretConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, true);
-            PresentConnection(leftConnectionImage, presentation.ShowLeftConnection, presentation.ShowLeftSecretConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, false);
-            PresentConnection(rightConnectionImage, presentation.ShowRightConnection, presentation.ShowRightSecretConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, false);
+            PresentConnection(upConnectionImage, presentation.ShowUpConnection, presentation.ShowUpSecretConnection, presentation.ShowUpLockedConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.LockedConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, true);
+            PresentConnection(downConnectionImage, presentation.ShowDownConnection, presentation.ShowDownSecretConnection, presentation.ShowDownLockedConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.LockedConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, true);
+            PresentConnection(leftConnectionImage, presentation.ShowLeftConnection, presentation.ShowLeftSecretConnection, presentation.ShowLeftLockedConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.LockedConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, false);
+            PresentConnection(rightConnectionImage, presentation.ShowRightConnection, presentation.ShowRightSecretConnection, presentation.ShowRightLockedConnection, presentation.ConnectionSprite, presentation.VerticalConnectionSprite, presentation.SecretConnectionSprite, presentation.ConnectionColor, presentation.SecretConnectionColor, presentation.LockedConnectionColor, presentation.ConnectionThickness, presentation.ConnectionLength, false);
         }
 
         private static void SetImage(Image image, bool visible, Sprite sprite, Color color)
@@ -330,11 +345,13 @@ namespace CuteIssac.UI
             Image image,
             bool visible,
             bool secretConnection,
+            bool lockedConnection,
             Sprite sprite,
             Sprite verticalSprite,
             Sprite secretSprite,
             Color color,
             Color secretColor,
+            Color lockedColor,
             float thickness,
             float length,
             bool vertical)
@@ -356,9 +373,13 @@ namespace CuteIssac.UI
                 : vertical && verticalSprite != null
                     ? verticalSprite
                     : sprite;
-            image.color = secretConnection ? secretColor : color;
+            image.color = secretConnection ? secretColor : lockedConnection ? lockedColor : color;
             RectTransform rectTransform = image.rectTransform;
-            float resolvedThickness = secretConnection ? thickness * 1.35f : thickness;
+            float resolvedThickness = secretConnection
+                ? thickness * 1.35f
+                : lockedConnection
+                    ? thickness * 1.18f
+                    : thickness;
             rectTransform.sizeDelta = vertical
                 ? new Vector2(resolvedThickness, length)
                 : new Vector2(length, resolvedThickness);

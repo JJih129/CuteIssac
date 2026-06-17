@@ -85,6 +85,16 @@ namespace CuteIssac.UI
         private Color _currentIconBaseColor = Color.white;
         private Color _currentChargeBaseColor;
 
+        private void Awake()
+        {
+            NormalizeSerializedText();
+        }
+
+        private void OnValidate()
+        {
+            NormalizeSerializedText();
+        }
+
         public void ConfigureDebugView(Text label, Image frame = null)
         {
             labelText = label;
@@ -485,6 +495,11 @@ namespace CuteIssac.UI
         {
             if (!_hasChallengeThreatTheme)
             {
+                if (frameImage != null && frameImage.sprite != null)
+                {
+                    return ApplyCompactAlpha(Color.white, compactFrameAlphaScale);
+                }
+
                 Color frameColor = _currentFrameBaseColor == default ? frameTint : _currentFrameBaseColor;
                 return ApplyCompactAlpha(frameColor, compactFrameAlphaScale);
             }
@@ -500,6 +515,11 @@ namespace CuteIssac.UI
             Color baseColor = _currentChargeBaseColor == default ? cooldownAccent : _currentChargeBaseColor;
             if (!_hasChallengeThreatTheme)
             {
+                if (chargeFillImage != null && chargeFillImage.sprite != null)
+                {
+                    return ApplyCompactAlpha(Color.white, compactChargeAlphaScale);
+                }
+
                 return ApplyCompactAlpha(baseColor, compactChargeAlphaScale);
             }
 
@@ -587,6 +607,11 @@ namespace CuteIssac.UI
             shadow.effectColor = compactTextShadowColor;
             shadow.effectDistance = compactTextShadowDistance;
             shadow.useGraphicAlpha = true;
+        }
+
+        private void NormalizeSerializedText()
+        {
+            HudTextFormatting.NormalizeSerializedLineBreaks(labelText);
         }
 
         private bool UsesChallengeBaselineTheme()

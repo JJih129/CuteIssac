@@ -14,16 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   themeId: floor_1_theme
   displayName: Candy Village
-  roomVisualPrefab: {fileID: 900000100, guid: 9f1a1ce1d4d74f98b6d14ca7a6c00111, type: 3}
+  roomVisualPrefab: {fileID: 8250159216790660542, guid: 6640242d0d7bf5f4f95ab1c5937a3c4e, type: 3}
   hideFallbackGeometryWhenRoomVisualIsPresent: 1
   floorVisualPrefab: {fileID: 0}
   wallVisualPrefab: {fileID: 0}
-  doorVisualPrefab: {fileID: 990001000, guid: 2a4ef9378c134a3882d6ee4cb9e7a910, type: 3}
+  doorVisualPrefab: {fileID: 8852491913182294834, guid: aa0a4fb04fd02904f94a082076e884d2, type: 3}
   decorationPrefabs: []
   roomTypeLandmarks:
   - roomType: 0
     landmarkPrefab: {fileID: 0}
-    useRuntimeFallback: 1
+    useRuntimeFallback: 0
     localOffset: {x: 0, y: 0.15}
     rotationZ: 0
     scale: {x: 1.05, y: 1.05, z: 1}

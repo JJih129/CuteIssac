@@ -139,13 +139,6 @@ namespace CuteIssac.Combat
         private void OnValidate()
         {
             ResolveReferences();
-
-            if (Application.isPlaying)
-            {
-                CacheDefaultPresentation();
-                ApplyTraitPresentation();
-                SyncOutlineRenderer();
-            }
         }
 
         private void ResolveReferences()

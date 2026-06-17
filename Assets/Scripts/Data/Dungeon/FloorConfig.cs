@@ -15,6 +15,8 @@ namespace CuteIssac.Data.Dungeon
     public sealed class FloorConfig : ScriptableObject
     {
         [SerializeField] [Min(1)] private int floorIndex = 1;
+        [Tooltip("Optional stage-level hub that groups this floor's theme, enemy, reward, shop, and prewarm data for production authoring.")]
+        [SerializeField] private StageProfile stageProfile;
         [SerializeField] [Min(0)] private int minNormalRoomCount = 4;
         [SerializeField] [Min(0)] private int maxNormalRoomCount = 7;
         [SerializeField] [Min(1)] private int maxGenerationAttempts = 8;
@@ -69,6 +71,7 @@ namespace CuteIssac.Data.Dungeon
         [SerializeField] private ItemPoolData curseRoomItemPool;
 
         public int FloorIndex => floorIndex;
+        public StageProfile StageProfile => stageProfile;
         public int MinNormalRoomCount => minNormalRoomCount;
         public int MaxNormalRoomCount => maxNormalRoomCount;
         public int MaxGenerationAttempts => Mathf.Max(1, maxGenerationAttempts);

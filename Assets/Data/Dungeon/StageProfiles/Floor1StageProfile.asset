@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b786d7219ba4fab428ace6922580903d, type: 3}
+  m_Name: Floor1StageProfile
+  m_EditorClassIdentifier: Assembly-CSharp::CuteIssac.Data.Dungeon.StageProfile
+  stageId: stage_floor_1
+  displayName: Floor 1
+  floorConfig: {fileID: 11400000, guid: 7f1b8f7fcd404463918c5ef327d8f101, type: 2}
+  roomThemeOverride: {fileID: 11400000, guid: c7d8b5b64b08498fadf4ef5d46d8a101, type: 2}
+  enemyPoolOverride: {fileID: 11400000, guid: 1a3e3c3f4f214e1fa1d9f8194d9f0101, type: 2}
+  normalRoomRewardPoolOverride: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c550101, type: 2}
+  bossRoomRewardPoolOverride: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c560101, type: 2}
+  treasureRoomRewardPoolOverride: {fileID: 0}
+  shopRoomRewardPoolOverride: {fileID: 0}
+  secretRoomRewardPoolOverride: {fileID: 11400000, guid: f6a0be0680db47e39b9f9a4cad0c8e6d, type: 2}
+  curseRoomRewardPoolOverride: {fileID: 11400000, guid: 3c5f6e7a9b1044df8bf4410a9c550101, type: 2}
+  treasureRoomItemPoolOverride: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100101, type: 2}
+  challengeRoomItemPoolOverride: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100101, type: 2}
+  shopRoomItemPoolOverride: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100401, type: 2}
+  bossRewardItemPoolOverride: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100701, type: 2}
+  secretRoomItemPoolOverride: {fileID: 11400000, guid: 7b3f7d7e0c6a4dd8b0257f66f55df401, type: 2}
+  curseRoomItemPoolOverride: {fileID: 11400000, guid: c1f01d0c5a284690a2f2b5c111100101, type: 2}
+  prewarmProfile:
+    roomVisualPrewarmCount: 1
+    doorVisualPrewarmCount: 4
+    decorationPrewarmCount: 2

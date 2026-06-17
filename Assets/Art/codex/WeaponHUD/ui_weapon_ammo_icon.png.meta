@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 3392bf805bbc4fe47a041de339fe7b60
+guid: 8f6ee9cb5bf14b54a9709d6bb780c8ab
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -2306594733560775283
-    second: "\uB9C8\uB140\uC232\uB9F5_0"
+      213: -6663208734679394450
+    second: ui_weapon_ammo_icon_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: "\uB9C8\uB140\uC232\uB9F5_0"
+      name: ui_weapon_ammo_icon_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 1448
-        height: 1086
+        x: 329
+        y: 283
+        width: 583
+        height: 701
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d8db2598f445dffd0800000000000000
-      internalID: -2306594733560775283
+      spriteID: e67972185f68783a0800000000000000
+      internalID: -6663208734679394450
       vertices: []
       indices: 
       edges: []
@@ -138,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      "\uB9C8\uB140\uC232\uB9F5_0": -2306594733560775283
+      ui_weapon_ammo_icon_0: -6663208734679394450
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

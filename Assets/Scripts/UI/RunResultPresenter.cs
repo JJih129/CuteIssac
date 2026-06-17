@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using CuteIssac.Core.Run;
 using CuteIssac.Core.Meta;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Item;
 using CuteIssac.Core.Settings;
 using CuteIssac.Dungeon;
@@ -25,6 +26,8 @@ namespace CuteIssac.UI
         private const string RuntimePanelName = "RuntimeRunResultPanel";
 
         [Header("References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RunManager runManager;
         [SerializeField] private RunSaveSystem runSaveSystem;
         [SerializeField] private CharacterProfileManager characterProfileManager;
@@ -34,6 +37,8 @@ namespace CuteIssac.UI
         [SerializeField] private PlayerConsumableHolder playerConsumableHolder;
         [SerializeField] private Canvas overlayCanvas;
         [SerializeField] private RunResultPanelView runResultPanelView;
+        [Tooltip("결과창 UI 스케일 적용에 사용하는 옵션 서비스입니다. GameplaySceneContext에서 우선 주입받습니다.")]
+        [SerializeField] private GameOptionsService gameOptionsService;
 
         [Header("Behavior")]
         [SerializeField] private bool pauseGameplayWhenResultIsVisible = true;
@@ -257,6 +262,8 @@ namespace CuteIssac.UI
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (runManager == null)
             {
                 runManager = GetComponent<RunManager>();
@@ -311,6 +318,30 @@ namespace CuteIssac.UI
                     }
                 }
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            runManager ??= sceneContext.RunManager;
+            runSaveSystem ??= sceneContext.RunSaveSystem;
+            characterProfileManager ??= sceneContext.CharacterProfileManager;
+            metaProgressionManager ??= sceneContext.MetaProgressionManager;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerActiveItemController ??= sceneContext.PlayerActiveItemController;
+            playerConsumableHolder ??= sceneContext.PlayerConsumableHolder;
+            overlayCanvas ??= sceneContext.OverlayCanvas;
+            gameOptionsService ??= sceneContext.GameOptionsService;
         }
 
         private void EnsureView()
@@ -540,9 +571,18 @@ namespace CuteIssac.UI
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
-            GameOptionsService optionsService = FindFirstObjectByType<GameOptionsService>(FindObjectsInactive.Exclude);
-            GameOptionsService.ApplyUiScale(scaler, optionsService != null && optionsService.CurrentOptions != null
-                ? optionsService.CurrentOptions.UiScale
+            if (gameOptionsService == null)
+            {
+                ResolveReferencesFromSceneContext();
+            }
+
+            if (gameOptionsService == null)
+            {
+                gameOptionsService = FindFirstObjectByType<GameOptionsService>(FindObjectsInactive.Exclude);
+            }
+
+            GameOptionsService.ApplyUiScale(scaler, gameOptionsService != null && gameOptionsService.CurrentOptions != null
+                ? gameOptionsService.CurrentOptions.UiScale
                 : 1f);
 
             if (canvas.GetComponent<GraphicRaycaster>() == null)

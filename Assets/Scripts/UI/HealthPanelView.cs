@@ -118,6 +118,16 @@ namespace CuteIssac.UI
         private Vector3 _heartSlotParentBaseScale = Vector3.one;
         private bool _hasHeartSlotParentFeedbackBase;
 
+        private void Awake()
+        {
+            NormalizeSerializedText();
+        }
+
+        private void OnValidate()
+        {
+            NormalizeSerializedText();
+        }
+
         public void ConfigureDebugView(Text valueText, RectTransform slotParent, Image slotTemplate)
         {
             healthValueText = valueText;
@@ -516,6 +526,11 @@ namespace CuteIssac.UI
                 : (UsesChallengeBaselineTheme() ? challengeBaselineEmptyHeartColor : emptyHeartColor);
             if (!_hasChallengeThreatTheme)
             {
+                if ((isFilled && (filledHeartSprite != null || halfHeartSprite != null)) || (!isFilled && emptyHeartSprite != null))
+                {
+                    return ApplyCompactAlpha(Color.white, isFilled ? compactFilledHeartAlphaScale : compactEmptyHeartAlphaScale);
+                }
+
                 return ApplyCompactAlpha(baseColor, isFilled ? compactFilledHeartAlphaScale : compactEmptyHeartAlphaScale);
             }
 
@@ -681,6 +696,11 @@ namespace CuteIssac.UI
         private bool UsesChallengeBaselineTheme()
         {
             return string.Equals(_challengeThreatBadgeLabel, "챌린지");
+        }
+
+        private void NormalizeSerializedText()
+        {
+            HudTextFormatting.NormalizeSerializedLineBreaks(healthValueText);
         }
 
         private void ApplyCompactBackdropVisibility()

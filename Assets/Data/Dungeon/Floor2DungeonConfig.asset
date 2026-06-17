@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Floor2DungeonConfig
   m_EditorClassIdentifier: 
   floorIndex: 2
+  stageProfile: {fileID: 11400000, guid: 0d658c2be6e657f4bac663fdfb9eb592, type: 2}
   minNormalRoomCount: 8
   maxNormalRoomCount: 10
   maxGenerationAttempts: 8
@@ -95,30 +96,21 @@ MonoBehaviour:
   - presetId: f2_normal_candy_bat_3
     waveData: {fileID: 11400000, guid: 5c00f5804bc05824691576626ad058b6, type: 2}
     selectionWeight: 4
-  - presetId: f2_normal_exploder_2_chaser_2
-    waveData: {fileID: 11400000, guid: 8089e240d32a59d4b8c9354b273de5f6, type: 2}
+  - presetId: f2_normal_candy_bat_2
+    waveData: {fileID: 11400000, guid: 2c746da2354a7ff40b7eb987acc7b142, type: 2}
     selectionWeight: 3
-  - presetId: f2_normal_turret_1_candy_bat_2
-    waveData: {fileID: 11400000, guid: d0ce7759402f64c419efe8d4982a4715, type: 2}
-    selectionWeight: 3
-  - presetId: f2_normal_shield_1_shooter_2_candy_bat_1
-    waveData: {fileID: 11400000, guid: ec02c8c44795b184aa8b5affb87a2758, type: 2}
+  - presetId: f2_normal_macaron_1_gingerbread_1
+    waveData: {fileID: 11400000, guid: 855db843908738440acd6c78c808e7cb, type: 2}
     selectionWeight: 2
-  - presetId: f2_normal_orbiter_2_homing_1
-    waveData: {fileID: 11400000, guid: fc7ffeccbaa873443a06e68073812c69, type: 2}
+  - presetId: f2_normal_jelly_bear_1_gingerbread_2
+    waveData: {fileID: 11400000, guid: 9f282fee445d95f49a9708cf781c2b1a, type: 2}
     selectionWeight: 2
-  - presetId: f2_normal_spawner_1_exploder_2
-    waveData: {fileID: 11400000, guid: 2741d863b71611149b1a825ab7fc8e48, type: 2}
-    selectionWeight: 1
   eliteRoomWavePresets:
-  - presetId: f2_elite_fast_1_tank_1_shooter_2
-    waveData: {fileID: 11400000, guid: 8e299f58da2c4055a588e175793bc6d7, type: 2}
-    selectionWeight: 2
-  - presetId: f2_elite_fast_1_explosive_1_summoner_1
-    waveData: {fileID: 11400000, guid: 7e4c0c548c604d9cbb13c1cc01f7e966, type: 2}
+  - presetId: f2_elite_macaron_2_jelly_bear_2
+    waveData: {fileID: 11400000, guid: 321da90b120e49a483c9c567d4a322a5, type: 2}
     selectionWeight: 1
   bossRoomWavePresets:
-  - presetId: f2_boss_chaser
+  - presetId: f2_wall_crawler_boss
     waveData: {fileID: 11400000, guid: 2b4eaa7a11c24f43a1e7d995fc540202, type: 2}
     selectionWeight: 1
   encounterPacing:

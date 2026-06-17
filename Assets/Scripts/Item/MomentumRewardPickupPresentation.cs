@@ -1,4 +1,5 @@
 using CuteIssac.Core.Feedback;
+using CuteIssac.Core.Scene;
 using CuteIssac.Player;
 using UnityEngine;
 using System.Collections.Generic;
@@ -37,6 +38,8 @@ namespace CuteIssac.Item
         [SerializeField] private BasePickupLogic pickupLogic;
         [SerializeField] private PickupVisual pickupVisual;
         [SerializeField] private RoomRewardPickupTracker roomRewardPickupTracker;
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 런타임 생성 시 비어 있으면 Active Context를 사용합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
 
         private Transform _markerRoot;
         private SpriteRenderer _ringRenderer;
@@ -288,10 +291,30 @@ namespace CuteIssac.Item
 
             if (_playerHealth == null)
             {
-                _playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
+                _playerHealth = ResolvePlayerHealth();
             }
 
             _playerTarget = _playerHealth != null ? _playerHealth.transform : null;
+        }
+
+        private PlayerHealth ResolvePlayerHealth()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext != null)
+            {
+                sceneContext.ResolveMissingReferences();
+
+                if (sceneContext.PlayerHealth != null)
+                {
+                    return sceneContext.PlayerHealth;
+                }
+            }
+
+            return FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
         }
 
         private void UpdatePickupFlow()

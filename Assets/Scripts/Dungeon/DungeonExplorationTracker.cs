@@ -108,6 +108,10 @@ namespace CuteIssac.Dungeon
                     IsVisibleSecretConnection(record, RoomDirection.Down),
                     IsVisibleSecretConnection(record, RoomDirection.Left),
                     IsVisibleSecretConnection(record, RoomDirection.Right),
+                    IsVisibleLockedConnection(record, RoomDirection.Up),
+                    IsVisibleLockedConnection(record, RoomDirection.Down),
+                    IsVisibleLockedConnection(record, RoomDirection.Left),
+                    IsVisibleLockedConnection(record, RoomDirection.Right),
                     record.IsCleared,
                     record.HasRewardContent,
                     record.HasCollectedRewardContent));
@@ -281,6 +285,18 @@ namespace CuteIssac.Dungeon
             GridPosition targetPosition = record.RoomNode.GridPosition + RoomDirectionUtility.ToOffset(direction);
             return _recordsByPosition.TryGetValue(targetPosition, out RoomExplorationRecord adjacentRecord)
                 && adjacentRecord.RoomNode.RoomType == RoomType.Secret;
+        }
+
+        private bool IsVisibleLockedConnection(RoomExplorationRecord record, RoomDirection direction)
+        {
+            if (!ShouldDisplayConnection(record, direction) || record.RoomController == null)
+            {
+                return false;
+            }
+
+            return record.RoomController.TryGetDoor(direction, out RoomDoor door)
+                && door != null
+                && door.IsLocked;
         }
 
         private static bool IsVisibleOnMinimap(RoomExplorationRecord record)

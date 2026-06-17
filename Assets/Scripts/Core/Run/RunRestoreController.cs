@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Save;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
 using CuteIssac.Dungeon;
@@ -18,6 +19,7 @@ namespace CuteIssac.Core.Run
     public sealed class RunRestoreController : MonoBehaviour
     {
         [Header("References")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private GameSaveSystem gameSaveSystem;
         [SerializeField] private RunManager runManager;
         [SerializeField] private CharacterProfileManager characterProfileManager;
@@ -750,6 +752,8 @@ namespace CuteIssac.Core.Run
                 runItemPoolService = GetComponent<RunItemPoolService>();
             }
 
+            ResolveReferencesFromSceneContext();
+
             if (playerInventory == null)
             {
                 playerInventory = FindFirstObjectByType<PlayerInventory>(FindObjectsInactive.Exclude);
@@ -794,6 +798,35 @@ namespace CuteIssac.Core.Run
             {
                 roomNavigationController = GetComponent<RoomNavigationController>();
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            gameSaveSystem ??= sceneContext.GameSaveSystem;
+            runManager ??= sceneContext.RunManager;
+            characterProfileManager ??= sceneContext.CharacterProfileManager;
+            runSaveSystem ??= sceneContext.RunSaveSystem;
+            runItemPoolService ??= sceneContext.RunItemPoolService;
+            dungeonInstantiator ??= sceneContext.DungeonInstantiator;
+            roomNavigationController ??= sceneContext.RoomNavigationController;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerStats ??= sceneContext.PlayerStats;
+            playerHealth ??= sceneContext.PlayerHealth;
+            playerController ??= sceneContext.PlayerController;
+            playerActiveItemController ??= sceneContext.PlayerActiveItemController;
+            playerConsumableHolder ??= sceneContext.PlayerConsumableHolder;
+            playerTrinketHolder ??= sceneContext.PlayerTrinketHolder;
         }
     }
 }

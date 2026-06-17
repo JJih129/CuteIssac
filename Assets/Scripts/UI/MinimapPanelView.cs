@@ -35,6 +35,14 @@ namespace CuteIssac.UI
         [SerializeField] private Text roomStatusText;
         [SerializeField] private Text roomDetailText;
 
+        [Header("Scene Authored Layout")]
+        [Tooltip("Enable only for prototype/debug scenes. Static HUD scenes should place and reference these elements in the scene instead of creating them at runtime.")]
+        [SerializeField] private bool createMissingStatusElements;
+        [Tooltip("Keep enabled for production-style static HUD layouts so runtime status updates never overwrite authored RectTransform positions or sizes.")]
+        [SerializeField] private bool preserveAuthoredStatusLayout = true;
+        [Tooltip("Disable for Isaac-like HUDs that should show only the map grid without room status/detail cards.")]
+        [SerializeField] private bool showRoomStatusElements;
+
         [Header("Node Presentation")]
         [SerializeField] private MinimapNodeView nodeTemplate;
         [SerializeField] private Vector2 nodeSpacing = new(46f, 46f);
@@ -241,6 +249,7 @@ namespace CuteIssac.UI
         [SerializeField] private Color shopFrameColor = new(0.35f, 0.95f, 0.85f, 1f);
         [SerializeField] private Color secretFrameColor = new(0.82f, 0.55f, 1f, 1f);
         [SerializeField] private Color secretConnectionColor = new(0.92f, 0.74f, 1f, 1f);
+        [SerializeField] private Color lockedConnectionColor = new(1f, 0.82f, 0.36f, 1f);
         [SerializeField] private Color secretLinkCurrentRoomPulseColor = new(0.94f, 0.82f, 1f, 1f);
         [SerializeField] private Color secretRewardNodePulseColor = new(1f, 0.9f, 0.56f, 1f);
         [SerializeField] private Color curseAltarReadyNodePulseColor = new(1f, 0.78f, 0.34f, 1f);
@@ -427,7 +436,14 @@ namespace CuteIssac.UI
                 placeholderText.gameObject.SetActive(showPlaceholder);
                 placeholderText.text = showPlaceholder ? "MAP READY" : string.Empty;
             }
-            ApplyPlaceholderStatusPresentation();
+            if (showRoomStatusElements)
+            {
+                ApplyPlaceholderStatusPresentation();
+            }
+            else
+            {
+                HideRoomStatusElements();
+            }
 
             HideUnusedNodes(0);
             ApplyPanelVisibility();
@@ -539,7 +555,7 @@ namespace CuteIssac.UI
                 backgroundRect.offsetMax = Vector2.zero;
                 if (compactMode)
                 {
-                    backgroundImage.color = compactFloatingBackgroundColor;
+                    backgroundImage.color = ResolveAuthoredSpriteColor(backgroundImage, compactFloatingBackgroundColor);
                 }
             }
 
@@ -552,7 +568,7 @@ namespace CuteIssac.UI
                 frameRect.offsetMax = Vector2.zero;
                 if (compactMode)
                 {
-                    frameImage.color = compactFloatingFrameColor;
+                    frameImage.color = ResolveAuthoredSpriteColor(frameImage, compactFloatingFrameColor);
                 }
             }
 
@@ -706,6 +722,12 @@ namespace CuteIssac.UI
 
         private void RefreshCurrentStatusVisualState()
         {
+            if (!showRoomStatusElements)
+            {
+                HideRoomStatusElements();
+                return;
+            }
+
             bool useCurseAlertTheme = _currentStatusEmphasize && _currentRoomType == RoomType.Curse && _currentHeadline.Contains("경고");
             bool useCurseAltarReadyTheme = ShouldUseCurseAltarReadyTheme(_currentRoomType, _currentHeadline);
             bool useChallengeThreatTheme = ShouldUseChallengeThreatTheme(_currentRoomType);
@@ -820,7 +842,7 @@ namespace CuteIssac.UI
                 return;
             }
 
-            if (roomTypeLabelText == null)
+            if (createMissingStatusElements && roomTypeLabelText == null)
             {
                 roomTypeBadgeImage = CreateStatusCard(
                     "RoomTypeBadge",
@@ -843,7 +865,7 @@ namespace CuteIssac.UI
                     FontStyle.Bold);
             }
 
-            if (roomStatusText == null)
+            if (createMissingStatusElements && roomStatusText == null)
             {
                 roomStatusCardImage = CreateStatusCard(
                     "RoomStatusCard",
@@ -867,7 +889,7 @@ namespace CuteIssac.UI
                     FontStyle.Bold);
             }
 
-            if (roomDetailText == null)
+            if (createMissingStatusElements && roomDetailText == null)
             {
                 roomDetailCardImage = CreateStatusCard(
                     "RoomDetailCard",
@@ -894,7 +916,7 @@ namespace CuteIssac.UI
 
             if (roomTypeBadgeImage != null)
             {
-                roomTypeBadgeImage.color = roomTypeBadgeBaseColor;
+                roomTypeBadgeImage.color = ResolveAuthoredSpriteColor(roomTypeBadgeImage, roomTypeBadgeBaseColor);
             }
 
             if (roomTypeLabelText != null)
@@ -905,7 +927,7 @@ namespace CuteIssac.UI
 
             if (roomStatusCardImage != null)
             {
-                roomStatusCardImage.color = roomStatusCardColor;
+                roomStatusCardImage.color = ResolveAuthoredSpriteColor(roomStatusCardImage, roomStatusCardColor);
             }
 
             if (roomStatusAccentImage != null)
@@ -915,7 +937,7 @@ namespace CuteIssac.UI
 
             if (roomDetailCardImage != null)
             {
-                roomDetailCardImage.color = roomDetailCardColor;
+                roomDetailCardImage.color = ResolveAuthoredSpriteColor(roomDetailCardImage, roomDetailCardColor);
             }
 
             if (roomDetailAccentImage != null)
@@ -923,7 +945,14 @@ namespace CuteIssac.UI
                 roomDetailAccentImage.color = new Color(1f, 1f, 1f, accentRailOpacity * 0.8f);
             }
 
-            ApplyStatusLayout(_compactMode);
+            if (preserveAuthoredStatusLayout)
+            {
+                ApplyStatusTextStyling(_compactMode);
+            }
+            else
+            {
+                ApplyStatusLayout(_compactMode);
+            }
         }
 
         private RectTransform ResolvePanelRect()
@@ -1125,6 +1154,7 @@ namespace CuteIssac.UI
                 connectionSprite,
                 verticalConnectionSprite,
                 secretConnectionSprite,
+                lockedConnectionColor,
                 useRoomTileSprite ? null : GetSpecialIcon(roomState.RoomType, explorationState),
                 resolvedFrameColor,
                 explorationState == RoomExplorationState.Current && currentRoomTileSprite == null,
@@ -1139,12 +1169,16 @@ namespace CuteIssac.UI
                 pulseRewardMarker,
                 roomState.HasUpConnection,
                 roomState.HasUpSecretConnection,
+                roomState.HasUpLockedConnection,
                 roomState.HasDownConnection,
                 roomState.HasDownSecretConnection,
+                roomState.HasDownLockedConnection,
                 roomState.HasLeftConnection,
                 roomState.HasLeftSecretConnection,
+                roomState.HasLeftLockedConnection,
                 roomState.HasRightConnection,
-                roomState.HasRightSecretConnection);
+                roomState.HasRightSecretConnection,
+                roomState.HasRightLockedConnection);
         }
 
         private void RefreshRenderedRooms()
@@ -1552,6 +1586,12 @@ namespace CuteIssac.UI
 
         private void ApplyStatusCardVisibility(bool showStatusCard, bool showDetailCard)
         {
+            if (!showRoomStatusElements)
+            {
+                HideRoomStatusElements();
+                return;
+            }
+
             if (roomStatusCardImage != null)
             {
                 roomStatusCardImage.gameObject.SetActive(showStatusCard);
@@ -1575,6 +1615,12 @@ namespace CuteIssac.UI
 
         private void ApplyStatusLayout(bool compactMode)
         {
+            if (preserveAuthoredStatusLayout)
+            {
+                ApplyStatusTextStyling(compactMode);
+                return;
+            }
+
             ChallengeBannerLayoutProfile layoutProfile = ResolveCurrentChallengeLayoutProfile();
             Vector2 resolvedStatusCardSize = ResolveRoomStatusCardSize(layoutProfile, compactMode);
             Vector2 resolvedStatusTextSize = ResolveRoomStatusTextSize(layoutProfile, compactMode);
@@ -1609,6 +1655,11 @@ namespace CuteIssac.UI
             ApplyStatusElementLayout(roomDetailAccentImage, detailAccentPosition, resolvedDetailAccentSize, detailAccentPosition, resolvedDetailAccentSize, compactMode, true);
             ApplyStatusElementLayout(roomDetailText, detailTextPosition, resolvedDetailTextSize, detailTextPosition, resolvedDetailTextSize, compactMode, true);
 
+            ApplyStatusTextStyling(compactMode);
+        }
+
+        private void ApplyStatusTextStyling(bool compactMode)
+        {
             if (roomStatusText != null)
             {
                 roomStatusText.alignment = compactMode ? TextAnchor.MiddleLeft : TextAnchor.UpperLeft;
@@ -1668,6 +1719,12 @@ namespace CuteIssac.UI
 
         private void ApplyRoomTypeBadge(RoomType roomType, Color accentColor, bool visible)
         {
+            if (!showRoomStatusElements)
+            {
+                HideRoomStatusElements();
+                return;
+            }
+
             bool hideBadgeForTopBar = (_topBarLayoutActive && hideRoomTypeBadgeInTopBar)
                 || ShouldSuppressCompactChallengeAuxiliaryCopy();
             Sprite badgeIcon = GetSpecialIcon(roomType, RoomExplorationState.Visited);
@@ -1706,9 +1763,9 @@ namespace CuteIssac.UI
         private void CacheStatusVisualBaseline(Color accentColor)
         {
             _statusEmphasisAccentColor = accentColor;
-            _baseRoomTypeBadgeColor = roomTypeBadgeImage != null ? roomTypeBadgeImage.color : roomTypeBadgeBaseColor;
-            _baseRoomStatusCardColor = roomStatusCardImage != null ? roomStatusCardImage.color : roomStatusCardColor;
-            _baseRoomDetailCardColor = roomDetailCardImage != null ? roomDetailCardImage.color : roomDetailCardColor;
+            _baseRoomTypeBadgeColor = roomTypeBadgeImage != null ? ResolveAuthoredSpriteColor(roomTypeBadgeImage, roomTypeBadgeImage.color) : roomTypeBadgeBaseColor;
+            _baseRoomStatusCardColor = roomStatusCardImage != null ? ResolveAuthoredSpriteColor(roomStatusCardImage, roomStatusCardImage.color) : roomStatusCardColor;
+            _baseRoomDetailCardColor = roomDetailCardImage != null ? ResolveAuthoredSpriteColor(roomDetailCardImage, roomDetailCardImage.color) : roomDetailCardColor;
             _baseRoomStatusAccentColor = roomStatusAccentImage != null ? roomStatusAccentImage.color : new Color(accentColor.r, accentColor.g, accentColor.b, accentRailOpacity);
             _baseRoomDetailAccentColor = roomDetailAccentImage != null ? roomDetailAccentImage.color : new Color(accentColor.r, accentColor.g, accentColor.b, accentRailOpacity * 0.8f);
             _baseRoomStatusTextColor = roomStatusText != null ? roomStatusText.color : accentColor;
@@ -1820,7 +1877,7 @@ namespace CuteIssac.UI
                         ? curseAltarReadyBadgeColor
                         : useChallengeThreatTheme
                             ? ResolveChallengeThemeBadgeColor(challengeThemeAccent, badgeBlend)
-                        : roomTypeBadgeImage.color;
+                        : ResolveAuthoredSpriteColor(roomTypeBadgeImage, roomTypeBadgeImage.color);
             }
 
             if (roomStatusCardImage != null)
@@ -1831,7 +1888,7 @@ namespace CuteIssac.UI
                         ? curseAltarReadyStatusCardColor
                         : useChallengeThreatTheme
                             ? ResolveChallengeThemeStatusCardColor(challengeThemeAccent, statusBlend)
-                        : roomStatusCardColor;
+                        : ResolveAuthoredSpriteColor(roomStatusCardImage, roomStatusCardColor);
             }
 
             if (roomDetailCardImage != null)
@@ -1842,7 +1899,7 @@ namespace CuteIssac.UI
                         ? curseAltarReadyDetailCardColor
                         : useChallengeThreatTheme
                             ? ResolveChallengeThemeDetailCardColor(challengeThemeAccent, detailBlend)
-                        : roomDetailCardColor;
+                        : ResolveAuthoredSpriteColor(roomDetailCardImage, roomDetailCardColor);
             }
 
             if (roomDetailText != null)
@@ -2315,6 +2372,16 @@ namespace CuteIssac.UI
 
         private void ApplyDynamicBadgeLayout(string label, bool hasIcon)
         {
+            if (!showRoomStatusElements)
+            {
+                return;
+            }
+
+            if (preserveAuthoredStatusLayout)
+            {
+                return;
+            }
+
             if (roomTypeBadgeImage == null || roomTypeLabelText == null)
             {
                 return;
@@ -2760,6 +2827,32 @@ namespace CuteIssac.UI
 
             string[] segments = value.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
             return string.Join(" ", segments);
+        }
+
+        private static Color ResolveAuthoredSpriteColor(Image image, Color fallbackColor)
+        {
+            return image != null && image.sprite != null ? Color.white : fallbackColor;
+        }
+
+        private void HideRoomStatusElements()
+        {
+            SetGraphicObjectActive(roomTypeBadgeImage, false);
+            SetGraphicObjectActive(roomTypeIconImage, false);
+            SetGraphicObjectActive(roomTypeLabelText, false);
+            SetGraphicObjectActive(roomStatusCardImage, false);
+            SetGraphicObjectActive(roomStatusAccentImage, false);
+            SetGraphicObjectActive(roomStatusText, false);
+            SetGraphicObjectActive(roomDetailCardImage, false);
+            SetGraphicObjectActive(roomDetailAccentImage, false);
+            SetGraphicObjectActive(roomDetailText, false);
+        }
+
+        private static void SetGraphicObjectActive(Graphic graphic, bool active)
+        {
+            if (graphic != null)
+            {
+                graphic.gameObject.SetActive(active);
+            }
         }
 
         private static string GetRoomTypeLabel(RoomType roomType)

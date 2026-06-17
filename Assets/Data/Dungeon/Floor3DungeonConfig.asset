@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Floor3DungeonConfig
   m_EditorClassIdentifier: 
   floorIndex: 3
+  stageProfile: {fileID: 11400000, guid: a28b5a27c0e6a65498be9c74ea1d1f80, type: 2}
   minNormalRoomCount: 9
   maxNormalRoomCount: 11
   maxGenerationAttempts: 8
@@ -92,25 +93,25 @@ MonoBehaviour:
   normalRoomDistanceBudgetBonusPerStep: 2
   encounterBudgetMultiplier: 1.22
   normalRoomWavePresets:
-  - presetId: f3_normal_teleporter_1_burst_2_shield_1
-    waveData: {fileID: 11400000, guid: 0b8a26c9d1fef4344a0bc624a42378fe, type: 2}
+  - presetId: f3_normal_candy_bat_3
+    waveData: {fileID: 11400000, guid: 5c00f5804bc05824691576626ad058b6, type: 2}
     selectionWeight: 3
-  - presetId: f3_normal_puller_1_orbiter_2_homing_1
-    waveData: {fileID: 11400000, guid: 12fb95ac7b6e1bd49ba956a71b100b1b, type: 2}
+  - presetId: f3_normal_macaron_2
+    waveData: {fileID: 11400000, guid: 069cbb1ecf915fb4da114f5060f5be2f, type: 2}
     selectionWeight: 3
-  - presetId: f3_normal_mine_layer_1_exploder_2_shooter_1
-    waveData: {fileID: 11400000, guid: b430533943e70e1439fdf52df72dcb8d, type: 2}
+  - presetId: f3_normal_gingerbread_3
+    waveData: {fileID: 11400000, guid: 71b32eb825df96f449c30e14538c3858, type: 2}
     selectionWeight: 2
-  - presetId: f3_normal_splitter_2_support_1_dasher_2
-    waveData: {fileID: 11400000, guid: 167cc1779aca037499bb2a09f4241f2c, type: 2}
+  - presetId: f3_normal_pudding_jellyfish_2
+    waveData: {fileID: 11400000, guid: c69850915e4cee04d9e8df3d16ef8273, type: 2}
     selectionWeight: 2
-  - presetId: f3_normal_chaser_2_homing_2_orbiter_1
-    waveData: {fileID: 11400000, guid: a43cb139bedfb5a42a3d356bd059257e, type: 2}
+  - presetId: f3_normal_jelly_bear_2
+    waveData: {fileID: 11400000, guid: 196a393559484b44dac0961e677ecf4b, type: 2}
     selectionWeight: 2
   eliteRoomWavePresets:
-  - presetId: f3_elite_fast_1_tank_1_explosive_1_summoner_1
-    waveData: {fileID: 11400000, guid: 9d79add71efd448fa14c41f0b52dcd72, type: 2}
-    selectionWeight: 3
+  - presetId: f3_elite_macaron_2_jelly_bear_2
+    waveData: {fileID: 11400000, guid: 321da90b120e49a483c9c567d4a322a5, type: 2}
+    selectionWeight: 1
   bossRoomWavePresets:
   - presetId: f3_boss_chaser
     waveData: {fileID: 11400000, guid: 2b4eaa7a11c24f43a1e7d995fc540303, type: 2}

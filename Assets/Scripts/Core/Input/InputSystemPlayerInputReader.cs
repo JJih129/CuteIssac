@@ -84,6 +84,7 @@ namespace CuteIssac.Core.Input
         private InputAction _toggleMinimapAction;
         private bool _initializationFailed;
         private bool _warnedMissingAsset;
+        private bool _warnedEnableFailure;
         private bool _weaponCarouselHorizontalLatched;
         private int _weaponCarouselHorizontalDirection;
         private bool _weaponCarouselDownLatched;
@@ -97,12 +98,15 @@ namespace CuteIssac.Core.Input
 
         private void OnEnable()
         {
-            _playerMap?.Enable();
+            if (EnsureInitialized())
+            {
+                TryEnablePlayerMap();
+            }
         }
 
         private void OnDisable()
         {
-            _playerMap?.Disable();
+            TryDisablePlayerMap();
             _cachedStateFrame = -1;
         }
 
@@ -163,7 +167,7 @@ namespace CuteIssac.Core.Input
                 WasPressedThisFrame(_activeItemAction),
                 ResolveMinimapTogglePressed(),
                 !weaponCarouselHeld && ResolveReloadPressed(),
-                !weaponCarouselHeld && ResolveCycleWeaponPressed(),
+                ResolveCycleWeaponPressed(),
                 !weaponCarouselHeld && ResolveDropWeaponPressed(),
                 weaponCarouselHeld,
                 weaponCarouselSelectionDelta,
@@ -175,14 +179,14 @@ namespace CuteIssac.Core.Input
         {
             if (EnsureInitialized())
             {
-                _playerMap.Enable();
+                TryEnablePlayerMap();
             }
         }
 
         [ContextMenu("Disable Gameplay Input")]
         public void DisableGameplayInput()
         {
-            _playerMap?.Disable();
+            TryDisablePlayerMap();
         }
 
         private bool EnsureInitialized()
@@ -244,12 +248,64 @@ namespace CuteIssac.Core.Input
 
                 if (isActiveAndEnabled)
                 {
-                    _playerMap.Enable();
+                    TryEnablePlayerMap();
                 }
             }
             catch (Exception exception)
             {
                 FailInitialization("InputSystemPlayerInputReader failed to initialize gameplay input.", exception);
+            }
+        }
+
+        private void TryEnablePlayerMap()
+        {
+            if (_playerMap == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_playerMap.enabled)
+                {
+                    _playerMap.Enable();
+                }
+            }
+            catch (Exception exception)
+            {
+                if (!_warnedEnableFailure)
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"InputSystemPlayerInputReader could not enable the Player action map this frame. Input will retry on the next enable cycle.\n{exception}",
+                        this);
+                    _warnedEnableFailure = true;
+                }
+            }
+        }
+
+        private void TryDisablePlayerMap()
+        {
+            if (_playerMap == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (_playerMap.enabled)
+                {
+                    _playerMap.Disable();
+                }
+            }
+            catch (Exception exception)
+            {
+                if (!_warnedEnableFailure)
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"InputSystemPlayerInputReader could not disable the Player action map cleanly.\n{exception}",
+                        this);
+                    _warnedEnableFailure = true;
+                }
             }
         }
 

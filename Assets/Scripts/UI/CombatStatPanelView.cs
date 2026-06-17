@@ -84,6 +84,16 @@ namespace CuteIssac.UI
         private PlayerRoutePlanCarryController _routePlanCarryController;
         private PlayerStats _playerStats;
 
+        private void Awake()
+        {
+            NormalizeSerializedText();
+        }
+
+        private void OnValidate()
+        {
+            NormalizeSerializedText();
+        }
+
         public void ConfigureRuntimeView(
             GameObject root,
             Image background,
@@ -389,6 +399,12 @@ namespace CuteIssac.UI
 
             if (!_hasChallengeThreatTheme)
             {
+                if (backgroundImage != null && backgroundImage.sprite != null)
+                {
+                    resolvedColor = Color.white;
+                    return ApplyCompactAlpha(resolvedColor, compactPanelAlphaScale);
+                }
+
                 resolvedColor = panelTint;
             }
             else
@@ -832,6 +848,16 @@ namespace CuteIssac.UI
                 "SAFE UPGRADE" => "CLEAN",
                 _ => "OPEN"
             };
+        }
+
+        private void NormalizeSerializedText()
+        {
+            HudTextFormatting.NormalizeSerializedLineBreaks(attackValueText);
+            HudTextFormatting.NormalizeSerializedLineBreaks(fireRateValueText);
+            HudTextFormatting.NormalizeSerializedLineBreaks(projectileSpeedValueText);
+            HudTextFormatting.NormalizeSerializedLineBreaks(luckValueText);
+            HudTextFormatting.NormalizeSerializedLineBreaks(momentumStatusText);
+            HudTextFormatting.NormalizeSerializedLineBreaks(projectileTraitStatusText);
         }
 
         private bool UsesChallengeBaselineTheme()

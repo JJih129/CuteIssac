@@ -14,7 +14,11 @@ namespace CuteIssac.Data.Item
         [SerializeField] private string offerId = "shop_offer";
         [SerializeField] private string displayName = "Shop Offer";
         [SerializeField] [TextArea] private string description;
+        [Header("Visuals")]
+        [Tooltip("Fallback shop UI icon. Used when Shop Display Sprite is empty.")]
         [SerializeField] private Sprite icon;
+        [Tooltip("Optional sprite used by world shop pedestals and shop panel slots.")]
+        [SerializeField] private Sprite shopDisplaySprite;
         [SerializeField] private bool unlockedByDefault = true;
         [SerializeField] private string unlockKey;
 
@@ -30,6 +34,7 @@ namespace CuteIssac.Data.Item
         public string DisplayName => displayName;
         public string Description => description;
         public Sprite Icon => icon;
+        public Sprite ShopDisplaySprite => shopDisplaySprite != null ? shopDisplaySprite : icon;
         public bool UnlockedByDefault => unlockedByDefault;
         public string UnlockKey => unlockKey;
         public int Price => Mathf.Max(1, price);
@@ -52,7 +57,7 @@ namespace CuteIssac.Data.Item
                 $"runtime_shop_{passiveItem.ItemId}",
                 passiveItem.DisplayName,
                 runtimeDescription,
-                passiveItem.Icon,
+                passiveItem.ShopDisplaySprite,
                 runtimePrice,
                 runtimeCurrencyType,
                 ShopDeliveryMode.Immediate,
@@ -118,6 +123,7 @@ namespace CuteIssac.Data.Item
             runtimeItemData.displayName = displayName;
             runtimeItemData.description = description;
             runtimeItemData.icon = icon;
+            runtimeItemData.shopDisplaySprite = icon;
             runtimeItemData.unlockedByDefault = true;
             runtimeItemData.unlockKey = string.Empty;
             runtimeItemData.price = Mathf.Max(1, runtimePrice);

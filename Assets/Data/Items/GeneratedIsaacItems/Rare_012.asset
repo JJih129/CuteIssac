@@ -29,10 +29,51 @@ MonoBehaviour:
   displayName: Static Skull of Echo
   description: Shots pierce targets. Shots home toward enemies. Fires extra tears.
   icon: {fileID: 0}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 2
   unlockedByDefault: 0
   unlockKey: unlock.item.first_win_cache
   itemTags: 040000000500000003000000
   statModifiers: []
   projectileModifiers: []
-  gameplayEventEffects: []
+  gameplayEventEffects:
+  - triggerType: 2
+    effectType: 1
+    requirePlayerSource: 1
+    requireCombatEncounter: 1
+    triggerChance: 0.08
+    internalCooldown: 4
+    luckBonusChancePerPoint: 0.004
+    coinAmount: 1
+    resourceAmount: 1
+    healAmount: 1
+    activeChargeAmount: 1
+    invulnerabilityDuration: 1.5
+    timedEffectDuration: 4.5
+    feedbackLabel: Piercing Bloom
+    statModifiers: []
+    projectileModifiers:
+    - modifierType: 4
+      operation: 0
+      value: 1
+    - modifierType: 2
+      operation: 0
+      value: 0.08
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
+    projectileModifiers: []

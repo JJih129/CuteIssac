@@ -1,5 +1,6 @@
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Dungeon;
 using CuteIssac.Enemy;
@@ -15,6 +16,8 @@ namespace CuteIssac.Room
     [DisallowMultipleComponent]
     public sealed class RoomTraversalGuidanceController : MonoBehaviour
     {
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RoomNavigationController roomNavigationController;
         [SerializeField] private PlayerController playerController;
         [SerializeField] private PlayerMovement playerMovement;
@@ -2348,6 +2351,8 @@ namespace CuteIssac.Room
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (roomNavigationController == null)
             {
                 roomNavigationController = GetComponent<RoomNavigationController>();
@@ -2355,7 +2360,9 @@ namespace CuteIssac.Room
 
             if (playerController == null)
             {
-                playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+                playerController = PlayerRegistry.ActiveController != null
+                    ? PlayerRegistry.ActiveController
+                    : FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
             }
 
             Transform playerTransform = playerController != null ? playerController.transform : null;
@@ -2403,6 +2410,38 @@ namespace CuteIssac.Room
             {
                 playerConsumableHolder = playerTransform.GetComponent<PlayerConsumableHolder>();
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            roomNavigationController ??= sceneContext.RoomNavigationController;
+            playerController ??= sceneContext.PlayerController;
+            playerHealth ??= sceneContext.PlayerHealth;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerStats ??= sceneContext.PlayerStats;
+            playerActiveItemController ??= sceneContext.PlayerActiveItemController;
+            playerTrinketHolder ??= sceneContext.PlayerTrinketHolder;
+            playerConsumableHolder ??= sceneContext.PlayerConsumableHolder;
+
+            Transform playerTransform = playerController != null ? playerController.transform : null;
+            if (playerTransform == null)
+            {
+                return;
+            }
+
+            playerMovement ??= playerTransform.GetComponent<PlayerMovement>();
+            playerCombat ??= playerTransform.GetComponent<PlayerCombat>();
         }
     }
 }

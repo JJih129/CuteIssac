@@ -29,10 +29,51 @@ MonoBehaviour:
   displayName: Golden Idol of Echo
   description: Shots gain laser properties. Raises base damage. Improves fire rate.
   icon: {fileID: 0}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 3
   unlockedByDefault: 1
   unlockKey: 
   itemTags: 0100000002000000
   statModifiers: []
   projectileModifiers: []
-  gameplayEventEffects: []
+  gameplayEventEffects:
+  - triggerType: 1
+    effectType: 1
+    requirePlayerSource: 1
+    requireCombatEncounter: 1
+    triggerChance: 0.22
+    internalCooldown: 4
+    luckBonusChancePerPoint: 0.005
+    coinAmount: 1
+    resourceAmount: 1
+    healAmount: 1
+    activeChargeAmount: 1
+    invulnerabilityDuration: 1.5
+    timedEffectDuration: 4
+    feedbackLabel: Crown Surge
+    statModifiers:
+    - statType: 0
+      operation: 0
+      value: 0.8
+    - statType: 2
+      operation: 0
+      value: -0.03
+    projectileModifiers: []
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
+    projectileModifiers: []

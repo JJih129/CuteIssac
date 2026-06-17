@@ -1,4 +1,5 @@
 using CuteIssac.Data.Item;
+using CuteIssac.Data.Visual;
 using UnityEngine;
 
 namespace CuteIssac.Item
@@ -28,6 +29,19 @@ namespace CuteIssac.Item
         [SerializeField] private bool showWorldTextLabels = true;
         [SerializeField] private bool showWorldNameLabel;
         [SerializeField] private bool showCurrencyMarker;
+
+        [Header("Visual Profile")]
+        [SerializeField] private ShopItemVisualProfile visualProfile;
+
+        [Header("World Price Label")]
+        [Tooltip("Local position of the world price label under the shop item.")]
+        [SerializeField] private Vector3 priceLabelLocalPosition = new(0f, -0.9f, -0.01f);
+        [Tooltip("Local offset for the world price label shadow.")]
+        [SerializeField] private Vector3 priceShadowLocalOffset = new(0.04f, -0.045f, 0.02f);
+        [Tooltip("Character size for the world price label.")]
+        [SerializeField] [Min(0.01f)] private float priceLabelCharacterSize = 0.3f;
+        [Tooltip("Suffix appended after coin prices. Default example: 5 won.")]
+        [SerializeField] private string coinPriceSuffix = "\uC6D0";
 
         [Header("Colors")]
         [SerializeField] private Color availableBodyColor = new(0.94f, 0.94f, 0.94f, 1f);
@@ -68,9 +82,18 @@ namespace CuteIssac.Item
         private Vector3 _baseSoldOverlayScale = Vector3.one;
         private Vector3 _baseCurrencyMarkerScale = Vector3.one;
         private bool _hasCapturedVisualScales;
+        private ShopItemVisualProfile _appliedVisualProfile;
+
+        public void ConfigureVisualProfile(ShopItemVisualProfile profile)
+        {
+            visualProfile = profile;
+            ApplyVisualProfileIfAvailable();
+            _hasCapturedVisualScales = false;
+        }
 
         public void Present(ShopItemData shopItemData, int effectivePrice, bool canAfford, bool isHighlighted, bool isSold)
         {
+            ApplyVisualProfileIfAvailable();
             EnsureWorldLabelsState();
             _isHighlighted = isHighlighted && !isSold;
             ShopCurrencyType currencyType = shopItemData != null ? shopItemData.CurrencyType : ShopCurrencyType.Coins;
@@ -89,7 +112,7 @@ namespace CuteIssac.Item
 
             if (iconRenderer != null)
             {
-                iconRenderer.sprite = shopItemData != null ? shopItemData.Icon : null;
+                iconRenderer.sprite = shopItemData != null ? shopItemData.ShopDisplaySprite : null;
                 iconRenderer.enabled = iconRenderer.sprite != null;
                 iconRenderer.color = isSold ? soldBodyColor : Color.white;
             }
@@ -122,7 +145,7 @@ namespace CuteIssac.Item
             bool showName = showWorldTextLabels && showWorldNameLabel && !string.IsNullOrEmpty(displayName);
             PresentWorldText(nameText, nameShadowText, showName, displayName, isSold ? soldBodyColor : Color.white);
 
-            string priceValue = shopItemData != null ? (isSold ? "SOLD" : $"{Mathf.Max(0, effectivePrice)}{GetCurrencySuffix(currencyType)}") : string.Empty;
+            string priceValue = shopItemData != null ? (isSold ? "SOLD" : BuildWorldPriceText(effectivePrice, currencyType)) : string.Empty;
             Color priceColor = isSold ? soldPriceTextColor : (canAfford ? availablePriceTextColor : unavailablePriceTextColor);
             PresentWorldText(priceText, priceShadowText, showWorldTextLabels && !string.IsNullOrEmpty(priceValue), priceValue, priceColor);
         }
@@ -171,6 +194,7 @@ namespace CuteIssac.Item
             soldOverlayRenderer = soldOverlay;
             currencyMarkerRenderer = currencyMarker;
             showWorldTextLabels = showLabels;
+            ApplyVisualProfileIfAvailable();
             _hasCapturedVisualScales = false;
             CacheInitialScale();
             EnsureWorldLabelsState();
@@ -181,6 +205,7 @@ namespace CuteIssac.Item
             showWorldTextLabels = true;
             showWorldNameLabel = false;
             showCurrencyMarker = false;
+            ApplyVisualProfileIfAvailable();
             EnsureWorldLabelsState();
         }
 
@@ -225,15 +250,17 @@ namespace CuteIssac.Item
 
             if (priceText == null)
             {
-                priceText = CreateRuntimeText("PriceLabel", new Vector3(0f, -0.88f, -0.01f), 0.36f, PriceTextSortingOrder);
-                priceText.fontStyle = FontStyle.Bold;
+                priceText = CreateRuntimeText("PriceLabel", priceLabelLocalPosition, priceLabelCharacterSize, PriceTextSortingOrder);
             }
+
+            ConfigureRuntimeTextLayout(priceText, priceLabelLocalPosition, priceLabelCharacterSize, PriceTextSortingOrder, FontStyle.Bold);
 
             if (priceShadowText == null)
             {
-                priceShadowText = CreateRuntimeText("PriceShadow", new Vector3(0.045f, -0.93f, 0.01f), 0.36f, PriceShadowSortingOrder);
-                priceShadowText.fontStyle = FontStyle.Bold;
+                priceShadowText = CreateRuntimeText("PriceShadow", priceLabelLocalPosition + priceShadowLocalOffset, priceLabelCharacterSize, PriceShadowSortingOrder);
             }
+
+            ConfigureRuntimeTextLayout(priceShadowText, priceLabelLocalPosition + priceShadowLocalOffset, priceLabelCharacterSize, PriceShadowSortingOrder, FontStyle.Bold);
         }
 
         private void EnsureWorldLabelsState()
@@ -290,6 +317,23 @@ namespace CuteIssac.Item
             CuteIssac.UI.LocalizedUiFontProvider.Apply(textMesh);
             ConfigureTextRenderer(textMesh, sortingOrder);
             return textMesh;
+        }
+
+        private void ConfigureRuntimeTextLayout(TextMesh textMesh, Vector3 localPosition, float characterSize, int sortingOrder, FontStyle fontStyle)
+        {
+            if (textMesh == null)
+            {
+                return;
+            }
+
+            textMesh.transform.localPosition = localPosition;
+            textMesh.anchor = TextAnchor.MiddleCenter;
+            textMesh.alignment = TextAlignment.Center;
+            textMesh.fontSize = 64;
+            textMesh.characterSize = Mathf.Max(0.01f, characterSize);
+            textMesh.fontStyle = fontStyle;
+            CuteIssac.UI.LocalizedUiFontProvider.Apply(textMesh);
+            ConfigureTextRenderer(textMesh, sortingOrder);
         }
 
         private void PresentWorldText(TextMesh text, TextMesh shadow, bool visible, string value, Color color)
@@ -363,15 +407,52 @@ namespace CuteIssac.Item
             bounds.Encapsulate(renderer.bounds);
         }
 
-        private static string GetCurrencySuffix(ShopCurrencyType currencyType)
+        private string BuildWorldPriceText(int effectivePrice, ShopCurrencyType currencyType)
         {
-            return currencyType switch
+            return ShopPriceLabelFormatter.FormatPrice(
+                effectivePrice,
+                currencyType,
+                ShopPriceLabelStyle.Compact,
+                coinPriceSuffix);
+        }
+
+        private void ApplyVisualProfileIfAvailable()
+        {
+            ShopItemVisualProfile resolvedProfile = ShopItemVisualProfile.Resolve(visualProfile);
+            if (resolvedProfile == null || _appliedVisualProfile == resolvedProfile)
             {
-                ShopCurrencyType.Keys => "K",
-                ShopCurrencyType.Bombs => "B",
-                ShopCurrencyType.Health => "H",
-                _ => "C"
-            };
+                return;
+            }
+
+            _appliedVisualProfile = resolvedProfile;
+            priceLabelLocalPosition = resolvedProfile.PriceLabelLocalPosition;
+            priceShadowLocalOffset = resolvedProfile.PriceShadowLocalOffset;
+            priceLabelCharacterSize = resolvedProfile.PriceLabelCharacterSize;
+            coinPriceSuffix = resolvedProfile.CoinPriceSuffix;
+            availableBodyColor = resolvedProfile.AvailableBodyColor;
+            unaffordableBodyColor = resolvedProfile.UnaffordableBodyColor;
+            soldBodyColor = resolvedProfile.SoldBodyColor;
+            highlightColor = resolvedProfile.HighlightColor;
+            soldOverlayColor = resolvedProfile.SoldOverlayColor;
+            coinMarkerColor = resolvedProfile.CoinMarkerColor;
+            keyMarkerColor = resolvedProfile.KeyMarkerColor;
+            bombMarkerColor = resolvedProfile.BombMarkerColor;
+            healthMarkerColor = resolvedProfile.HealthMarkerColor;
+            availablePriceTextColor = resolvedProfile.AvailablePriceTextColor;
+            unavailablePriceTextColor = resolvedProfile.UnavailablePriceTextColor;
+            soldPriceTextColor = resolvedProfile.SoldPriceTextColor;
+            worldTextShadowColor = resolvedProfile.WorldTextShadowColor;
+            highlightPulseSpeed = resolvedProfile.HighlightPulseSpeed;
+            highlightPulseAlphaFloor = resolvedProfile.HighlightPulseAlphaFloor;
+            purchaseFlashColor = resolvedProfile.PurchaseFlashColor;
+            purchaseFlashDuration = resolvedProfile.PurchaseFlashDuration;
+            purchaseFailureFlashColor = resolvedProfile.PurchaseFailureFlashColor;
+            purchaseFailureFlashDuration = resolvedProfile.PurchaseFailureFlashDuration;
+            purchaseScaleMultiplier = resolvedProfile.PurchaseScaleMultiplier;
+            purchaseScaleRecoverSpeed = resolvedProfile.PurchaseScaleRecoverSpeed;
+            weaponBodyScaleMultiplier = resolvedProfile.WeaponBodyScaleMultiplier;
+            weaponIconScaleMultiplier = resolvedProfile.WeaponIconScaleMultiplier;
+            weaponHighlightScaleMultiplier = resolvedProfile.WeaponHighlightScaleMultiplier;
         }
 
         private void CacheInitialScale()

@@ -1,4 +1,5 @@
 using CuteIssac.Core.Pooling;
+using CuteIssac.Data.Visual;
 using CuteIssac.Player;
 using UnityEngine;
 
@@ -210,10 +211,14 @@ namespace CuteIssac.Item
         public const float DefaultPickupScale = 0.72f;
         public const float DefaultPickupColliderRadius = 0.42f;
         public const int DefaultPickupSortingOrder = 31;
+        private const string ResourcePickupSpriteCatalogPath = "ResourcePickupSpriteCatalog";
+        private const float RuntimeTemplateHiddenPosition = 10000f;
+        private const float DefaultPickupVisualWorldSize = 0.62f;
+        private const float MinimumSpriteExtent = 0.001f;
         public static readonly Color DefaultAmmoPickupBaseColor = new(0.96f, 0.78f, 0.28f, 1f);
         public static readonly Color DefaultAmmoPickupCollectedColor = new(1f, 1f, 1f, 0.24f);
-        public static readonly Color DefaultCoinPickupBaseColor = new(0.98f, 0.84f, 0.26f, 1f);
-        public static readonly Color DefaultCoinPickupCollectedColor = new(1f, 0.96f, 0.74f, 0.24f);
+        public static readonly Color DefaultCoinPickupBaseColor = Color.white;
+        public static readonly Color DefaultCoinPickupCollectedColor = new(1f, 1f, 1f, 0.24f);
         public static readonly Color DefaultBombPickupBaseColor = new(1f, 0.54f, 0.26f, 1f);
         public static readonly Color DefaultBombPickupCollectedColor = new(1f, 0.9f, 0.78f, 0.24f);
         public static readonly Color DefaultKeyPickupBaseColor = new(0.68f, 0.86f, 1f, 1f);
@@ -223,7 +228,10 @@ namespace CuteIssac.Item
         private static Sprite _coinSprite;
         private static Sprite _bombSprite;
         private static Sprite _keySprite;
+        private static ResourcePickupSpriteCatalog _pickupSpriteCatalog;
+        private static bool _pickupSpriteCatalogLoaded;
         private static Transform _templateRoot;
+        private static bool _staleTemplateCleanupCompleted;
         private static GameObject _coinPickupTemplate;
         private static GameObject _bombPickupTemplate;
         private static GameObject _keyPickupTemplate;
@@ -249,7 +257,7 @@ namespace CuteIssac.Item
                 parent,
                 DefaultPickupScale,
                 DefaultPickupColliderRadius,
-                DefaultPickupSortingOrder,
+                SortingOrderProfile.ResolvePickupOrder(null, DefaultPickupSortingOrder),
                 ResolveDefaultResourceBaseColor(resourceType),
                 ResolveDefaultResourceCollectedColor(resourceType),
                 objectName);
@@ -268,7 +276,7 @@ namespace CuteIssac.Item
                 parent,
                 DefaultPickupScale,
                 DefaultPickupColliderRadius,
-                DefaultPickupSortingOrder,
+                SortingOrderProfile.ResolvePickupOrder(null, DefaultPickupSortingOrder),
                 ResolveDefaultEnemyDropBaseColor(dropKind),
                 ResolveDefaultEnemyDropCollectedColor(dropKind),
                 objectName,
@@ -428,7 +436,7 @@ namespace CuteIssac.Item
             int pickupSortingOrder,
             Color baseColor,
             Color collectedColor,
-            string objectName = "CandyCoinPickup")
+            string objectName = "CoinPickup")
         {
             GameObject pickupObject = SpawnPickupObject(
                 GetOrCreateCoinPickupTemplate(),
@@ -558,6 +566,7 @@ namespace CuteIssac.Item
                 spriteRenderer.sortingOrder = pickupSortingOrder;
                 spriteRenderer.sprite = sprite;
                 spriteRenderer.color = baseColor;
+                NormalizePickupVisualScale(spriteRenderer, sprite, DefaultPickupVisualWorldSize);
             }
 
             CircleCollider2D triggerCollider = componentCache != null
@@ -610,6 +619,7 @@ namespace CuteIssac.Item
                 spriteRenderer.sortingOrder = pickupSortingOrder;
                 spriteRenderer.sprite = sprite;
                 spriteRenderer.color = baseColor;
+                NormalizePickupVisualScale(spriteRenderer, sprite, DefaultPickupVisualWorldSize);
             }
 
             CircleCollider2D triggerCollider = componentCache != null
@@ -670,7 +680,7 @@ namespace CuteIssac.Item
             }
 
             _coinPickupTemplate = CreateResourcePickupTemplate(
-                "RuntimeCandyCoinPickupTemplate",
+                "RuntimeCoinPickupTemplate",
                 ResourcePickupType.Coin,
                 ResolveCoinSprite(),
                 DefaultCoinPickupBaseColor,
@@ -745,18 +755,31 @@ namespace CuteIssac.Item
 
         private static GameObject CreateBasePickupTemplate(string templateName, Sprite sprite, Color baseColor, Color collectedColor)
         {
+            Transform templateRoot = EnsureTemplateRoot();
             GameObject template = new(templateName)
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
             template.SetActive(false);
-            template.transform.SetParent(EnsureTemplateRoot(), false);
+            template.transform.SetParent(templateRoot, false);
+            template.transform.localPosition = Vector3.zero;
+            template.transform.localRotation = Quaternion.identity;
             template.transform.localScale = Vector3.one * DefaultPickupScale;
 
-            SpriteRenderer spriteRenderer = template.AddComponent<SpriteRenderer>();
-            spriteRenderer.sortingOrder = DefaultPickupSortingOrder;
+            GameObject visualObject = new("VisualRoot")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            visualObject.transform.SetParent(template.transform, false);
+            visualObject.transform.localPosition = Vector3.zero;
+            visualObject.transform.localRotation = Quaternion.identity;
+            visualObject.transform.localScale = Vector3.one;
+
+            SpriteRenderer spriteRenderer = visualObject.AddComponent<SpriteRenderer>();
+            spriteRenderer.sortingOrder = SortingOrderProfile.ResolvePickupOrder(null, DefaultPickupSortingOrder);
             spriteRenderer.sprite = sprite;
             spriteRenderer.color = baseColor;
+            NormalizePickupVisualScale(spriteRenderer, sprite, DefaultPickupVisualWorldSize);
 
             PickupVisual pickupVisual = template.AddComponent<PickupVisual>();
             CircleCollider2D triggerCollider = template.AddComponent<CircleCollider2D>();
@@ -772,10 +795,7 @@ namespace CuteIssac.Item
 
         private static Transform EnsureTemplateRoot()
         {
-            if (_templateRoot != null)
-            {
-                return _templateRoot;
-            }
+            CleanupStaleRuntimeTemplates();
 
             GameObject rootObject = new("RuntimePickupTemplates")
             {
@@ -783,7 +803,98 @@ namespace CuteIssac.Item
             };
             Object.DontDestroyOnLoad(rootObject);
             _templateRoot = rootObject.transform;
+            _templateRoot.position = new Vector3(RuntimeTemplateHiddenPosition, RuntimeTemplateHiddenPosition, 0f);
+            _templateRoot.rotation = Quaternion.identity;
+            _templateRoot.localScale = Vector3.one;
             return _templateRoot;
+        }
+
+        private static void CleanupStaleRuntimeTemplates()
+        {
+            if (_staleTemplateCleanupCompleted || IsTemplateRootAlive())
+            {
+                return;
+            }
+
+            _staleTemplateCleanupCompleted = true;
+            GameObject[] objects = Resources.FindObjectsOfTypeAll<GameObject>();
+
+            for (int i = 0; i < objects.Length; i++)
+            {
+                GameObject candidate = objects[i];
+
+                if (candidate == null || !IsRuntimeTemplateObject(candidate.name))
+                {
+                    continue;
+                }
+
+                if (candidate.scene.IsValid())
+                {
+                    continue;
+                }
+
+                Object.DestroyImmediate(candidate);
+            }
+
+            _templateRoot = null;
+            _coinPickupTemplate = null;
+            _bombPickupTemplate = null;
+            _keyPickupTemplate = null;
+            _ammoPickupTemplate = null;
+        }
+
+        private static bool IsRuntimeTemplateObject(string objectName)
+        {
+            return objectName == "RuntimePickupTemplates"
+                || objectName == "RuntimeCoinPickupTemplate"
+                || objectName == "RuntimeBombPickupTemplate"
+                || objectName == "RuntimeKeyPickupTemplate"
+                || objectName == "RuntimeAmmoPickupTemplate";
+        }
+
+        private static bool IsTemplateRootAlive()
+        {
+            if (_templateRoot == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                _ = _templateRoot.position;
+                return _templateRoot.gameObject != null;
+            }
+            catch (MissingReferenceException)
+            {
+                return false;
+            }
+        }
+
+        private static void NormalizePickupVisualScale(SpriteRenderer spriteRenderer, Sprite sprite, float targetWorldSize)
+        {
+            if (spriteRenderer == null || sprite == null)
+            {
+                return;
+            }
+
+            Transform visualTransform = spriteRenderer.transform;
+            Vector2 spriteSize = sprite.bounds.size;
+            float largestSpriteExtent = Mathf.Max(spriteSize.x, spriteSize.y);
+
+            if (largestSpriteExtent <= MinimumSpriteExtent)
+            {
+                visualTransform.localScale = Vector3.one;
+                return;
+            }
+
+            Transform parent = visualTransform.parent;
+            Vector3 parentScale = parent != null ? parent.lossyScale : Vector3.one;
+            float largestParentScale = Mathf.Max(
+                Mathf.Abs(parentScale.x),
+                Mathf.Abs(parentScale.y),
+                MinimumSpriteExtent);
+            float localScale = Mathf.Max(0.01f, targetWorldSize) / (largestSpriteExtent * largestParentScale);
+            visualTransform.localScale = Vector3.one * localScale;
         }
 
         private static void PrewarmTemplate(GameObject template, int count)
@@ -839,8 +950,27 @@ namespace CuteIssac.Item
                 return _coinSprite;
             }
 
+            ResourcePickupSpriteCatalog pickupSpriteCatalog = ResolvePickupSpriteCatalog();
+            if (pickupSpriteCatalog != null && pickupSpriteCatalog.CoinSprite != null)
+            {
+                _coinSprite = pickupSpriteCatalog.CoinSprite;
+                return _coinSprite;
+            }
+
             _coinSprite = RuntimeShopIconFactory.GetCandyCoinSprite();
             return _coinSprite;
+        }
+
+        private static ResourcePickupSpriteCatalog ResolvePickupSpriteCatalog()
+        {
+            if (_pickupSpriteCatalogLoaded)
+            {
+                return _pickupSpriteCatalog;
+            }
+
+            _pickupSpriteCatalog = Resources.Load<ResourcePickupSpriteCatalog>(ResourcePickupSpriteCatalogPath);
+            _pickupSpriteCatalogLoaded = true;
+            return _pickupSpriteCatalog;
         }
 
         private static Sprite ResolveBombSprite()
@@ -950,7 +1080,7 @@ namespace CuteIssac.Item
         {
             if (spriteRenderer == null)
             {
-                TryGetComponent(out spriteRenderer);
+                spriteRenderer = GetComponentInChildren<SpriteRenderer>(true);
             }
 
             if (triggerCollider == null)

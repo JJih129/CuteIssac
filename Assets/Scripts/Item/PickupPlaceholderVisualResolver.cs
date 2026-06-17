@@ -21,7 +21,7 @@ namespace CuteIssac.Item
 
             ApplyResolvedVisual(
                 pickupVisual,
-                itemData.Icon,
+                itemData.WorldDropSprite,
                 itemData.ItemType,
                 itemData.ItemCategory,
                 itemData.Rarity);
@@ -36,7 +36,7 @@ namespace CuteIssac.Item
 
             ApplyResolvedVisual(
                 pickupVisual,
-                activeItemData.Icon,
+                activeItemData.WorldDropSprite,
                 ItemType.Active,
                 ItemCategory.Utility,
                 ItemRarity.Uncommon);
@@ -51,7 +51,7 @@ namespace CuteIssac.Item
 
             ApplyResolvedVisual(
                 pickupVisual,
-                consumableItemData.Icon,
+                consumableItemData.WorldDropSprite,
                 ItemType.Consumable,
                 ItemCategory.Utility,
                 ItemRarity.Common);

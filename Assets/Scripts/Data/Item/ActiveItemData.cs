@@ -9,7 +9,13 @@ namespace CuteIssac.Data.Item
         [SerializeField] private string itemId = "active_item";
         [SerializeField] private string displayName = "Active Item";
         [SerializeField] [TextArea] private string description = "Reusable active item.";
+        [Header("Visuals")]
+        [Tooltip("Inventory and HUD icon. Keep this small and readable for UI.")]
         [SerializeField] private Sprite icon;
+        [Tooltip("Optional world pickup sprite. Falls back to Icon when empty.")]
+        [SerializeField] private Sprite worldDropSprite;
+        [Tooltip("Optional shop display sprite. Falls back to World Drop Sprite, then Icon when empty.")]
+        [SerializeField] private Sprite shopDisplaySprite;
 
         [Header("Charge")]
         [SerializeField] private ActiveItemChargeRule chargeRule = ActiveItemChargeRule.RoomClear;
@@ -25,6 +31,8 @@ namespace CuteIssac.Data.Item
         public string DisplayName => displayName;
         public string Description => description;
         public Sprite Icon => icon;
+        public Sprite WorldDropSprite => worldDropSprite != null ? worldDropSprite : icon;
+        public Sprite ShopDisplaySprite => shopDisplaySprite != null ? shopDisplaySprite : WorldDropSprite;
         public ActiveItemChargeRule ChargeRule => chargeRule;
         public int MaxCharge => maxCharge;
         public int ChargePerRoomClear => chargePerRoomClear;

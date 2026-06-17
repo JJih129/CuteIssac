@@ -26,8 +26,8 @@ namespace CuteIssac.Player
         [SerializeField] private int pickupSortingOrder = 31;
         [SerializeField] private Color ammoPickupBaseColor = new(0.96f, 0.78f, 0.28f, 1f);
         [SerializeField] private Color ammoPickupCollectedColor = new(1f, 1f, 1f, 0.24f);
-        [SerializeField] private Color coinPickupBaseColor = new(0.98f, 0.84f, 0.26f, 1f);
-        [SerializeField] private Color coinPickupCollectedColor = new(1f, 0.96f, 0.74f, 0.24f);
+        [SerializeField] private Color coinPickupBaseColor = Color.white;
+        [SerializeField] private Color coinPickupCollectedColor = new(1f, 1f, 1f, 0.24f);
         [SerializeField] private Color bombPickupBaseColor = new(1f, 0.54f, 0.26f, 1f);
         [SerializeField] private Color bombPickupCollectedColor = new(1f, 0.9f, 0.78f, 0.24f);
 
@@ -99,7 +99,7 @@ namespace CuteIssac.Player
                     pickupSortingOrder,
                     coinPickupBaseColor,
                     coinPickupCollectedColor,
-                    "CandyCoinPickup");
+                    "CoinPickup");
             }
         }
 

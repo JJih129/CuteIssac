@@ -652,12 +652,6 @@ namespace CuteIssac.Room
         private void OnValidate()
         {
             ResolveReferences();
-
-            if (Application.isPlaying)
-            {
-                EnsureVisualBuilt();
-                ApplyIdleVisualState();
-            }
         }
     }
 }

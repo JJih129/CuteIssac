@@ -1,4 +1,5 @@
 using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Dungeon;
 using CuteIssac.Player;
@@ -14,6 +15,8 @@ namespace CuteIssac.Core.Run
     public sealed class RunGameplayBridge : MonoBehaviour
     {
         [Header("References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RunManager runManager;
         [SerializeField] private DungeonInstantiator dungeonInstantiator;
         [SerializeField] private PlayerHealth playerHealth;
@@ -74,6 +77,8 @@ namespace CuteIssac.Core.Run
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (runManager == null)
             {
                 runManager = GetComponent<RunManager>();
@@ -88,6 +93,24 @@ namespace CuteIssac.Core.Run
             {
                 playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            runManager ??= sceneContext.RunManager;
+            dungeonInstantiator ??= sceneContext.DungeonInstantiator;
+            playerHealth ??= sceneContext.PlayerHealth;
         }
 
         private void SubscribeCoreSources()
@@ -153,6 +176,11 @@ namespace CuteIssac.Core.Run
 
         private void RebindPlayerHealth()
         {
+            if (playerHealth == null)
+            {
+                ResolveReferencesFromSceneContext();
+            }
+
             if (playerHealth == null)
             {
                 playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);

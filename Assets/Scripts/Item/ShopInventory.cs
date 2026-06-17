@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
+using CuteIssac.Data.Visual;
 using CuteIssac.Player;
 using UnityEngine;
 
@@ -14,6 +16,8 @@ namespace CuteIssac.Item
     public sealed class ShopInventory : MonoBehaviour
     {
         [SerializeField] private ShopItem[] shopItems = System.Array.Empty<ShopItem>();
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RunItemPoolService runItemPoolService;
         [SerializeField] [Min(0)] private int weaponOfferPrice = 30;
         [SerializeField] [Range(0f, 1f)] private float weaponOfferChance = 0.18f;
@@ -35,6 +39,19 @@ namespace CuteIssac.Item
         [SerializeField] private Vector3 runtimeShopkeeperLocalPosition = new(0f, 1.16f, 0f);
         [SerializeField] private Sprite runtimeShopkeeperSprite;
         [SerializeField] private Vector3 runtimeShopkeeperLocalScale = new(0.105f, 0.105f, 1f);
+
+        [Header("Visual Presentation")]
+        [Tooltip("상점 아이템의 가격 라벨, 색상, 하이라이트, 무기 아이템 확대 비율을 한곳에서 조정하는 프로필입니다.")]
+        [SerializeField] private ShopItemVisualProfile shopItemVisualProfile;
+
+        [Header("Visual Sorting")]
+        [Tooltip("비워두면 Resources/Sorting/DefaultSortingOrderProfile 기준을 사용합니다. 런타임 상점 아이템과 상점주인 소팅 기준을 한곳에서 맞추기 위한 설정입니다.")]
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
+        [SerializeField] private int shopItemSortingOffset;
+        [SerializeField] private int shopItemHighlightSortingOffset = -1;
+        [SerializeField] private int shopItemSoldOverlaySortingOffset = 1;
+        [SerializeField] private int shopItemCurrencySortingOffset = 2;
+        [SerializeField] private int shopkeeperSortingOffset = -2;
 
         private ShopItem _highlightedItem;
         private Transform _runtimeContentRoot;
@@ -351,8 +368,29 @@ namespace CuteIssac.Item
         {
             if (runItemPoolService == null)
             {
+                ResolveItemPoolServiceFromSceneContext();
+            }
+
+            if (runItemPoolService == null)
+            {
                 runItemPoolService = FindFirstObjectByType<RunItemPoolService>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private void ResolveItemPoolServiceFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            runItemPoolService = sceneContext.RunItemPoolService;
         }
 
         private void EnsureRuntimeShopPresentation()
@@ -398,13 +436,29 @@ namespace CuteIssac.Item
 
             SpriteRenderer bodyRenderer = slotObject.AddComponent<SpriteRenderer>();
             bodyRenderer.sprite = RuntimeShopIconFactory.GetShopItemBodySprite();
-            bodyRenderer.sortingOrder = 18;
+            bodyRenderer.sortingOrder = ResolveShopItemSortingOrder(shopItemSortingOffset);
 
             ShopItemView itemView = slotObject.AddComponent<ShopItemView>();
+            itemView.ConfigureVisualProfile(shopItemVisualProfile);
 
-            SpriteRenderer highlightRenderer = CreateRuntimeChildRenderer(slotObject.transform, "Highlight", RuntimeShopIconFactory.GetShopItemBodySprite(), 17, new Vector3(1.25f, 1.25f, 1f));
-            SpriteRenderer soldRenderer = CreateRuntimeChildRenderer(slotObject.transform, "SoldOverlay", RuntimeShopIconFactory.GetShopItemBodySprite(), 19, new Vector3(1.05f, 1.05f, 1f));
-            SpriteRenderer currencyRenderer = CreateRuntimeChildRenderer(slotObject.transform, "CurrencyMarker", RuntimeShopIconFactory.GetShopItemBodySprite(), 20, new Vector3(0.36f, 0.18f, 1f));
+            SpriteRenderer highlightRenderer = CreateRuntimeChildRenderer(
+                slotObject.transform,
+                "Highlight",
+                RuntimeShopIconFactory.GetShopItemBodySprite(),
+                ResolveShopItemSortingOrder(shopItemHighlightSortingOffset),
+                new Vector3(1.25f, 1.25f, 1f));
+            SpriteRenderer soldRenderer = CreateRuntimeChildRenderer(
+                slotObject.transform,
+                "SoldOverlay",
+                RuntimeShopIconFactory.GetShopItemBodySprite(),
+                ResolveShopItemSortingOrder(shopItemSoldOverlaySortingOffset),
+                new Vector3(1.05f, 1.05f, 1f));
+            SpriteRenderer currencyRenderer = CreateRuntimeChildRenderer(
+                slotObject.transform,
+                "CurrencyMarker",
+                RuntimeShopIconFactory.GetShopItemBodySprite(),
+                ResolveShopItemSortingOrder(shopItemCurrencySortingOffset),
+                new Vector3(0.36f, 0.18f, 1f));
             currencyRenderer.transform.localPosition = new Vector3(0f, -0.82f, 0f);
 
             itemView.ConfigureRuntimeReferences(bodyRenderer, bodyRenderer, highlightRenderer, soldRenderer, currencyRenderer, true);
@@ -467,6 +521,7 @@ namespace CuteIssac.Item
                 if (shopItems[i] != null)
                 {
                     shopItems[i].transform.localPosition = ResolveRuntimeSlotLocalPosition(i, count);
+                    shopItems[i].ConfigureVisualProfile(shopItemVisualProfile);
                     shopItems[i].ConfigureWorldPriceOnly();
                 }
             }
@@ -486,8 +541,13 @@ namespace CuteIssac.Item
 
             SpriteRenderer renderer = npcObject.AddComponent<SpriteRenderer>();
             renderer.sprite = runtimeShopkeeperSprite != null ? runtimeShopkeeperSprite : RuntimeShopIconFactory.GetShopkeeperSprite();
-            renderer.sortingOrder = 16;
+            renderer.sortingOrder = ResolveShopItemSortingOrder(shopkeeperSortingOffset);
             _runtimeShopkeeper = npcObject;
+        }
+
+        private int ResolveShopItemSortingOrder(int offset)
+        {
+            return SortingOrderProfile.ResolvePickupOrder(sortingOrderProfile, 18) + offset;
         }
 
         private int ConfigureRandomItemSlots(ItemPoolData itemPool)

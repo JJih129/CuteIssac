@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CuteIssac.Common.Stats;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Run;
 using CuteIssac.Player;
 using CuteIssac.UI;
@@ -16,6 +17,8 @@ namespace CuteIssac.Core.Run
     public sealed class StartingBuildManager : MonoBehaviour
     {
         [Header("References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RunManager runManager;
         [SerializeField] private PlayerInventory playerInventory;
         [SerializeField] private PlayerStats playerStats;
@@ -168,6 +171,8 @@ namespace CuteIssac.Core.Run
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (runManager == null)
             {
                 runManager = GetComponent<RunManager>();
@@ -187,6 +192,25 @@ namespace CuteIssac.Core.Run
             {
                 playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            runManager ??= sceneContext.RunManager;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerStats ??= sceneContext.PlayerStats;
+            playerHealth ??= sceneContext.PlayerHealth;
         }
 
         private void ResolveCatalog()

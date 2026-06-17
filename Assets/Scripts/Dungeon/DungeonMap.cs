@@ -20,6 +20,7 @@ namespace CuteIssac.Dungeon
         }
 
         public FloorConfig FloorConfig { get; }
+        public StageProfile StageProfile => FloorConfig != null ? FloorConfig.StageProfile : null;
         public int Seed { get; }
         public int RoomCount => _roomsByPosition.Count;
         public IReadOnlyDictionary<GridPosition, DungeonRoomNode> RoomsByPosition => _roomsByPosition;

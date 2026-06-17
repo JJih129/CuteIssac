@@ -15,7 +15,7 @@ MonoBehaviour:
   itemType: 0
   itemCategory: 3
   flavorText: Thin line, sharp path.
-  sourcePools: 0000000001000000
+  sourcePools: 00000000010000000300000007000000
   eventFlags: 
   damageModifier: 0.25
   tearsModifier: 0
@@ -29,6 +29,8 @@ MonoBehaviour:
   displayName: Needle Thread
   description: Shot speed up. Shots pierce enemies.
   icon: {fileID: 0}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1
   unlockKey: 
@@ -36,3 +38,20 @@ MonoBehaviour:
   statModifiers: []
   projectileModifiers: []
   gameplayEventEffects: []
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
+    projectileModifiers: []

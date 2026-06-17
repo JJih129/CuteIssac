@@ -3,6 +3,7 @@ using CuteIssac.Common.Input;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Input;
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Scene;
 using UnityEngine;
 
 namespace CuteIssac.Room
@@ -11,6 +12,8 @@ namespace CuteIssac.Room
     public sealed class FloorExit : MonoBehaviour
     {
         [Header("References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private Collider2D interactionTrigger;
         [SerializeField] private MonoBehaviour inputReaderSource;
         [SerializeField] private FloorExitVisual floorExitVisual;
@@ -115,6 +118,8 @@ namespace CuteIssac.Room
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (interactionTrigger == null)
             {
                 interactionTrigger = GetComponent<Collider2D>();
@@ -188,13 +193,45 @@ namespace CuteIssac.Room
             return beacon;
         }
 
-        private static Transform ResolveActivePlayerTransform()
+        private Transform ResolveActivePlayerTransform()
         {
+            ResolveReferencesFromSceneContext();
+
+            if (_playerTransform != null)
+            {
+                return _playerTransform;
+            }
+
             Player.PlayerController playerController = Player.PlayerRegistry.ActiveController != null
                 ? Player.PlayerRegistry.ActiveController
                 : FindFirstObjectByType<Player.PlayerController>(FindObjectsInactive.Exclude);
 
             return playerController != null ? playerController.transform : null;
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+
+            if (inputReaderSource == null)
+            {
+                inputReaderSource = sceneContext.PlayerInputReader;
+            }
+
+            if (_playerTransform == null && sceneContext.PlayerController != null)
+            {
+                _playerTransform = sceneContext.PlayerController.transform;
+            }
         }
     }
 }

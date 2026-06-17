@@ -28,12 +28,21 @@ namespace CuteIssac.Player
 
         private void Update()
         {
+            if (_inputReader == null)
+            {
+                if (!TryResolveDependencies())
+                {
+                    enabled = false;
+                    return;
+                }
+            }
+
             if (activeItemController != null && activeItemController.HasEquippedItem)
             {
                 return;
             }
 
-            if (_inputReader.ReadState().ActiveItemPressed)
+            if (consumableHolder != null && _inputReader.ReadState().ActiveItemPressed)
             {
                 consumableHolder.TryUseHeldConsumable();
             }

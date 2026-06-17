@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4871251d214b47d45918cf94c24018f5, type: 3}
+  m_Name: SpriteImportValidationProfile
+  m_EditorClassIdentifier: Assembly-CSharp::CuteIssac.Data.Visual.SpriteImportValidationProfile
+  artRoot: Assets/Art
+  fallbackRule:
+    categoryName: Fallback
+    pathContains: []
+    validatePixelsPerUnit: 1
+    minPixelsPerUnit: 64
+    maxPixelsPerUnit: 256
+    validatePivot: 1
+    recommendedPivot: {x: 0.5, y: 0.5}
+    pivotTolerance: 0.08
+    validateSpriteRect: 1
+    maxSpriteRectSize: {x: 2048, y: 2048}
+    validateWorldBounds: 1
+    maxWorldSize: {x: 8, y: 8}
+  categoryRules:
+  - categoryName: Pickup
+    pathContains:
+    - /Items/
+    - coin
+    - pickup
+    - bomb
+    - key
+    validatePixelsPerUnit: 1
+    minPixelsPerUnit: 80
+    maxPixelsPerUnit: 256
+    validatePivot: 1
+    recommendedPivot: {x: 0.5, y: 0.5}
+    pivotTolerance: 0.08
+    validateSpriteRect: 1
+    maxSpriteRectSize: {x: 512, y: 512}
+    validateWorldBounds: 1
+    maxWorldSize: {x: 1.2, y: 1.2}
+  - categoryName: DoorAndMap
+    pathContains:
+    - /Map/
+    - door
+    - RoomVisual
+    - DoorVisual
+    validatePixelsPerUnit: 1
+    minPixelsPerUnit: 64
+    maxPixelsPerUnit: 256
+    validatePivot: 1
+    recommendedPivot: {x: 0.5, y: 0.5}
+    pivotTolerance: 0.08
+    validateSpriteRect: 1
+    maxSpriteRectSize: {x: 4096, y: 4096}
+    validateWorldBounds: 1
+    maxWorldSize: {x: 24, y: 16}
+  - categoryName: Character
+    pathContains:
+    - /Player/
+    - /enemy/
+    - /boss/
+    - npc
+    validatePixelsPerUnit: 1
+    minPixelsPerUnit: 80
+    maxPixelsPerUnit: 256
+    validatePivot: 1
+    recommendedPivot: {x: 0.5, y: 0.5}
+    pivotTolerance: 0.08
+    validateSpriteRect: 1
+    maxSpriteRectSize: {x: 1024, y: 1024}
+    validateWorldBounds: 1
+    maxWorldSize: {x: 3, y: 3}
+  - categoryName: Weapon
+    pathContains:
+    - /gun/
+    - /Weapons/
+    - weapon
+    validatePixelsPerUnit: 1
+    minPixelsPerUnit: 80
+    maxPixelsPerUnit: 256
+    validatePivot: 1
+    recommendedPivot: {x: 0.5, y: 0.5}
+    pivotTolerance: 0.08
+    validateSpriteRect: 1
+    maxSpriteRectSize: {x: 1024, y: 1024}
+    validateWorldBounds: 1
+    maxWorldSize: {x: 3.5, y: 2}

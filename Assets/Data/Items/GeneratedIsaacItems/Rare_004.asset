@@ -29,10 +29,45 @@ MonoBehaviour:
   displayName: Ashen Skull of Echo
   description: Improves fire rate. Raises movement speed. Extends tear range.
   icon: {fileID: 0}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 2
   unlockedByDefault: 0
   unlockKey: unlock.item.angel_deal
   itemTags: 0200000000000000
   statModifiers: []
   projectileModifiers: []
-  gameplayEventEffects: []
+  gameplayEventEffects:
+  - triggerType: 3
+    effectType: 4
+    requirePlayerSource: 1
+    requireCombatEncounter: 0
+    triggerChance: 0.28
+    internalCooldown: 0
+    luckBonusChancePerPoint: 0.006
+    coinAmount: 1
+    resourceAmount: 1
+    healAmount: 1
+    activeChargeAmount: 1
+    invulnerabilityDuration: 1.5
+    timedEffectDuration: 5
+    feedbackLabel: Clean Pulse
+    statModifiers: []
+    projectileModifiers: []
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
+    projectileModifiers: []

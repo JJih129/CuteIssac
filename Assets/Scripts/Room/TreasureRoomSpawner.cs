@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Scene;
 using CuteIssac.Core.Spawning;
 using CuteIssac.Core.Pooling;
 using CuteIssac.Data.Dungeon;
@@ -17,6 +18,8 @@ namespace CuteIssac.Room
     public sealed class TreasureRoomSpawner : MonoBehaviour
     {
         [Header("References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [Tooltip("Owning room that raises the room-entered event.")]
         [SerializeField] private RoomController roomController;
         [Tooltip("Pickup prefab used for treasure rewards. It should contain ItemPickupLogic.")]
@@ -67,7 +70,6 @@ namespace CuteIssac.Room
                 roomController.RoomEntered += HandleRoomEntered;
             }
 
-            _runItemPoolService = FindFirstObjectByType<RunItemPoolService>(FindObjectsInactive.Exclude);
         }
 
         private void OnDestroy()
@@ -331,8 +333,7 @@ namespace CuteIssac.Room
             _choiceItemBuffer.Clear();
             if (_runtimeRoomData != null && _runtimeRoomData.TreasureItemOverride != null)
             {
-                // Treasure rooms are weapon rooms; ignore non-weapon overrides instead of spawning passive artifacts here.
-                if (_runtimeRoomData.TreasureItemOverride.IsWeaponRelic)
+                if (!_runtimeRoomData.TreasureItemOverride.IsWeaponRelic)
                 {
                     _choiceItemBuffer.Add(_runtimeRoomData.TreasureItemOverride);
                     _selectedItemIds.Add(_runtimeRoomData.TreasureItemOverride.ItemId);
@@ -340,7 +341,7 @@ namespace CuteIssac.Room
                 else
                 {
                     Debug.LogWarning(
-                        $"TreasureRoomSpawner ignored non-weapon treasure override '{_runtimeRoomData.TreasureItemOverride.DisplayName}'.",
+                        $"TreasureRoomSpawner ignored weapon treasure override '{_runtimeRoomData.TreasureItemOverride.DisplayName}' because treasure rooms now use non-weapon item rewards.",
                         this);
                 }
             }
@@ -352,7 +353,7 @@ namespace CuteIssac.Room
                     ? _runItemPoolService.BuildSelectionContext(RoomType.Treasure, _selectedItemIds)
                     : new ItemPoolSelectionContext(RoomType.Treasure, 1, _selectedItemIds, null, null, null, null, null);
 
-                if (_runtimeItemPool == null || !_runtimeItemPool.TrySelectRandomWeaponItem(selectionContext, out ItemData selectedItem) || selectedItem == null)
+                if (_runtimeItemPool == null || !_runtimeItemPool.TrySelectRandomNonWeaponItem(selectionContext, out ItemData selectedItem) || selectedItem == null)
                 {
                     break;
                 }
@@ -492,10 +493,33 @@ namespace CuteIssac.Room
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (roomController == null)
             {
                 roomController = GetComponent<RoomController>();
             }
+
+            if (_runItemPoolService == null)
+            {
+                _runItemPoolService = FindFirstObjectByType<RunItemPoolService>(FindObjectsInactive.Exclude);
+            }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            _runItemPoolService ??= sceneContext.RunItemPoolService;
         }
 
         private void Reset()

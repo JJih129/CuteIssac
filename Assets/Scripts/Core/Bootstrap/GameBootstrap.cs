@@ -4,6 +4,7 @@ using CuteIssac.Core.Save;
 using CuteIssac.Core.Settings;
 using CuteIssac.Core.Debug;
 using CuteIssac.Item;
+using CuteIssac.Room;
 using UnityEngine;
 
 namespace CuteIssac.Core.Bootstrap
@@ -27,6 +28,9 @@ namespace CuteIssac.Core.Bootstrap
         [SerializeField] [Min(0)] private int prewarmBombPickupCount = 8;
         [SerializeField] [Min(0)] private int prewarmAmmoPickupCount = 12;
         [SerializeField] [Min(0)] private int prewarmKeyPickupCount = 8;
+        [SerializeField] [Min(0)] private int prewarmRoomThemeVisualCount = 16;
+        [SerializeField] [Min(0)] private int prewarmRoomThemeDoorVisualCount = 64;
+        [SerializeField] [Min(0)] private int prewarmRoomThemeDecorationCount = 4;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         [SerializeField] private bool enableDevelopmentDebugController = true;
 #endif
@@ -61,6 +65,11 @@ namespace CuteIssac.Core.Bootstrap
 
             _hasBootstrapped = true;
             EnsureFloorTransitionController();
+            RoomThemePreloader.PrewarmRunConfiguration(
+                startupRunConfiguration,
+                prewarmRoomThemeVisualCount,
+                prewarmRoomThemeDoorVisualCount,
+                prewarmRoomThemeDecorationCount);
             RuntimePickupFactory.PrewarmDefaultPickups(
                 prewarmCoinPickupCount,
                 prewarmBombPickupCount,

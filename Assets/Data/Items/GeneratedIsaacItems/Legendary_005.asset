@@ -29,10 +29,45 @@ MonoBehaviour:
   displayName: Howling Idol of Echo
   description: Shots pierce targets. Shots home toward enemies. Fires extra tears.
   icon: {fileID: 0}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 3
   unlockedByDefault: 1
   unlockKey: 
   itemTags: 040000000500000003000000
   statModifiers: []
   projectileModifiers: []
-  gameplayEventEffects: []
+  gameplayEventEffects:
+  - triggerType: 0
+    effectType: 4
+    requirePlayerSource: 1
+    requireCombatEncounter: 1
+    triggerChance: 0.35
+    internalCooldown: 10
+    luckBonusChancePerPoint: 0.004
+    coinAmount: 1
+    resourceAmount: 1
+    healAmount: 1
+    activeChargeAmount: 1
+    invulnerabilityDuration: 1.5
+    timedEffectDuration: 5
+    feedbackLabel: Last Echo
+    statModifiers: []
+    projectileModifiers: []
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
+    projectileModifiers: []

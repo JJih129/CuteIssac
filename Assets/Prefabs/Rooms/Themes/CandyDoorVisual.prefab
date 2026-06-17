@@ -44,6 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d1a45d655f0a4c57b9ac7d11e2d2c101, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  sortingOrderProfile: {fileID: 11400000, guid: ac613b7feb551dd46b52068d631c4dd0, type: 2}
   visualSize: {x: 2.45, y: 2.25}
   visualSortingOrder: 34
   verticalSpriteVisualSize: {x: 1.86, y: 1.92}
@@ -64,6 +65,14 @@ MonoBehaviour:
   leftSpriteFlipX: 0
   rightOpenSpriteFlipY: 1
   leftOpenSpriteFlipY: 1
+  closedSpriteUpRotationOffset: 0
+  closedSpriteRightRotationOffset: 0
+  closedSpriteDownRotationOffset: 0
+  closedSpriteLeftRotationOffset: 0
+  openSpriteUpRotationOffset: 0
+  openSpriteRightRotationOffset: 0
+  openSpriteDownRotationOffset: 0
+  openSpriteLeftRotationOffset: 0
   topDirectionScaleMultiplier: 0.96
   rightDirectionScaleMultiplier: 1
   bottomDirectionScaleMultiplier: 1
@@ -85,7 +94,12 @@ MonoBehaviour:
   openIdlePulseAmplitude: 0.02
   openIdlePulseSpeed: 2.1
   closedDoorSprite: {fileID: 21300000, guid: fa610fa933934b645b8fe8964861eee7, type: 3}
+  closedDoorSecondarySprite: {fileID: 0}
   openDoorSprite: {fileID: 21300000, guid: d23a32fdab9689c40a2bffcae3449a4f, type: 3}
+  openDoorSecondarySprite: {fileID: 0}
+  closedSplitSpriteHalfOffset: {x: 0.48, y: 0}
+  openSplitSpriteHalfOffset: {x: 0.48, y: 0}
+  splitSpriteWidthMultiplier: 0.52
   closedDoorSpriteUp: {fileID: 0}
   closedDoorSpriteRight: {fileID: 0}
   closedDoorSpriteDown: {fileID: 0}

@@ -666,14 +666,8 @@ namespace CuteIssac.Dungeon
         {
             failureReason = null;
 
-            FloorSpecialRoomRules rules = dungeonMap.FloorConfig.SpecialRoomRules;
-            if (rules == null)
-            {
-                return true;
-            }
-
             _specialRuleBuffer.Clear();
-            rules.CollectAvailableRules(dungeonMap.FloorConfig.FloorIndex, _specialRuleBuffer);
+            CollectAvailableSpecialRoomRules(dungeonMap, _specialRuleBuffer);
 
             for (int index = 0; index < _specialRuleBuffer.Count; index++)
             {
@@ -854,6 +848,27 @@ namespace CuteIssac.Dungeon
             for (int i = 0; i < attachCount; i++)
             {
                 _candidateBuffer[i].SetSpecialRoomRule(rule);
+            }
+        }
+
+        private static void CollectAvailableSpecialRoomRules(DungeonMap dungeonMap, List<SpecialRoomRuleData> results)
+        {
+            if (dungeonMap == null || dungeonMap.FloorConfig == null || results == null)
+            {
+                return;
+            }
+
+            StageProfile stageProfile = dungeonMap.StageProfile;
+            if (stageProfile != null)
+            {
+                stageProfile.CollectAvailableSpecialRoomRules(results);
+                return;
+            }
+
+            FloorSpecialRoomRules rules = dungeonMap.FloorConfig.SpecialRoomRules;
+            if (rules != null)
+            {
+                rules.CollectAvailableRules(dungeonMap.FloorConfig.FloorIndex, results);
             }
         }
 

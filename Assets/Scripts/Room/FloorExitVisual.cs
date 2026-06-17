@@ -1,3 +1,4 @@
+using CuteIssac.Data.Visual;
 using UnityEngine;
 
 namespace CuteIssac.Room
@@ -12,6 +13,10 @@ namespace CuteIssac.Room
         [SerializeField] private SpriteRenderer promptRenderer;
         [SerializeField] private TextMesh promptLabelText;
         [SerializeField] private bool showWorldPromptLabel = true;
+
+        [Header("Sorting")]
+        [Tooltip("비워두면 Resources/Sorting/DefaultSortingOrderProfile 기준을 사용합니다.")]
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
 
         [Header("Animation")]
         [SerializeField] [Min(0.1f)] private float pulseSpeed = 3.2f;
@@ -106,6 +111,7 @@ namespace CuteIssac.Room
                 promptLabelText.characterSize = 0.08f;
                 CuteIssac.UI.LocalizedUiFontProvider.Apply(promptLabelText);
                 promptLabelText.gameObject.SetActive(showWorldPromptLabel);
+                ApplyPromptLabelSorting();
             }
 
             SetPromptVisible(showWorldPromptLabel);
@@ -170,22 +176,22 @@ namespace CuteIssac.Room
 
             if (baseRenderer == null)
             {
-                baseRenderer = CreateRenderer("Base", portalSprite, new Vector2(0f, 0f), new Vector2(1.1f, 1.1f), 18);
+                baseRenderer = CreateRenderer("Base", portalSprite, new Vector2(0f, 0f), new Vector2(1.1f, 1.1f), ResolveEffectOrder(-2));
             }
 
             if (glowRenderer == null)
             {
-                glowRenderer = CreateRenderer("Glow", portalSprite, new Vector2(0f, 0f), new Vector2(1.75f, 1.75f), 17);
+                glowRenderer = CreateRenderer("Glow", portalSprite, new Vector2(0f, 0f), new Vector2(1.75f, 1.75f), ResolveEffectOrder(-3));
             }
 
             if (coreRenderer == null)
             {
-                coreRenderer = CreateRenderer("Core", portalSprite, new Vector2(0f, 0.02f), new Vector2(0.52f, 0.52f), 19);
+                coreRenderer = CreateRenderer("Core", portalSprite, new Vector2(0f, 0.02f), new Vector2(0.52f, 0.52f), ResolveEffectOrder(-1));
             }
 
             if (promptRenderer == null)
             {
-                promptRenderer = CreateRenderer("Prompt", promptSprite, new Vector2(0f, 1.22f), new Vector2(2.2f, 0.32f), 21);
+                promptRenderer = CreateRenderer("Prompt", promptSprite, new Vector2(0f, 1.22f), new Vector2(2.2f, 0.32f), ResolveWorldTextOrder(-1));
                 Color promptColor = new(0.08f, 0.12f, 0.18f, 0.78f);
                 promptRenderer.color = promptColor;
             }
@@ -204,6 +210,7 @@ namespace CuteIssac.Room
                 promptLabelText.color = new Color(1f, 0.98f, 0.9f, 1f);
                 CuteIssac.UI.LocalizedUiFontProvider.Apply(promptLabelText);
                 promptLabelText.gameObject.SetActive(true);
+                ApplyPromptLabelSorting();
             }
 
             if (!showWorldPromptLabel && promptLabelText != null)
@@ -225,6 +232,30 @@ namespace CuteIssac.Room
             spriteRenderer.sortingOrder = order;
             spriteRenderer.drawMode = SpriteDrawMode.Simple;
             return spriteRenderer;
+        }
+
+        private int ResolveEffectOrder(int offset)
+        {
+            return SortingOrderProfile.ResolveEffectOrder(sortingOrderProfile, 19) + offset;
+        }
+
+        private int ResolveWorldTextOrder(int offset)
+        {
+            return SortingOrderProfile.ResolveHudWorldTextOrder(sortingOrderProfile, 70) + offset;
+        }
+
+        private void ApplyPromptLabelSorting()
+        {
+            if (promptLabelText == null)
+            {
+                return;
+            }
+
+            MeshRenderer meshRenderer = promptLabelText.GetComponent<MeshRenderer>();
+            if (meshRenderer != null)
+            {
+                meshRenderer.sortingOrder = ResolveWorldTextOrder(0);
+            }
         }
 
         private static Sprite GetPortalSprite()

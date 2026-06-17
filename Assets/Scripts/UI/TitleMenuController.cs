@@ -24,14 +24,62 @@ namespace CuteIssac.UI
     [DisallowMultipleComponent]
     public sealed class TitleMenuController : MonoBehaviour
     {
-        private const string TitleSceneName = "TitleScene";
         private const string GameplaySceneName = "SampleScene";
         private const string SelectedCharacterPrefKey = "meta.selected_character";
         private const string HardModePrefKey = "meta.hard_mode";
         private const string MetaSaveFileName = "meta-save.json";
         private const string RunSaveFileName = "run-save.json";
 
-        private static bool s_IsSceneHooked;
+        [Header("Replaceable Title Art")]
+        [Tooltip("타이틀 배경 스프라이트입니다. 비워두면 단색 배경을 사용합니다.")]
+        [SerializeField] private Sprite backgroundSprite;
+        [Tooltip("타이틀 로고 스프라이트입니다. 비워두면 텍스트 타이틀을 사용합니다.")]
+        [SerializeField] private Sprite titleLogoSprite;
+        [Tooltip("주 메뉴 옆에 표시되는 키아트입니다. 작업자가 코드 수정 없이 교체할 수 있습니다.")]
+        [SerializeField] private Sprite keyArtSprite;
+        [Tooltip("타이틀 전체 외곽 패널에 사용할 스프라이트입니다.")]
+        [SerializeField] private Sprite shellSprite;
+        [Tooltip("메뉴와 내용 패널에 공통으로 사용할 스프라이트입니다.")]
+        [SerializeField] private Sprite panelSprite;
+        [Tooltip("일반 메뉴 버튼에 사용할 스프라이트입니다.")]
+        [SerializeField] private Sprite buttonSprite;
+        [Tooltip("비활성화 버튼에 사용할 스프라이트입니다.")]
+        [SerializeField] private Sprite disabledButtonSprite;
+
+        [Header("Scene Layout References")]
+        [Tooltip("씬에 정적으로 배치된 타이틀 Canvas입니다. 런타임에서 생성하지 않습니다.")]
+        [SerializeField] private Canvas titleCanvas;
+        [SerializeField] private CanvasScaler sceneCanvasScaler;
+        [SerializeField] private RectTransform sceneShellRoot;
+        [SerializeField] private RectTransform sceneContentRoot;
+        [SerializeField] private ScrollRect sceneContentScrollRect;
+        [SerializeField] private Text sceneTitleText;
+
+        [Header("Scene Art Targets")]
+        [SerializeField] private Image backdropImage;
+        [SerializeField] private Image titleLogoImage;
+        [SerializeField] private Image keyArtImage;
+        [SerializeField] private Image shellImage;
+        [SerializeField] private Image primaryActionsImage;
+        [SerializeField] private Image contentPanelImage;
+        [SerializeField] private Image utilityBarImage;
+
+        [Header("Scene Buttons")]
+        [SerializeField] private Button newRunButton;
+        [SerializeField] private Button sceneContinueButton;
+        [SerializeField] private Button characterButton;
+        [SerializeField] private Button optionsButton;
+        [SerializeField] private Button collectionButton;
+        [SerializeField] private Button achievementsButton;
+        [SerializeField] private Button statsButton;
+        [SerializeField] private Button creditsButton;
+        [SerializeField] private Button resetButton;
+        [SerializeField] private Button quitButton;
+        [SerializeField] private TitleMenuButtonId[] menuButtonIds = Array.Empty<TitleMenuButtonId>();
+
+        [Header("Scene Data Catalogs")]
+        [Tooltip("타이틀 컬렉션/도감에 포함할 콘텐츠 소스 목록입니다. 비워두면 Resources/TitleCollectionSourceCatalog를 사용합니다.")]
+        [SerializeField] private TitleCollectionSourceCatalog collectionSourceCatalog;
 
         private RectTransform _contentRoot;
         private Text _titleText;
@@ -39,46 +87,15 @@ namespace CuteIssac.UI
         private ScrollRect _contentScrollRect;
         private RectTransform _shellRoot;
         private Button _continueButton;
+        private readonly Dictionary<TitleMenuButtonAction, Button> _menuButtons = new();
         private CharacterProfileCatalog _characterCatalog;
         private MetaCollectionCatalog _collectionCatalog;
+        private TitleCollectionSourceCatalog _collectionSourceCatalog;
         private readonly List<MetaCollectionEntry> _runtimeCollectionEntries = new();
         private MetaSaveData _metaSaveData;
         private string _selectedCharacterId = "default";
         private bool _hardModeSelected;
         private bool _resetArmed;
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InitializeAfterSceneLoad()
-        {
-            if (!s_IsSceneHooked)
-            {
-                SceneManager.sceneLoaded -= HandleSceneLoaded;
-                SceneManager.sceneLoaded += HandleSceneLoaded;
-                s_IsSceneHooked = true;
-            }
-
-            TryCreateForScene(SceneManager.GetActiveScene());
-        }
-
-        private static void HandleSceneLoaded(Scene scene, LoadSceneMode _)
-        {
-            TryCreateForScene(scene);
-        }
-
-        private static void TryCreateForScene(Scene scene)
-        {
-            if (!scene.IsValid() || scene.name != TitleSceneName)
-            {
-                return;
-            }
-
-            if (FindFirstObjectByType<TitleMenuController>(FindObjectsInactive.Include) != null)
-            {
-                return;
-            }
-
-            new GameObject("TitleMenuController").AddComponent<TitleMenuController>();
-        }
 
         private void Awake()
         {
@@ -89,11 +106,214 @@ namespace CuteIssac.UI
             _hardModeSelected = PlayerPrefs.GetInt(HardModePrefKey, 0) == 1;
             _characterCatalog = Resources.Load<CharacterProfileCatalog>("Characters/DefaultCharacterProfileCatalog");
             _collectionCatalog = Resources.Load<MetaCollectionCatalog>("MetaCollectionCatalog");
+            _collectionSourceCatalog = collectionSourceCatalog != null
+                ? collectionSourceCatalog
+                : Resources.Load<TitleCollectionSourceCatalog>("TitleCollectionSourceCatalog");
             RebuildRuntimeCollectionEntries();
             LoadMeta();
-            BuildMenu();
+            if (!BindStaticSceneLayout())
+            {
+                enabled = false;
+                return;
+            }
+
+            ApplySceneArt();
+            WireSceneButtons();
             ApplyOptions();
             ShowHome();
+        }
+
+        private bool BindStaticSceneLayout()
+        {
+            _canvasScaler = sceneCanvasScaler;
+            _shellRoot = sceneShellRoot;
+            _contentRoot = sceneContentRoot;
+            _contentScrollRect = sceneContentScrollRect;
+            _titleText = sceneTitleText;
+            CacheMenuButtonIds();
+            newRunButton = ResolveMenuButton(TitleMenuButtonAction.NewRun, newRunButton);
+            sceneContinueButton = ResolveMenuButton(TitleMenuButtonAction.Continue, sceneContinueButton);
+            characterButton = ResolveMenuButton(TitleMenuButtonAction.Character, characterButton);
+            optionsButton = ResolveMenuButton(TitleMenuButtonAction.Options, optionsButton);
+            collectionButton = ResolveMenuButton(TitleMenuButtonAction.Collection, collectionButton);
+            achievementsButton = ResolveMenuButton(TitleMenuButtonAction.Achievements, achievementsButton);
+            statsButton = ResolveMenuButton(TitleMenuButtonAction.Stats, statsButton);
+            creditsButton = ResolveMenuButton(TitleMenuButtonAction.Credits, creditsButton);
+            resetButton = ResolveMenuButton(TitleMenuButtonAction.ResetData, resetButton);
+            quitButton = ResolveMenuButton(TitleMenuButtonAction.Quit, quitButton);
+            _continueButton = sceneContinueButton;
+
+            bool isValid = titleCanvas != null
+                && _canvasScaler != null
+                && _shellRoot != null
+                && _contentRoot != null
+                && _contentScrollRect != null
+                && _titleText != null
+                && newRunButton != null
+                && _continueButton != null
+                && characterButton != null
+                && optionsButton != null
+                && collectionButton != null
+                && achievementsButton != null
+                && statsButton != null
+                && creditsButton != null
+                && resetButton != null
+                && quitButton != null;
+
+            if (!isValid)
+            {
+                Debug.LogError(
+                    "TitleMenuController requires scene-authored UI references. Rebuild TitleScene via CuteIssac/Title/Rebuild Static Title Scene UI, then verify the Inspector references.",
+                    this);
+            }
+
+            return isValid;
+        }
+
+        private void CacheMenuButtonIds()
+        {
+            _menuButtons.Clear();
+
+            if ((menuButtonIds == null || menuButtonIds.Length == 0) && titleCanvas != null)
+            {
+                menuButtonIds = titleCanvas.GetComponentsInChildren<TitleMenuButtonId>(true);
+            }
+
+            if (menuButtonIds == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < menuButtonIds.Length; index++)
+            {
+                TitleMenuButtonId buttonId = menuButtonIds[index];
+                if (buttonId == null || buttonId.Button == null)
+                {
+                    continue;
+                }
+
+                _menuButtons[buttonId.ActionId] = buttonId.Button;
+            }
+        }
+
+        private Button ResolveMenuButton(TitleMenuButtonAction actionId, Button fallback)
+        {
+            return _menuButtons.TryGetValue(actionId, out Button button) && button != null
+                ? button
+                : fallback;
+        }
+
+        private void ApplySceneArt()
+        {
+            ApplyPanelImage(backdropImage, "Backdrop", new Color(0.18f, 0.2f, 0.22f, 1f), backgroundSprite);
+            ApplyPanelImage(shellImage, "TitleShell", new Color(0.09f, 0.095f, 0.105f, 0.96f), shellSprite);
+            ApplyPanelImage(primaryActionsImage, "PrimaryActions", new Color(0.125f, 0.14f, 0.155f, 0.92f), panelSprite);
+            ApplyPanelImage(contentPanelImage, "ContentScroll", new Color(0.13f, 0.13f, 0.14f, 0.9f), panelSprite);
+            ApplyPanelImage(utilityBarImage, "UtilityBar", new Color(0.11f, 0.12f, 0.13f, 0.88f), panelSprite);
+
+            if (titleLogoImage != null)
+            {
+                titleLogoImage.sprite = titleLogoSprite;
+                titleLogoImage.enabled = titleLogoSprite != null;
+                titleLogoImage.preserveAspect = true;
+                titleLogoImage.raycastTarget = false;
+            }
+
+            if (keyArtImage != null)
+            {
+                keyArtImage.sprite = keyArtSprite;
+                keyArtImage.preserveAspect = true;
+                keyArtImage.raycastTarget = false;
+                keyArtImage.color = keyArtSprite != null ? Color.white : new Color(0.18f, 0.2f, 0.22f, 0.82f);
+            }
+
+            ApplyButtonSprite(newRunButton, true);
+            ApplyButtonSprite(_continueButton, true);
+            ApplyButtonSprite(characterButton, true);
+            ApplyButtonSprite(optionsButton, true);
+            ApplyButtonSprite(collectionButton, true);
+            ApplyButtonSprite(achievementsButton, true);
+            ApplyButtonSprite(statsButton, true);
+            ApplyButtonSprite(creditsButton, true);
+            ApplyButtonSprite(resetButton, true);
+            ApplyButtonSprite(quitButton, true);
+        }
+
+        private void WireSceneButtons()
+        {
+            ConfigureButton(TitleMenuButtonAction.NewRun, StartNewRun);
+            ConfigureButton(TitleMenuButtonAction.Continue, ContinueRun);
+            ConfigureButton(TitleMenuButtonAction.Character, ShowCharacters);
+            ConfigureButton(TitleMenuButtonAction.Options, ShowOptions);
+            ConfigureButton(TitleMenuButtonAction.Collection, ShowCollection);
+            ConfigureButton(TitleMenuButtonAction.Achievements, ShowAchievements);
+            ConfigureButton(TitleMenuButtonAction.Stats, ShowStats);
+            ConfigureButton(TitleMenuButtonAction.Credits, ShowCredits);
+            ConfigureButton(TitleMenuButtonAction.ResetData, ShowResetData);
+            ConfigureButton(TitleMenuButtonAction.Quit, QuitGame);
+        }
+
+        private void ConfigureButton(TitleMenuButtonAction actionId, UnityEngine.Events.UnityAction action)
+        {
+            ConfigureButton(ResolveMenuButton(actionId, ResolveSerializedMenuButton(actionId)), action);
+        }
+
+        private Button ResolveSerializedMenuButton(TitleMenuButtonAction actionId)
+        {
+            return actionId switch
+            {
+                TitleMenuButtonAction.NewRun => newRunButton,
+                TitleMenuButtonAction.Continue => _continueButton,
+                TitleMenuButtonAction.Character => characterButton,
+                TitleMenuButtonAction.Options => optionsButton,
+                TitleMenuButtonAction.Collection => collectionButton,
+                TitleMenuButtonAction.Achievements => achievementsButton,
+                TitleMenuButtonAction.Stats => statsButton,
+                TitleMenuButtonAction.Credits => creditsButton,
+                TitleMenuButtonAction.ResetData => resetButton,
+                TitleMenuButtonAction.Quit => quitButton,
+                _ => null
+            };
+        }
+
+        private static void ConfigureButton(Button button, UnityEngine.Events.UnityAction action)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(action);
+        }
+
+        private void ApplyPanelImage(Image image, string panelName, Color fallbackColor, Sprite overrideSprite)
+        {
+            if (image == null)
+            {
+                return;
+            }
+
+            image.sprite = overrideSprite;
+            image.color = overrideSprite != null && string.Equals(panelName, "Backdrop", StringComparison.OrdinalIgnoreCase)
+                ? Color.white
+                : ResolvePanelColor(panelName, fallbackColor);
+            image.type = overrideSprite != null && !string.Equals(panelName, "Backdrop", StringComparison.OrdinalIgnoreCase)
+                ? Image.Type.Sliced
+                : Image.Type.Simple;
+            image.raycastTarget = !string.Equals(panelName, "Backdrop", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void ApplyButtonSprite(Button button, bool interactable)
+        {
+            if (button == null || button.targetGraphic is not Image image)
+            {
+                return;
+            }
+
+            image.sprite = interactable || disabledButtonSprite == null ? buttonSprite : disabledButtonSprite;
+            image.type = image.sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            image.color = interactable ? ResolveButtonColor() : new Color(0.12f, 0.13f, 0.14f, 0.9f);
         }
 
         private void StartNewRun()
@@ -571,7 +791,9 @@ namespace CuteIssac.UI
             GameOptionsData options = ResolveOptions();
             CreateBodyText(_contentRoot, $"Resolution: {options.ResolutionWidth}x{options.ResolutionHeight}\nUI Scale: {options.UiScale:0.00}\nMaster Volume: {Mathf.RoundToInt(options.MasterVolume * 100f)}%\nMusic Volume: {Mathf.RoundToInt(options.MusicVolume * 100f)}%\nSFX Volume: {Mathf.RoundToInt(options.SfxVolume * 100f)}%\nFullscreen: {options.Fullscreen}\nCamera Shake: {FormatOnOff(options.CameraShakeEnabled)}\nDamage Numbers: {FormatOnOff(options.DamageNumbersEnabled)}\nHigh Contrast: {FormatOnOff(options.HighContrastUi)}\nReduce Flashes: {FormatOnOff(options.ReduceFlashes)}\nColor Assist: {FormatOnOff(options.ColorBlindAssist)}");
             CreateButton(_contentRoot, "Resolution 1280x720", () => SetResolution(1280, 720));
+            CreateButton(_contentRoot, "Resolution 1600x900", () => SetResolution(1600, 900));
             CreateButton(_contentRoot, "Resolution 1920x1080", () => SetResolution(1920, 1080));
+            CreateButton(_contentRoot, "Resolution 2560x1440", () => SetResolution(2560, 1440));
             CreateButton(_contentRoot, "Toggle Fullscreen", ToggleFullscreen);
             CreateButton(_contentRoot, "Master -10", () => AdjustVolume(-0.1f));
             CreateButton(_contentRoot, "Master +10", () => AdjustVolume(0.1f));
@@ -603,41 +825,6 @@ namespace CuteIssac.UI
 #else
             Application.Quit();
 #endif
-        }
-
-        private void BuildMenu()
-        {
-            InputSystemEventSystemBootstrap.EnsureReady();
-            Canvas canvas = CreateCanvas();
-            _canvasScaler = canvas.GetComponent<CanvasScaler>();
-            CreateBackground(canvas.transform);
-
-            _shellRoot = CreatePanel("TitleShell", canvas.transform, new Color(0.09f, 0.09f, 0.1f, 0.94f));
-            Stretch(_shellRoot, new Vector2(0.12f, 0.1f), new Vector2(0.88f, 0.9f));
-
-            _titleText = CreateText("Title", _shellRoot, "CUTE ISSAC", 46, FontStyle.Bold, TextAnchor.MiddleLeft, Color.white);
-            Anchor(_titleText.rectTransform, new Vector2(0.05f, 0.84f), new Vector2(0.95f, 0.96f));
-
-            RectTransform sidebar = CreatePanel("Sidebar", _shellRoot, new Color(0.16f, 0.18f, 0.2f, 0.96f));
-            Anchor(sidebar, new Vector2(0.04f, 0.06f), new Vector2(0.29f, 0.82f));
-
-            _contentRoot = CreateScrollContent("ContentScroll", _shellRoot, new Vector2(0.32f, 0.06f), new Vector2(0.96f, 0.82f), out _contentScrollRect);
-            AddVerticalLayout(_contentRoot, 16, 24);
-            ContentSizeFitter contentFitter = _contentRoot.gameObject.AddComponent<ContentSizeFitter>();
-            contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            AddVerticalLayout(sidebar, 12, 18);
-            CreateButton(sidebar, "New Run", StartNewRun);
-            _continueButton = CreateButton(sidebar, "Continue", ContinueRun);
-            CreateButton(sidebar, "Character", ShowCharacters);
-            CreateButton(sidebar, "Collection", ShowCollection);
-            CreateButton(sidebar, "Achievements", ShowAchievements);
-            CreateButton(sidebar, "Stats", ShowStats);
-            CreateButton(sidebar, "Options", ShowOptions);
-            CreateButton(sidebar, "Reset Data", ShowResetData);
-            CreateButton(sidebar, "Credits", ShowCredits);
-            CreateButton(sidebar, "Quit", QuitGame);
-            RefreshContinueButton();
         }
 
         private void SetTitle(string value)
@@ -962,12 +1149,7 @@ namespace CuteIssac.UI
             bool canContinue = TryLoadRestorableRunSave(out _);
             _continueButton.interactable = canContinue;
 
-            if (_continueButton.targetGraphic is Image image)
-            {
-                image.color = canContinue
-                    ? new Color(0.27f, 0.32f, 0.36f, 0.96f)
-                    : new Color(0.16f, 0.17f, 0.18f, 0.7f);
-            }
+            ApplyButtonSprite(_continueButton, canContinue);
 
             Text label = _continueButton.GetComponentInChildren<Text>(true);
             if (label != null)
@@ -1448,13 +1630,13 @@ namespace CuteIssac.UI
 
         private void AppendBalanceConfigCollectionEntries(HashSet<string> registeredIds)
         {
-            if (registeredIds == null)
+            if (registeredIds == null || _collectionSourceCatalog == null)
             {
                 return;
             }
 
-            BalanceConfig[] balanceConfigs = Resources.LoadAll<BalanceConfig>("Balance");
-            for (int index = 0; index < balanceConfigs.Length; index++)
+            IReadOnlyList<BalanceConfig> balanceConfigs = _collectionSourceCatalog.BalanceConfigs;
+            for (int index = 0; index < balanceConfigs.Count; index++)
             {
                 BalanceConfig balanceConfig = balanceConfigs[index];
                 if (balanceConfig != null)
@@ -1463,20 +1645,20 @@ namespace CuteIssac.UI
                 }
             }
 
-            RunConfiguration[] runConfigurations = Resources.LoadAll<RunConfiguration>(string.Empty);
-            for (int index = 0; index < runConfigurations.Length; index++)
+            IReadOnlyList<RunConfiguration> runConfigurations = _collectionSourceCatalog.RunConfigurations;
+            for (int index = 0; index < runConfigurations.Count; index++)
             {
                 AppendRunConfigurationCollectionEntries(runConfigurations[index], registeredIds);
             }
 
-            FloorConfig[] floorConfigs = Resources.LoadAll<FloorConfig>(string.Empty);
-            for (int index = 0; index < floorConfigs.Length; index++)
+            IReadOnlyList<FloorConfig> floorConfigs = _collectionSourceCatalog.FloorConfigs;
+            for (int index = 0; index < floorConfigs.Count; index++)
             {
                 AppendFloorConfigCollectionEntries(floorConfigs[index], registeredIds);
             }
 
-            EnemyPoolData[] enemyPools = Resources.LoadAll<EnemyPoolData>(string.Empty);
-            for (int index = 0; index < enemyPools.Length; index++)
+            IReadOnlyList<EnemyPoolData> enemyPools = _collectionSourceCatalog.EnemyPools;
+            for (int index = 0; index < enemyPools.Count; index++)
             {
                 AppendEnemyPoolCollectionEntries(enemyPools[index], registeredIds);
             }
@@ -1570,13 +1752,13 @@ namespace CuteIssac.UI
 
         private void AppendDebugCatalogCollectionEntries(HashSet<string> registeredIds)
         {
-            if (registeredIds == null)
+            if (registeredIds == null || _collectionSourceCatalog == null)
             {
                 return;
             }
 
-            DevelopmentDebugCatalog[] debugCatalogs = Resources.LoadAll<DevelopmentDebugCatalog>("Debug");
-            for (int catalogIndex = 0; catalogIndex < debugCatalogs.Length; catalogIndex++)
+            IReadOnlyList<DevelopmentDebugCatalog> debugCatalogs = _collectionSourceCatalog.DebugCatalogs;
+            for (int catalogIndex = 0; catalogIndex < debugCatalogs.Count; catalogIndex++)
             {
                 DevelopmentDebugCatalog debugCatalog = debugCatalogs[catalogIndex];
                 if (debugCatalog == null)
@@ -1608,19 +1790,19 @@ namespace CuteIssac.UI
 
         private void AppendResourceCollectionEntries(HashSet<string> registeredIds)
         {
-            if (registeredIds == null)
+            if (registeredIds == null || _collectionSourceCatalog == null)
             {
                 return;
             }
 
-            ItemData[] itemDataAssets = Resources.LoadAll<ItemData>(string.Empty);
-            for (int index = 0; index < itemDataAssets.Length; index++)
+            IReadOnlyList<ItemData> itemDataAssets = _collectionSourceCatalog.ItemDataAssets;
+            for (int index = 0; index < itemDataAssets.Count; index++)
             {
                 TryAddCollectionEntry(itemDataAssets[index], registeredIds);
             }
 
-            ActiveItemData[] activeItemAssets = Resources.LoadAll<ActiveItemData>(string.Empty);
-            for (int index = 0; index < activeItemAssets.Length; index++)
+            IReadOnlyList<ActiveItemData> activeItemAssets = _collectionSourceCatalog.ActiveItemDataAssets;
+            for (int index = 0; index < activeItemAssets.Count; index++)
             {
                 TryAddCollectionEntry(activeItemAssets[index], registeredIds);
             }
@@ -2451,97 +2633,31 @@ namespace CuteIssac.UI
         private string MetaSavePath => Path.Combine(Application.persistentDataPath, MetaSaveFileName);
         private string RunSavePath => Path.Combine(Application.persistentDataPath, RunSaveFileName);
 
-        private static Canvas CreateCanvas()
+        private Button CreateButton(RectTransform parent, string label, UnityEngine.Events.UnityAction onClick)
         {
-            GameObject canvasObject = new("TitleCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            Canvas canvas = canvasObject.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 5000;
-
-            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
-            return canvas;
+            return CreateButton(parent, label, onClick, 58f, 22, 180f);
         }
 
-        private static void CreateBackground(Transform parent)
-        {
-            RectTransform background = CreatePanel("Backdrop", parent, new Color(0.18f, 0.2f, 0.22f, 1f));
-            Stretch(background, Vector2.zero, Vector2.one);
-        }
-
-        private static void AddVerticalLayout(RectTransform root, int padding, float spacing)
-        {
-            VerticalLayoutGroup layout = root.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(padding, padding, padding, padding);
-            layout.spacing = spacing;
-            layout.childControlWidth = true;
-            layout.childControlHeight = false;
-            layout.childForceExpandWidth = true;
-            layout.childForceExpandHeight = false;
-        }
-
-        private static RectTransform CreateScrollContent(
-            string name,
-            Transform parent,
-            Vector2 anchorMin,
-            Vector2 anchorMax,
-            out ScrollRect scrollRect)
-        {
-            RectTransform root = CreatePanel(name, parent, new Color(0.13f, 0.13f, 0.14f, 0.9f));
-            Anchor(root, anchorMin, anchorMax);
-
-            ScrollRect scroll = root.gameObject.AddComponent<ScrollRect>();
-            scroll.horizontal = false;
-            scroll.vertical = true;
-            scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.inertia = true;
-            scroll.scrollSensitivity = 36f;
-
-            GameObject viewportObject = new("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Mask));
-            viewportObject.transform.SetParent(root, false);
-            RectTransform viewport = viewportObject.GetComponent<RectTransform>();
-            Stretch(viewport, Vector2.zero, Vector2.one);
-            Image viewportImage = viewportObject.GetComponent<Image>();
-            viewportImage.color = new Color(0f, 0f, 0f, 0.01f);
-            viewportImage.raycastTarget = true;
-            Mask mask = viewportObject.GetComponent<Mask>();
-            mask.showMaskGraphic = false;
-
-            GameObject contentObject = new("Content", typeof(RectTransform));
-            contentObject.transform.SetParent(viewport, false);
-            RectTransform content = contentObject.GetComponent<RectTransform>();
-            content.anchorMin = new Vector2(0f, 1f);
-            content.anchorMax = new Vector2(1f, 1f);
-            content.pivot = new Vector2(0.5f, 1f);
-            content.offsetMin = Vector2.zero;
-            content.offsetMax = Vector2.zero;
-            content.anchoredPosition = Vector2.zero;
-
-            scroll.viewport = viewport;
-            scroll.content = content;
-            scrollRect = scroll;
-            return content;
-        }
-
-        private static Button CreateButton(RectTransform parent, string label, UnityEngine.Events.UnityAction onClick)
+        private Button CreateButton(RectTransform parent, string label, UnityEngine.Events.UnityAction onClick, float preferredHeight, int fontSize, float preferredWidth)
         {
             GameObject buttonObject = new(label, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement));
             buttonObject.transform.SetParent(parent, false);
 
             LayoutElement element = buttonObject.GetComponent<LayoutElement>();
-            element.preferredHeight = 58f;
-            element.minHeight = 48f;
+            element.preferredHeight = Mathf.Max(34f, preferredHeight);
+            element.minHeight = Mathf.Max(32f, preferredHeight - 8f);
+            element.preferredWidth = Mathf.Max(80f, preferredWidth);
 
             Image image = buttonObject.GetComponent<Image>();
             image.color = ResolveButtonColor();
+            image.sprite = buttonSprite;
+            image.type = buttonSprite != null ? Image.Type.Sliced : Image.Type.Simple;
 
             Button button = buttonObject.GetComponent<Button>();
             button.targetGraphic = image;
             button.onClick.AddListener(onClick);
 
-            Text text = CreateText("Label", buttonObject.transform, label, 22, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white);
+            Text text = CreateText("Label", buttonObject.transform, label, fontSize, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white);
             Stretch(text.rectTransform, Vector2.zero, Vector2.one);
             return button;
         }
@@ -2591,14 +2707,43 @@ namespace CuteIssac.UI
             return text;
         }
 
-        private static RectTransform CreatePanel(string name, Transform parent, Color color)
+        private RectTransform CreatePanel(string name, Transform parent, Color color)
         {
             GameObject panelObject = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panelObject.transform.SetParent(parent, false);
             Image image = panelObject.GetComponent<Image>();
-            image.color = ResolvePanelColor(name, color);
+            image.sprite = ResolvePanelSprite(name);
+            image.color = image.sprite != null && string.Equals(name, "Backdrop", StringComparison.OrdinalIgnoreCase)
+                ? Color.white
+                : ResolvePanelColor(name, color);
+            image.type = image.sprite != null && !string.Equals(name, "Backdrop", StringComparison.OrdinalIgnoreCase)
+                ? Image.Type.Sliced
+                : Image.Type.Simple;
             image.raycastTarget = true;
             return panelObject.GetComponent<RectTransform>();
+        }
+
+        private Sprite ResolvePanelSprite(string name)
+        {
+            if (string.Equals(name, "Backdrop", StringComparison.OrdinalIgnoreCase))
+            {
+                return backgroundSprite;
+            }
+
+            if (string.Equals(name, "TitleShell", StringComparison.OrdinalIgnoreCase))
+            {
+                return shellSprite != null ? shellSprite : panelSprite;
+            }
+
+            if (string.Equals(name, "PrimaryActions", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "UtilityBar", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "ContentScroll", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "Sidebar", StringComparison.OrdinalIgnoreCase))
+            {
+                return panelSprite;
+            }
+
+            return null;
         }
 
         private static string FormatOnOff(bool value)

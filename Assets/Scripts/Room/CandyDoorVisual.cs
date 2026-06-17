@@ -1,3 +1,4 @@
+using CuteIssac.Data.Visual;
 using CuteIssac.Dungeon;
 using UnityEngine;
 
@@ -11,6 +12,7 @@ namespace CuteIssac.Room
     public sealed class CandyDoorVisual : MonoBehaviour
     {
         [Header("Layout")]
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
         [SerializeField] private Vector2 visualSize = new(2.45f, 2.25f);
         [SerializeField] private float visualSortingOrder = 34f;
         [SerializeField] private Vector2 verticalSpriteVisualSize = new(1.86f, 1.92f);
@@ -31,6 +33,17 @@ namespace CuteIssac.Room
         [SerializeField] private bool leftSpriteFlipX = false;
         [SerializeField] private bool rightOpenSpriteFlipY = true;
         [SerializeField] private bool leftOpenSpriteFlipY = true;
+        [Header("Sprite Orientation")]
+        [Tooltip("Closed door sprite rotation offsets applied after the door root is rotated to each wall direction.")]
+        [SerializeField] private float closedSpriteUpRotationOffset;
+        [SerializeField] private float closedSpriteRightRotationOffset;
+        [SerializeField] private float closedSpriteDownRotationOffset;
+        [SerializeField] private float closedSpriteLeftRotationOffset;
+        [Tooltip("Open door sprite rotation offsets applied after the door root is rotated to each wall direction.")]
+        [SerializeField] private float openSpriteUpRotationOffset;
+        [SerializeField] private float openSpriteRightRotationOffset;
+        [SerializeField] private float openSpriteDownRotationOffset;
+        [SerializeField] private float openSpriteLeftRotationOffset;
         [SerializeField] [Min(0.5f)] private float topDirectionScaleMultiplier = 0.96f;
         [SerializeField] [Min(0.5f)] private float rightDirectionScaleMultiplier = 1f;
         [SerializeField] [Min(0.5f)] private float bottomDirectionScaleMultiplier = 1f;
@@ -244,7 +257,7 @@ namespace CuteIssac.Room
 
             Vector2 spriteLocalOffset = ResolveSpriteLocalOffset(isOpenSprite);
             child.localPosition = new Vector3(spriteLocalOffset.x + additionalLocalOffset.x, spriteLocalOffset.y + additionalLocalOffset.y, 0f);
-            child.localRotation = Quaternion.identity;
+            child.localRotation = Quaternion.Euler(0f, 0f, ResolveSpriteRotationOffset(isOpenSprite));
             Vector3 spriteScale = ResolveSpriteScale(sprite, isOpenSprite, useSplitLayout);
             child.localScale = spriteScale;
 
@@ -253,7 +266,7 @@ namespace CuteIssac.Room
                 spriteLocalOffset.x + additionalLocalOffset.x + shadowLocalOffset.x,
                 spriteLocalOffset.y + additionalLocalOffset.y + shadowLocalOffset.y,
                 0f);
-            shadowChild.localRotation = Quaternion.identity;
+            shadowChild.localRotation = child.localRotation;
             shadowChild.localScale = spriteScale * shadowScaleMultiplier;
 
             SpriteRenderer renderer = child.GetComponent<SpriteRenderer>();
@@ -273,14 +286,14 @@ namespace CuteIssac.Room
             renderer.color = Color.white;
             renderer.flipX = ResolveSpriteFlipX();
             renderer.flipY = ResolveSpriteFlipY(isOpenSprite);
-            renderer.sortingOrder = Mathf.RoundToInt(visualSortingOrder) + 6 + ResolveDirectionSortingOffset();
+            renderer.sortingOrder = ResolveVisualSortingOrder() + 6 + ResolveDirectionSortingOffset();
 
             shadowRenderer.enabled = sprite != null;
             shadowRenderer.sprite = sprite;
             shadowRenderer.color = spriteShadowColor;
             shadowRenderer.flipX = renderer.flipX;
             shadowRenderer.flipY = renderer.flipY;
-            shadowRenderer.sortingOrder = Mathf.RoundToInt(visualSortingOrder) + 5 + ResolveDirectionSortingOffset();
+            shadowRenderer.sortingOrder = ResolveVisualSortingOrder() + 5 + ResolveDirectionSortingOffset();
         }
 
         private Vector3 ResolveSpriteScale(Sprite sprite, bool isOpenSprite, bool useSplitLayout)
@@ -306,6 +319,11 @@ namespace CuteIssac.Room
             fitScale *= ResolveDirectionScaleMultiplier();
 
             return new Vector3(fitScale, fitScale, 1f);
+        }
+
+        private int ResolveVisualSortingOrder()
+        {
+            return SortingOrderProfile.ResolveDoorBaseOrder(sortingOrderProfile, Mathf.RoundToInt(visualSortingOrder));
         }
 
         private Vector2 ResolveSpriteLocalOffset(bool isOpenSprite)
@@ -465,6 +483,27 @@ namespace CuteIssac.Room
             };
         }
 
+        private float ResolveSpriteRotationOffset(bool isOpenSprite)
+        {
+            if (_roomDoor == null)
+            {
+                return 0f;
+            }
+
+            return (_roomDoor.DoorDirection, isOpenSprite) switch
+            {
+                (RoomDirection.Up, false) => closedSpriteUpRotationOffset,
+                (RoomDirection.Right, false) => closedSpriteRightRotationOffset,
+                (RoomDirection.Down, false) => closedSpriteDownRotationOffset,
+                (RoomDirection.Left, false) => closedSpriteLeftRotationOffset,
+                (RoomDirection.Up, true) => openSpriteUpRotationOffset,
+                (RoomDirection.Right, true) => openSpriteRightRotationOffset,
+                (RoomDirection.Down, true) => openSpriteDownRotationOffset,
+                (RoomDirection.Left, true) => openSpriteLeftRotationOffset,
+                _ => 0f
+            };
+        }
+
         private static void DisableFallbackParts(Transform root)
         {
             for (int i = 0; i < root.childCount; i++)
@@ -505,7 +544,7 @@ namespace CuteIssac.Room
 
             renderer.sprite = ResolveVisualSprite();
             renderer.color = color;
-            renderer.sortingOrder = Mathf.RoundToInt(visualSortingOrder) + sortingOffset;
+            renderer.sortingOrder = ResolveVisualSortingOrder() + sortingOffset;
         }
 
         private void ApplyOrientationAndOffset()

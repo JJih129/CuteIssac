@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using CuteIssac.Core.Pooling;
 using CuteIssac.Core.Feedback;
+using CuteIssac.Data.Visual;
 using CuteIssac.Room;
 
 namespace CuteIssac.UI
@@ -16,6 +17,8 @@ namespace CuteIssac.UI
 
         [Header("Fallback Presentation")]
         [SerializeField] private TextMesh textMesh;
+        [Tooltip("비워두면 Resources/Sorting/DefaultSortingOrderProfile 기준을 사용합니다. 데미지 숫자/픽업 피드백 텍스트의 월드 UI 소팅 기준입니다.")]
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
         [SerializeField] [Min(0)] private int sortingOrder = 620;
         [SerializeField] private bool minimalTextOnly = true;
         [SerializeField] private SpriteRenderer glowSpriteRenderer;
@@ -295,7 +298,7 @@ namespace CuteIssac.UI
             MeshRenderer renderer = textMesh.GetComponent<MeshRenderer>();
             if (renderer != null)
             {
-                renderer.sortingOrder = sortingOrder;
+                renderer.sortingOrder = ResolveSortingOrder(0);
                 renderer.enabled = true;
                 if (textMesh.font != null)
                 {
@@ -324,7 +327,7 @@ namespace CuteIssac.UI
                 glowSpriteRenderer.sprite = GetFallbackSprite();
                 glowSpriteRenderer.drawMode = SpriteDrawMode.Sliced;
                 glowSpriteRenderer.size = fallbackGlowSize;
-                glowSpriteRenderer.sortingOrder = sortingOrder - 3;
+                glowSpriteRenderer.sortingOrder = ResolveSortingOrder(-3);
             }
 
             if (backdropSpriteRenderer == null)
@@ -336,7 +339,7 @@ namespace CuteIssac.UI
                 backdropSpriteRenderer.sprite = GetFallbackSprite();
                 backdropSpriteRenderer.drawMode = SpriteDrawMode.Sliced;
                 backdropSpriteRenderer.size = fallbackBackdropSize;
-                backdropSpriteRenderer.sortingOrder = sortingOrder - 2;
+                backdropSpriteRenderer.sortingOrder = ResolveSortingOrder(-2);
             }
 
             if (accentSpriteRenderer == null)
@@ -348,7 +351,7 @@ namespace CuteIssac.UI
                 accentSpriteRenderer.sprite = GetFallbackSprite();
                 accentSpriteRenderer.drawMode = SpriteDrawMode.Sliced;
                 accentSpriteRenderer.size = fallbackAccentSize;
-                accentSpriteRenderer.sortingOrder = sortingOrder - 1;
+                accentSpriteRenderer.sortingOrder = ResolveSortingOrder(-1);
             }
 
             if (shadowSpriteRenderer == null)
@@ -360,8 +363,13 @@ namespace CuteIssac.UI
                 shadowSpriteRenderer.sprite = GetFallbackSprite();
                 shadowSpriteRenderer.drawMode = SpriteDrawMode.Sliced;
                 shadowSpriteRenderer.size = fallbackShadowSize;
-                shadowSpriteRenderer.sortingOrder = sortingOrder - 1;
+                shadowSpriteRenderer.sortingOrder = ResolveSortingOrder(-1);
             }
+        }
+
+        private int ResolveSortingOrder(int offset)
+        {
+            return SortingOrderProfile.ResolveHudWorldTextOrder(sortingOrderProfile, sortingOrder) + offset;
         }
 
         private void CacheBaseLayoutMetrics()
@@ -1251,7 +1259,7 @@ namespace CuteIssac.UI
             }
 
             renderer.enabled = true;
-            renderer.sortingOrder = sortingOrder;
+            renderer.sortingOrder = ResolveSortingOrder(0);
 
             if (textMesh.font != null)
             {

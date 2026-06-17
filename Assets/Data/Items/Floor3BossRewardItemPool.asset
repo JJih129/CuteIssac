@@ -15,6 +15,8 @@ MonoBehaviour:
   poolId: floor3_boss_reward_pool
   poolType: 2
   preventDuplicateSelections: 1
+  preventOwnedItemSelections: 1
+  preferFreshOffers: 1
   requireUnlockedItems: 1
   ownedDuplicateWeightMultiplier: 0.2
   offeredDuplicateWeightMultiplier: 0.45
@@ -22,31 +24,35 @@ MonoBehaviour:
   recentCategoryWeightMultiplier: 0.58
   rarityWeights:
   - rarity: 0
-    weightMultiplier: 1.8
+    weightMultiplier: 0.35
   - rarity: 1
-    weightMultiplier: 1.15
+    weightMultiplier: 0.7
   - rarity: 2
-    weightMultiplier: 0.8
+    weightMultiplier: 1.1
   - rarity: 3
-    weightMultiplier: 0.45
+    weightMultiplier: 0.65
+  - rarity: 4
+    weightMultiplier: 0.65
+  - rarity: 5
+    weightMultiplier: 1.2
   entries:
-  - itemData: {fileID: 11400000, guid: 2c7cb021a53641d7ac85219bd88e43aa, type: 2}
-    weight: 1
+  - itemData: {fileID: 11400000, guid: d7670893b770484283f5e2121eb4332c, type: 2}
+    weight: 0.8
     minimumFloor: 1
     maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: 1ba178f8713d4a50988a285d851940cf, type: 2}
-    weight: 0.76
-    minimumFloor: 2
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: c1682a53d9a94b54aaeee872a380167e, type: 2}
+    weight: 0.9
+    minimumFloor: 1
     maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: 1d781df08c654d1fa08aced65f87ef7b, type: 2}
-    weight: 0.56
-    minimumFloor: 3
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 0a4ee4e5633245d6980a4c5900376e57, type: 2}
+    weight: 0.9
+    minimumFloor: 1
     maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: b9dffd700c384c6dae5df4f0aa36baab, type: 2}
-    weight: 0.4
-    minimumFloor: 2
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 2c7cb021a53641d7ac85219bd88e43aa, type: 2}
+    weight: 1.2
+    minimumFloor: 1
     maximumFloor: 0
-    allowedRoomTypes: []
+    allowedRoomTypes: 

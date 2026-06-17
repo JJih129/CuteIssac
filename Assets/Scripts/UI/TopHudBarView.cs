@@ -42,6 +42,10 @@ namespace CuteIssac.UI
         [SerializeField] [Min(48f)] private float stripResourceHeight = 154f;
         [SerializeField] [Min(120f)] private float stripMinimapWidth = 360f;
         [SerializeField] [Min(100f)] private float stripMinimapHeight = 244f;
+        [SerializeField] [Min(160f)] private float stripCombatWidth = 236f;
+        [SerializeField] [Min(96f)] private float stripCombatHeight = 126f;
+        [SerializeField] [Min(160f)] private float stripTrinketWidth = 236f;
+        [SerializeField] [Min(64f)] private float stripTrinketHeight = 82f;
         [SerializeField] [Min(0f)] private float stripLeftTopInset = 8f;
         [SerializeField] [Min(0f)] private float stripResourceRowOffsetY = 8f;
         [SerializeField] [Min(0f)] private float stripMinimapTopInset = 6f;
@@ -337,6 +341,10 @@ namespace CuteIssac.UI
             float resolvedResourceHeight = Mathf.Max(stripResourceHeight, 154f);
             float resolvedMinimapWidth = Mathf.Max(stripMinimapWidth, 360f);
             float resolvedMinimapHeight = Mathf.Max(stripMinimapHeight, 244f);
+            float resolvedCombatWidth = Mathf.Max(stripCombatWidth, 236f);
+            float resolvedCombatHeight = Mathf.Max(stripCombatHeight, 126f);
+            float resolvedTrinketWidth = Mathf.Max(stripTrinketWidth, 236f);
+            float resolvedTrinketHeight = Mathf.Max(stripTrinketHeight, 82f);
             float resolvedSlotGap = Mathf.Max(stripSlotGap, 10f);
             float resolvedResourceOffsetY = Mathf.Max(stripResourceRowOffsetY, 8f);
             float resolvedMinimapTopInset = Mathf.Max(stripMinimapTopInset, 6f);
@@ -354,14 +362,26 @@ namespace CuteIssac.UI
                 healthX + resolvedHealthWidth + resolvedSlotGap,
                 safeWidth - sidePadding - resolvedMinimapWidth);
             float minimapY = -resolvedMinimapTopInset;
+            float leftClusterRight = healthX + resolvedHealthWidth;
+            float rightClusterLeft = minimapX;
+            float auxLeft = leftClusterRight + (resolvedSlotGap * 2f);
+            float auxRight = rightClusterLeft - (resolvedSlotGap * 2f);
+            float auxAvailableWidth = Mathf.Max(0f, auxRight - auxLeft);
+            float auxWidth = Mathf.Min(Mathf.Max(resolvedCombatWidth, resolvedTrinketWidth), auxAvailableWidth);
+            bool bossVisible = HasVisibleHierarchyChild(_bossSlot);
+            bool showAuxSlots = !bossVisible && auxWidth >= 176f;
+            float auxX = showAuxSlots
+                ? auxLeft + ((auxAvailableWidth - auxWidth) * 0.5f)
+                : 0f;
+            float trinketY = topY - resolvedCombatHeight - resolvedSlotGap;
 
             LayoutMinimalSlot(_activeSlot, activeX, resolvedActiveWidth, resolvedActiveHeight, activeY, true);
             LayoutMinimalSlot(_healthSlot, healthX, resolvedHealthWidth, resolvedHealthHeight, healthY, true);
             LayoutMinimalSlot(_resourceSlot, resourceX, resolvedResourceWidth, resolvedResourceHeight, resourceY, true);
             LayoutMinimalSlot(_minimapSlot, minimapX, resolvedMinimapWidth, resolvedMinimapHeight, minimapY, true);
 
-            LayoutMinimalSlot(_combatStatSlot, 0f, 0f, 0f, topY, false);
-            LayoutMinimalSlot(_trinketSlot, 0f, 0f, 0f, topY, false);
+            LayoutMinimalSlot(_combatStatSlot, auxX, auxWidth, resolvedCombatHeight, topY, showAuxSlots);
+            LayoutMinimalSlot(_trinketSlot, auxX, auxWidth, resolvedTrinketHeight, trinketY, showAuxSlots);
 
             if (_bossSlot != null)
             {
@@ -369,8 +389,6 @@ namespace CuteIssac.UI
                 _bossSlot.anchorMax = new Vector2(0.5f, 1f);
                 _bossSlot.pivot = new Vector2(0.5f, 1f);
 
-                float leftClusterRight = healthX + resolvedHealthWidth;
-                float rightClusterLeft = minimapX;
                 float bossAvailableWidth = Mathf.Max(420f, rightClusterLeft - leftClusterRight - (resolvedSlotGap * 2f));
                 float bossWidth = Mathf.Min(760f, bossAvailableWidth);
                 float bossCenterX = ((leftClusterRight + rightClusterLeft) * 0.5f) - (safeWidth * 0.5f);
@@ -488,6 +506,25 @@ namespace CuteIssac.UI
             section.pivot = new Vector2(0f, 1f);
             section.anchoredPosition = new Vector2(x, y);
             section.sizeDelta = new Vector2(width, height);
+        }
+
+        private static bool HasVisibleHierarchyChild(RectTransform container)
+        {
+            if (container == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < container.childCount; index++)
+            {
+                Transform child = container.GetChild(index);
+                if (child != null && child.gameObject.activeInHierarchy)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void ApplyThreatTheme(float unscaledTime)

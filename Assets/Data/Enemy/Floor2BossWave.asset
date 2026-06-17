@@ -15,10 +15,10 @@ MonoBehaviour:
   waveId: floor2_boss_wave
   encounterTier: 2
   entries:
-  - enemyId: floor2_boss_chaser
-    enemyPrefab: {fileID: 930000106, guid: 63cae6d6439d4bff9874379459d0a0dd, type: 3}
+  - enemyId: floor2_wall_crawler_boss
+    enemyPrefab: {fileID: 930000106, guid: 87e6fd51e5ae152428f1f6aed5ee91be, type: 3}
     count: 1
-    difficultyCost: 8
+    difficultyCost: 12
   - enemyId: floor2_shooter_add
     enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
     count: 1

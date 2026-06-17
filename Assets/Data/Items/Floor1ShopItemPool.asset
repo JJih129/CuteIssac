@@ -15,6 +15,8 @@ MonoBehaviour:
   poolId: floor1_shop_pool
   poolType: 1
   preventDuplicateSelections: 1
+  preventOwnedItemSelections: 1
+  preferFreshOffers: 1
   requireUnlockedItems: 1
   ownedDuplicateWeightMultiplier: 0.2
   offeredDuplicateWeightMultiplier: 0.45
@@ -22,56 +24,45 @@ MonoBehaviour:
   recentCategoryWeightMultiplier: 0.58
   rarityWeights:
   - rarity: 0
-    weightMultiplier: 1.8
+    weightMultiplier: 1
   - rarity: 1
-    weightMultiplier: 1.15
+    weightMultiplier: 0.85
   - rarity: 2
-    weightMultiplier: 0.8
+    weightMultiplier: 0.65
   - rarity: 3
+    weightMultiplier: 0.35
+  - rarity: 4
+    weightMultiplier: 0.35
+  - rarity: 5
     weightMultiplier: 0.45
   entries:
-  - itemData: {fileID: 11400000, guid: 329da32fc035405e94f35c1ab74d4a1b, type: 2}
-    weight: 0.72
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
   - itemData: {fileID: 11400000, guid: a88057182d32426c82b45734acd8cdfc, type: 2}
-    weight: 0.9
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: 4aa6b5363af64bcbbcde3fd422019f11, type: 2}
-    weight: 1
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: d7670893b770484283f5e2121eb4332c, type: 2}
-    weight: 0.8
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: 1f58517533c341a1b76597a4426e2b22, type: 2}
-    weight: 0.9
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: 7f126db884dd425ab55e5ab84758df25, type: 2}
-    weight: 0.85
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: e39692fcaa99438896f4f48675ce1e1d, type: 2}
-    weight: 0.85
-    minimumFloor: 1
-    maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: e73f9c7a8f7f48f1b23db917c272ca26, type: 2}
     weight: 0.75
     minimumFloor: 1
     maximumFloor: 0
-    allowedRoomTypes: []
-  - itemData: {fileID: 11400000, guid: 3b7469ca83d84b9888177e04bc7f96dc, type: 2}
-    weight: 0.65
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 1f58517533c341a1b76597a4426e2b22, type: 2}
+    weight: 1
     minimumFloor: 1
     maximumFloor: 0
-    allowedRoomTypes: []
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: 9dfbb5aa85a14711bbaa3aa6be3b4d3e, type: 2}
+    weight: 0.75
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e39692fcaa99438896f4f48675ce1e1d, type: 2}
+    weight: 1.1
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: e73f9c7a8f7f48f1b23db917c272ca26, type: 2}
+    weight: 0.9
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 
+  - itemData: {fileID: 11400000, guid: d37ee3cba3e24cba95344dc31f8ec8d3, type: 2}
+    weight: 0.45
+    minimumFloor: 1
+    maximumFloor: 0
+    allowedRoomTypes: 

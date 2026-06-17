@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Core.Run;
 using UnityEngine;
@@ -14,6 +15,8 @@ namespace CuteIssac.Data.Run
         [SerializeField] [Min(1)] private int startingFloorIndex = 1;
         [SerializeField] private bool useFixedSeed;
         [SerializeField] private int fixedSeed = 12345;
+        [Tooltip("Stage-authoring sequence. If a stage has a FloorConfig, it is used before the legacy floorSequence entry.")]
+        [SerializeField] private StageProfile[] stageSequence;
         [SerializeField] private FloorConfig[] floorSequence;
 
         [Header("Run Resume")]
@@ -38,11 +41,69 @@ namespace CuteIssac.Data.Run
         public Color CurrentRoomPolicyAccentColor => currentRoomPolicyAccentColor;
         public float RunResumeBannerDuration => Mathf.Max(0.25f, runResumeBannerDuration);
         public float CurrentRoomPolicyBannerDuration => Mathf.Max(0.25f, currentRoomPolicyBannerDuration);
+        public IReadOnlyList<StageProfile> StageSequence => stageSequence;
+        public IReadOnlyList<FloorConfig> FloorSequence => floorSequence;
         public ActiveItemData[] RestorableActiveItems => restorableActiveItems;
         public ConsumableItemData[] RestorableConsumables => restorableConsumables;
         public ItemData[] RestorableTrinkets => restorableTrinkets;
 
         public bool TryGetFloorConfig(int floorIndex, out FloorConfig floorConfig)
+        {
+            floorConfig = null;
+
+            if (TryGetStageProfileFromSequence(floorIndex, out StageProfile stageProfile)
+                && stageProfile.TryGetFloorConfig(out floorConfig))
+            {
+                return true;
+            }
+
+            return TryGetFloorConfigFromLegacySequence(floorIndex, out floorConfig);
+        }
+
+        public bool TryGetStageProfile(int floorIndex, out StageProfile stageProfile)
+        {
+            if (TryGetStageProfileFromSequence(floorIndex, out stageProfile))
+            {
+                return true;
+            }
+
+            if (TryGetFloorConfigFromLegacySequence(floorIndex, out FloorConfig floorConfig)
+                && floorConfig.StageProfile != null)
+            {
+                stageProfile = floorConfig.StageProfile;
+                return true;
+            }
+
+            stageProfile = null;
+            return false;
+        }
+
+        public bool HasFloor(int floorIndex)
+        {
+            return TryGetFloorConfig(floorIndex, out _);
+        }
+
+        private bool TryGetStageProfileFromSequence(int floorIndex, out StageProfile stageProfile)
+        {
+            stageProfile = null;
+
+            if (stageSequence == null || stageSequence.Length == 0)
+            {
+                return false;
+            }
+
+            int index = floorIndex - 1;
+
+            if (index < 0 || index >= stageSequence.Length)
+            {
+                return false;
+            }
+
+            stageProfile = stageSequence[index];
+            return stageProfile != null;
+        }
+
+        private bool TryGetFloorConfigFromLegacySequence(int floorIndex, out FloorConfig floorConfig)
         {
             floorConfig = null;
 
@@ -60,11 +121,6 @@ namespace CuteIssac.Data.Run
 
             floorConfig = floorSequence[index];
             return floorConfig != null;
-        }
-
-        public bool HasFloor(int floorIndex)
-        {
-            return TryGetFloorConfig(floorIndex, out _);
         }
     }
 }

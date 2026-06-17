@@ -23,7 +23,3 @@ MonoBehaviour:
     enemyPrefab: {fileID: 930000106, guid: 2746cccd443e08848abd74c45b9a3ed5, type: 3}
     count: 1
     difficultyCost: 3
-  - enemyId: floor3_shooter_add
-    enemyPrefab: {fileID: 930000106, guid: 9c6e14d2907641f9a1a1848c3d75da24, type: 3}
-    count: 1
-    difficultyCost: 2

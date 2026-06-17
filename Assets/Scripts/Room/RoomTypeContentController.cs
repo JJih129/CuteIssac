@@ -137,13 +137,28 @@ namespace CuteIssac.Room
                 return true;
             }
 
+            if (_spawnedEntryContent != null)
+            {
+                focusPosition = _spawnedEntryContent.transform.position;
+                focusRadius = ResolveContentFocusRadius(_runtimeRoomType);
+                return true;
+            }
+
+            bool allowEmptyAnchorFocus = _runtimeRoomType == RoomType.Shop
+                || _runtimeRoomType == RoomType.Curse
+                || _runtimeRoomType == RoomType.Trap;
+
+            if (!allowEmptyAnchorFocus)
+            {
+                focusPosition = Vector3.zero;
+                focusRadius = 0f;
+                return false;
+            }
+
             Transform anchor = contentSpawnAnchor != null ? contentSpawnAnchor : transform;
             focusPosition = anchor.position;
             focusRadius = ResolveContentFocusRadius(_runtimeRoomType);
-            return contentSpawnAnchor != null
-                || _runtimeRoomType == RoomType.Shop
-                || _runtimeRoomType == RoomType.Curse
-                || _runtimeRoomType == RoomType.Trap;
+            return anchor != null;
         }
 
         public bool TryResolveCombatSetpieceFocusTarget(out Vector3 focusPosition, out float focusRadius)

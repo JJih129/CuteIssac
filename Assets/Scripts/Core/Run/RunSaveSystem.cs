@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Meta;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Dungeon;
 using CuteIssac.Player;
@@ -20,6 +21,7 @@ namespace CuteIssac.Core.Run
     public sealed class RunSaveSystem : MonoBehaviour
     {
         [Header("References")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RunManager runManager;
         [SerializeField] private CharacterProfileManager characterProfileManager;
         [SerializeField] private MetaProgressionManager metaProgressionManager;
@@ -398,6 +400,8 @@ namespace CuteIssac.Core.Run
                 minimapController = GetComponent<MinimapController>();
             }
 
+            ResolveReferencesFromSceneContext();
+
             if (playerStats == null)
             {
                 playerStats = FindFirstObjectByType<PlayerStats>(FindObjectsInactive.Exclude);
@@ -432,6 +436,34 @@ namespace CuteIssac.Core.Run
             {
                 playerTrinketHolder = FindFirstObjectByType<PlayerTrinketHolder>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            runManager ??= sceneContext.RunManager;
+            characterProfileManager ??= sceneContext.CharacterProfileManager;
+            metaProgressionManager ??= sceneContext.MetaProgressionManager;
+            dungeonInstantiator ??= sceneContext.DungeonInstantiator;
+            roomNavigationController ??= sceneContext.RoomNavigationController;
+            minimapController ??= sceneContext.MinimapController;
+            playerStats ??= sceneContext.PlayerStats;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerHealth ??= sceneContext.PlayerHealth;
+            playerController ??= sceneContext.PlayerController;
+            playerActiveItemController ??= sceneContext.PlayerActiveItemController;
+            playerConsumableHolder ??= sceneContext.PlayerConsumableHolder;
+            playerTrinketHolder ??= sceneContext.PlayerTrinketHolder;
         }
 
         private void SubscribeToSources()

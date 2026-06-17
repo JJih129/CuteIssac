@@ -54,6 +54,11 @@ namespace CuteIssac.Player
         [Tooltip("Optional visual asset set. Swap this in the inspector to replace prototype player art without touching logic.")]
         [SerializeField] private PlayerVisualSet visualSet;
 
+        [Header("Sorting")]
+        [Tooltip("Optional global sorting profile. When empty, the project default profile is used before falling back to the renderer's current order.")]
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
+        [SerializeField] private bool applySortingProfile = true;
+
         [Header("Fallback Sprite Animation")]
         [Tooltip("Used when no animator controller is assigned. The body sprite swaps through these frames while moving.")]
         [SerializeField] private bool useSpriteSequenceAnimation = true;
@@ -146,6 +151,7 @@ namespace CuteIssac.Player
                 gameObject.AddComponent<PlayerHeldWeaponVisual>();
             }
             ApplyConfiguredVisualSet();
+            ApplySortingProfile();
             ApplySpawnOrigin();
             ApplyBodyColor(baseColor);
             CacheMuzzleAnchorLocalPosition();
@@ -158,6 +164,7 @@ namespace CuteIssac.Player
         {
             ResolveReferences();
             ApplyConfiguredVisualSet();
+            ApplySortingProfile();
             ApplyBodyColor(baseColor);
             _hitSpriteRemaining = 0f;
             _hitFlashRemaining = 0f;
@@ -632,6 +639,18 @@ namespace CuteIssac.Player
             }
 
             bodySpriteRenderer.color = color;
+        }
+
+        private void ApplySortingProfile()
+        {
+            if (!applySortingProfile || bodySpriteRenderer == null)
+            {
+                return;
+            }
+
+            bodySpriteRenderer.sortingOrder = SortingOrderProfile.ResolvePlayerBodyOrder(
+                sortingOrderProfile,
+                bodySpriteRenderer.sortingOrder);
         }
 
         private void UpdateSpeedBuffRainbowTint()

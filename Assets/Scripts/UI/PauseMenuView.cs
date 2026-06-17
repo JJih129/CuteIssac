@@ -499,6 +499,7 @@ namespace CuteIssac.UI
             {
                 "Music Volume" => FormatPercent(options.MusicVolume),
                 "SFX Volume" => FormatPercent(options.SfxVolume),
+                "Resolution" => $"{options.ResolutionWidth}x{options.ResolutionHeight}",
                 "UI Scale" => options.UiScale.ToString("0.00"),
                 "Fullscreen" => FormatOnOff(options.Fullscreen),
                 "Camera Shake" => FormatOnOff(options.CameraShakeEnabled),

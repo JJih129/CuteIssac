@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CuteIssac.Common.Combat;
+using CuteIssac.Core.Scene;
 using CuteIssac.Player;
 using UnityEngine;
 
@@ -38,11 +39,13 @@ namespace CuteIssac.Enemy
         private float _runtimePressureContactDamageMultiplier = 1f;
         private float _runtimePressureSpeedMultiplier = 1f;
         private float _runtimeWebSpeedMultiplier = 1f;
+        private GameplaySceneContext _sceneContext;
         private readonly List<RuntimeMultiplierSource> _runtimeWebSpeedSources = new();
 
         public EnemyMovement EnemyMovement => enemyMovement;
         public EnemyHealth EnemyHealth => enemyHealth;
         public EnemyVisual EnemyVisual => enemyVisual;
+        public EnemyBrain ActiveBrain => enemyBrain;
         public string EnemyId => string.IsNullOrWhiteSpace(enemyId) ? SanitizeEnemyId(gameObject.name) : enemyId;
         public float ContactDamage => contactDamage;
         public Transform CurrentTarget => _target;
@@ -217,8 +220,14 @@ namespace CuteIssac.Enemy
                 return;
             }
 
-            // Search by cached player controller first so retargeting stays cheap during combat.
-            PlayerController playerController = PlayerRegistry.ActiveController;
+            // Search by explicit scene context first so enemy prefabs do not depend on tag names during normal gameplay.
+            PlayerController playerController = ResolvePlayerControllerFromSceneContext();
+
+            if (playerController == null)
+            {
+                // Registry remains a cheap runtime fallback for cases where enemies spawn before the context is active.
+                playerController = PlayerRegistry.ActiveController;
+            }
 
             if (playerController != null)
             {
@@ -245,6 +254,25 @@ namespace CuteIssac.Enemy
             }
 
             _target = null;
+        }
+
+        private PlayerController ResolvePlayerControllerFromSceneContext()
+        {
+            if (_sceneContext == null)
+            {
+                _sceneContext = GameplaySceneContext.Active;
+            }
+            else if (_sceneContext.PlayerController == null && GameplaySceneContext.Active != _sceneContext)
+            {
+                _sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (_sceneContext == null)
+            {
+                return null;
+            }
+
+            return _sceneContext.PlayerController;
         }
 
         private void HandleDeath()

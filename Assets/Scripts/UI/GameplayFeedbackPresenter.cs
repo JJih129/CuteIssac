@@ -2,6 +2,7 @@ using CuteIssac.Core.Audio;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Pooling;
+using CuteIssac.Core.Scene;
 using CuteIssac.Core.Settings;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Player;
@@ -29,6 +30,8 @@ namespace CuteIssac.UI
         [Header("Optional References")]
         [Tooltip("Optional gameplay camera used for fallback world-space sorting or future screen projection.")]
         [SerializeField] private Camera worldCamera;
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [Tooltip("Optional screen feedback driver used for short room-end camera punches.")]
         [SerializeField] private PlayerScreenFeedback playerScreenFeedback;
         [Tooltip("Optional canvas used for top-center banners. If empty, the presenter finds one at runtime.")]
@@ -44,6 +47,7 @@ namespace CuteIssac.UI
         [SerializeField] private Color enemyDamageColor = new(1f, 0.92f, 0.52f, 1f);
         [SerializeField] private Color playerDamageColor = new(1f, 0.42f, 0.42f, 1f);
         [SerializeField] private Color pickupFeedbackColor = new(0.48f, 1f, 0.72f, 1f);
+        [SerializeField] private Color initialGuidanceAccentColor = new(0.72f, 0.9f, 1f, 1f);
         [SerializeField] private Color roomClearAccentColor = new(0.48f, 0.9f, 1f, 1f);
         [SerializeField] private Color rewardAccentColor = new(1f, 0.8f, 0.36f, 1f);
         [SerializeField] private Color secretRewardAccentColor = new(1f, 0.89f, 0.54f, 1f);
@@ -62,11 +66,21 @@ namespace CuteIssac.UI
         [SerializeField] private Vector3 enemyDamageOffset = new(0.1f, 1.24f, 0f);
         [SerializeField] private Vector3 playerDamageOffset = new(0.05f, 1.42f, 0f);
         [SerializeField] private Vector3 pickupOffset = new(0.08f, 0.96f, 0f);
+        [SerializeField] private Vector3 interactionOutcomeOffset = new(0.06f, 1.08f, 0f);
         [SerializeField] private bool damageNumbersOnly = true;
         [SerializeField] private bool suppressEventLabelFeedback = true;
         [SerializeField] private bool suppressNonFeedbackWorldText = true;
         [SerializeField] [Min(4)] private int pickupFeedbackMaxCharacters = 18;
         [SerializeField] [Min(1)] private int maxEnemyDamagePopupsPerFrame = 18;
+
+        [Header("Guidance")]
+        [SerializeField] private bool showInitialRoomGuidance = true;
+        [SerializeField] private string initialGuidanceTitle = "첫 방 목표";
+        [SerializeField] private string initialGuidanceSubtitle = "이동하며 적을 정리하고, 문이 열리면 다음 방으로 이동하세요.";
+        [SerializeField] [Min(0.25f)] private float initialGuidanceDuration = 2.6f;
+        [SerializeField] private bool showLoadoutChangeBanners = true;
+        [SerializeField] private bool showInteractionOutcomeBanners = true;
+        [SerializeField] [Min(0.05f)] private float playerDamageScreenFeedbackScale = 0.48f;
 
         [Header("Pool Warmup")]
         [SerializeField] [Min(0)] private int floatingFeedbackPrewarmCount = 32;
@@ -84,6 +98,7 @@ namespace CuteIssac.UI
         private bool _suppressPresentationForModal;
         private int _floatingFeedbackFrame = -1;
         private int _enemyDamagePopupsThisFrame;
+        private bool _initialRoomGuidanceShown;
 
         private void Awake()
         {
@@ -99,11 +114,15 @@ namespace CuteIssac.UI
             GameplayFeedbackEvents.FloatingFeedbackRequested += HandleFloatingFeedbackRequested;
             GameplayFeedbackEvents.BannerFeedbackRequested += HandleBannerFeedbackRequested;
             GameplayFeedbackEvents.ThreatFlashRequested += HandleThreatFlashRequested;
+            GameplayRuntimeEvents.RoomEntered += HandleRoomEntered;
+            GameplayRuntimeEvents.PlayerDamaged += HandlePlayerDamaged;
             GameplayRuntimeEvents.RoomCleared += HandleRoomCleared;
             GameplayRuntimeEvents.RoomRewardPhaseCompleted += HandleRoomRewardPhaseCompleted;
             GameplayRuntimeEvents.RoomRewardCollected += HandleRoomRewardCollected;
             GameplayRuntimeEvents.EnemyKilled += HandleEnemyKilled;
             GameplayRuntimeEvents.MomentumExecuted += HandleMomentumExecuted;
+            GameplayRuntimeEvents.PlayerLoadoutDelta += HandlePlayerLoadoutDelta;
+            GameplayRuntimeEvents.PlayerInteractionOutcome += HandlePlayerInteractionOutcome;
             GameplayRuntimeEvents.CurseRewardManifested += HandleCurseRewardManifested;
             BossHudEvents.BossShownOrUpdated += HandleBossShownOrUpdated;
             BossHudEvents.BossHidden += HandleBossHidden;
@@ -115,11 +134,15 @@ namespace CuteIssac.UI
             GameplayFeedbackEvents.FloatingFeedbackRequested -= HandleFloatingFeedbackRequested;
             GameplayFeedbackEvents.BannerFeedbackRequested -= HandleBannerFeedbackRequested;
             GameplayFeedbackEvents.ThreatFlashRequested -= HandleThreatFlashRequested;
+            GameplayRuntimeEvents.RoomEntered -= HandleRoomEntered;
+            GameplayRuntimeEvents.PlayerDamaged -= HandlePlayerDamaged;
             GameplayRuntimeEvents.RoomCleared -= HandleRoomCleared;
             GameplayRuntimeEvents.RoomRewardPhaseCompleted -= HandleRoomRewardPhaseCompleted;
             GameplayRuntimeEvents.RoomRewardCollected -= HandleRoomRewardCollected;
             GameplayRuntimeEvents.EnemyKilled -= HandleEnemyKilled;
             GameplayRuntimeEvents.MomentumExecuted -= HandleMomentumExecuted;
+            GameplayRuntimeEvents.PlayerLoadoutDelta -= HandlePlayerLoadoutDelta;
+            GameplayRuntimeEvents.PlayerInteractionOutcome -= HandlePlayerInteractionOutcome;
             GameplayRuntimeEvents.CurseRewardManifested -= HandleCurseRewardManifested;
             BossHudEvents.BossShownOrUpdated -= HandleBossShownOrUpdated;
             BossHudEvents.BossHidden -= HandleBossHidden;
@@ -266,6 +289,47 @@ namespace CuteIssac.UI
             SpawnThreatFlash(request);
         }
 
+        private void HandleRoomEntered(RoomEnteredSignal signal)
+        {
+            if (_suppressPresentationForModal || !showInitialRoomGuidance || _initialRoomGuidanceShown)
+            {
+                return;
+            }
+
+            if (signal.Room == null || (signal.RoomType != RoomType.Start && signal.RoomType != RoomType.Normal))
+            {
+                return;
+            }
+
+            _initialRoomGuidanceShown = true;
+            SpawnBannerFeedback(new BannerFeedbackRequest(
+                string.IsNullOrWhiteSpace(initialGuidanceTitle) ? "첫 방 목표" : initialGuidanceTitle,
+                string.IsNullOrWhiteSpace(initialGuidanceSubtitle)
+                    ? "이동하며 적을 정리하고, 문이 열리면 다음 방으로 이동하세요."
+                    : initialGuidanceSubtitle,
+                initialGuidanceAccentColor,
+                initialGuidanceDuration));
+        }
+
+        private void HandlePlayerDamaged(PlayerDamagedSignal signal)
+        {
+            if (_suppressPresentationForModal)
+            {
+                return;
+            }
+
+            ShowPlayerDamage(signal.Position, signal.DamageInfo.Amount);
+            SpawnThreatFlash(new ThreatFlashRequest(
+                playerDamageColor,
+                0.1f,
+                0.22f,
+                1,
+                0.16f,
+                0.95f,
+                0.56f));
+            PlayPresentationScreenFeedback(playerDamageScreenFeedbackScale);
+        }
+
         private void HandleRoomCleared(RoomClearSignal signal)
         {
             if (_suppressPresentationForModal)
@@ -294,6 +358,64 @@ namespace CuteIssac.UI
             }
 
             SpawnEnemyDeathEffect(signal.Position, enemyDeathAccentColor);
+        }
+
+        private void HandlePlayerLoadoutDelta(PlayerLoadoutDeltaSignal signal)
+        {
+            if (_suppressPresentationForModal || !signal.IsValid)
+            {
+                return;
+            }
+
+            Color accentColor = signal.AccentColor.a > 0.01f ? signal.AccentColor : pickupFeedbackColor;
+            SpawnFloatingFeedback(new FloatingFeedbackRequest(
+                signal.Position + pickupOffset,
+                CondensePickupLabel(signal.Headline),
+                accentColor,
+                signal.Emphasize ? 0.82f : 0.68f,
+                signal.Emphasize ? 0.92f : 0.76f,
+                signal.Emphasize ? 1.18f : 1.08f,
+                visualProfile: FloatingFeedbackVisualProfile.Pickup));
+
+            if (!showLoadoutChangeBanners)
+            {
+                return;
+            }
+
+            SpawnBannerFeedback(new BannerFeedbackRequest(
+                signal.Headline,
+                signal.HasDetail ? signal.Detail : "HUD 슬롯과 능력치가 갱신되었습니다.",
+                accentColor,
+                signal.Emphasize ? 2f : 1.55f));
+        }
+
+        private void HandlePlayerInteractionOutcome(PlayerInteractionOutcomeSignal signal)
+        {
+            if (_suppressPresentationForModal || !signal.IsValid)
+            {
+                return;
+            }
+
+            Color accentColor = signal.AccentColor.a > 0.01f ? signal.AccentColor : pickupFeedbackColor;
+            SpawnFloatingFeedback(new FloatingFeedbackRequest(
+                signal.Position + interactionOutcomeOffset,
+                CondensePickupLabel(signal.Headline),
+                accentColor,
+                signal.Emphasize ? 0.72f : 0.58f,
+                signal.Emphasize ? 0.82f : 0.66f,
+                signal.Emphasize ? 1.14f : 1.04f,
+                visualProfile: FloatingFeedbackVisualProfile.Pickup));
+
+            if (!showInteractionOutcomeBanners || (!signal.Emphasize && !signal.HasDetail))
+            {
+                return;
+            }
+
+            SpawnBannerFeedback(new BannerFeedbackRequest(
+                signal.Headline,
+                signal.HasDetail ? signal.Detail : string.Empty,
+                accentColor,
+                signal.Emphasize ? 1.75f : 1.25f));
         }
 
         private void HandleMomentumExecuted(MomentumExecutionSignal signal)
@@ -878,6 +1000,8 @@ namespace CuteIssac.UI
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (worldCamera == null)
             {
                 worldCamera = Camera.main;
@@ -902,6 +1026,26 @@ namespace CuteIssac.UI
             {
                 gameOptionsService = FindFirstObjectByType<GameOptionsService>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            worldCamera ??= sceneContext.MainCamera;
+            playerScreenFeedback ??= sceneContext.PlayerScreenFeedback;
+            overlayCanvas ??= sceneContext.OverlayCanvas;
+            minimapPanelView ??= sceneContext.MinimapPanelView;
+            gameOptionsService ??= sceneContext.GameOptionsService;
         }
 
         private void PrewarmFeedbackPools()

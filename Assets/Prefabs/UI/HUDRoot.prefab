@@ -51,24 +51,54 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a9024ccd16f2af429dc94d7299f07fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  sceneContext: {fileID: 0}
   playerHealth: {fileID: 0}
   playerInventory: {fileID: 0}
+  playerConsumableHolder: {fileID: 0}
+  playerActiveItemController: {fileID: 0}
+  playerTrinketHolder: {fileID: 0}
+  playerStats: {fileID: 0}
+  playerSpeedBuffState: {fileID: 0}
+  playerWeaponLoadout: {fileID: 0}
+  playerCombatMomentumController: {fileID: 0}
+  playerRoutePlanCarryController: {fileID: 0}
+  roomNavigationController: {fileID: 0}
+  roomTraversalGuidanceController: {fileID: 0}
   healthPanelView: {fileID: 820000134}
   resourcePanelView: {fileID: 820000174}
   activeItemPanelView: {fileID: 820000214}
   combatStatPanelView: {fileID: 820000284}
   trinketPanelView: {fileID: 820000314}
+  weaponPanelView: {fileID: 518180909186733498}
+  autoLayoutWeaponPanel: 0
+  loadoutHistoryPanelView: {fileID: 0}
   bossHpPanelView: {fileID: 820000234}
   minimapPanelView: {fileID: 820000254}
   topHudBarView: {fileID: 820000104}
-  weaponAmmoUiSprite: {fileID: 8766029622200758570, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
-  weaponPanelUiSprite: {fileID: -8825028299691005727, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
-  weaponNamePlateUiSprite: {fileID: 4561509497542768799, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
-  weaponAmmoBoxUiSprite: {fileID: -2923041028969560183, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
-  weaponStatusTagUiSprite: {fileID: -250819814189389502, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
-  weaponReloadTrackUiSprite: {fileID: 4925395011777349477, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
-  weaponReloadFillUiSprite: {fileID: -2436204984005785915, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
-  weaponActiveSlotUiSprite: {fileID: -2873731770067863720, guid: 533ca3b7a01beac438279efc22332a9e, type: 3}
+  showCombatStatPanel: 0
+  showLoadoutHistoryPanel: 0
+  autoArrangeTopHudBar: 0
+  allowRuntimeHudFallbacks: 0
+  pauseMenuController: {fileID: 0}
+  pauseMenuView: {fileID: 0}
+  speedBuffStatusPanelView: {fileID: 0}
+  weaponAmmoUiSprite: {fileID: 21300000, guid: 8f6ee9cb5bf14b54a9709d6bb780c8ab, type: 3}
+  weaponPanelUiSprite: {fileID: 21300000, guid: 4a7b6555aea221d48bbb4cebbc8ecb92, type: 3}
+  weaponNamePlateUiSprite: {fileID: 21300000, guid: 29c38a32565a15f49b540a09ec7d3df3, type: 3}
+  weaponAmmoBoxUiSprite: {fileID: 21300000, guid: db4f75bd91cf9904daec4ae62ed0736d, type: 3}
+  weaponStatusTagUiSprite: {fileID: 21300000, guid: 4907c555f9e28ec4184b41af1e81ecc2, type: 3}
+  weaponReloadTrackUiSprite: {fileID: 21300000, guid: 098b8441ab66c3d4990318a32c2b2083, type: 3}
+  weaponReloadFillUiSprite: {fileID: 21300000, guid: 9769b53333d6beb4989024d97b7d5769, type: 3}
+  weaponActiveSlotUiSprite: {fileID: 21300000, guid: 28955ffb5e4411744b51045388cfadb0, type: 3}
+  runManager: {fileID: 0}
+  challengeStatusRefreshInterval: 0.15
+  secretRevealStatusDuration: 3.5
+  momentumRewardTransitionStatusDuration: 2.4
+  momentumRewardClaimStatusDuration: 1.8
+  choiceRouteStatusDuration: 2.2
+  loadoutRecapStatusDuration: 3.2
+  maxLoadoutHistoryEntries: 3
+  loadoutHistoryEntryLifetime: 18
 --- !u!114 &820000103
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -97,6 +127,97 @@ MonoBehaviour:
   safeAreaRoot: {fileID: 820000121}
   barRoot: {fileID: 0}
   barBackgroundImage: {fileID: 0}
+  useMinimalIsaacStrip: 1
+  barHeight: 236
+  compactBarHeight: 236
+  topPadding: 14
+  sidePadding: 16
+  sectionSpacing: 12
+  compactRowSpacing: 12
+  compactLayoutBreakpoint: 1180
+  stripSlotGap: 10
+  stripActiveWidth: 168
+  stripActiveHeight: 168
+  stripHealthWidth: 360
+  stripHealthHeight: 58
+  stripResourceWidth: 176
+  stripResourceHeight: 154
+  stripMinimapWidth: 360
+  stripMinimapHeight: 244
+  stripCombatWidth: 236
+  stripCombatHeight: 126
+  stripTrinketWidth: 236
+  stripTrinketHeight: 82
+  stripLeftTopInset: 8
+  stripResourceRowOffsetY: 8
+  stripMinimapTopInset: 6
+  minimapWidth: 520
+  minimapMinWidth: 420
+  compactMinimapWidth: 560
+  compactMinimapMinWidth: 460
+  resourceWidth: 220
+  resourceMinWidth: 184
+  compactResourceWidth: 236
+  compactResourceMinWidth: 196
+  combatStatWidth: 148
+  combatStatMinWidth: 136
+  compactCombatStatWidth: 164
+  compactCombatStatMinWidth: 142
+  activeWidth: 176
+  activeMinWidth: 156
+  compactActiveWidth: 164
+  compactActiveMinWidth: 144
+  trinketWidth: 136
+  trinketMinWidth: 122
+  compactTrinketWidth: 126
+  compactTrinketMinWidth: 114
+  preferredHealthWidth: 720
+  minimumHealthWidth: 580
+  compactPreferredHealthWidth: 780
+  compactMinimumHealthWidth: 620
+  sectionContentSidePadding: 14
+  compactStripContentSidePadding: 6
+  compactStripMinimapSidePadding: 4
+  sectionContentBottomPadding: 12
+  compactSectionContentBottomPadding: 10
+  sectionContentTopInset: 10
+  compactSectionContentTopInset: 14
+  minimapContentSideTrim: -2
+  minimapContentBottomTrim: -1
+  minimapContentTopTrim: -2
+  healthContentSideTrim: 2
+  bossPanelTopGap: 6
+  sectionHeaderHeight: 34
+  sectionHeaderGap: 10
+  sectionHeaderInsetX: 10
+  sectionHeaderFontSize: 17
+  priorityHeaderFontBoost: 1
+  minimapHeaderPriority: 1.08
+  healthHeaderPriority: 1.1
+  activeHeaderPriority: 0.92
+  trinketHeaderPriority: 0.9
+  barBackgroundColor: {r: 0.05, g: 0.06, b: 0.08, a: 0}
+  sectionBackgroundColor: {r: 1, g: 1, b: 1, a: 0.065}
+  sectionBorderColor: {r: 1, g: 1, b: 1, a: 0.12}
+  sectionHeaderBackgroundColor: {r: 0.8, g: 0.86, b: 0.96, a: 0.14}
+  sectionHeaderTextColor: {r: 0.96, g: 0.98, b: 1, a: 0.96}
+  sectionHeaderShadowColor: {r: 0, g: 0, b: 0, a: 0.38}
+  compactSectionBackgroundAlphaScale: 0.84
+  compactHeaderBackgroundAlphaScale: 0.9
+  compactHeaderTextAlphaScale: 1.04
+  challengeBaselineBarTint: {r: 1, g: 0.7, b: 0.28, a: 1}
+  challengeThreatBarTint: {r: 1, g: 0.42, b: 0.2, a: 1}
+  challengeThreatPulseAmplitude: 0.14
+  challengeThreatPulseFrequency: 1.15
+  challengeThreatSectionTintStrength: 0.58
+  hudPulseDamping: 0.72
+  minimapThreatChromeWeight: 1
+  resourceThreatChromeWeight: 0.42
+  combatThreatChromeWeight: 0.88
+  activeThreatChromeWeight: 0.32
+  trinketThreatChromeWeight: 0.28
+  healthThreatChromeWeight: 0.54
+  challengeThreatHeaderBoost: 0.18
 --- !u!1 &820000120
 GameObject:
   m_ObjectHideFlags: 0
@@ -132,6 +253,7 @@ RectTransform:
   - {fileID: 820000311}
   - {fileID: 820000231}
   - {fileID: 820000251}
+  - {fileID: 7963739960457735370}
   m_Father: {fileID: 820000101}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -200,14 +322,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.18}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 55f342c035d37744ca2613aad10268c9, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -234,12 +356,61 @@ MonoBehaviour:
   heartSlotParent: {fileID: 820000151}
   heartSlotTemplate: {fileID: 820000163}
   slotSpacing: 8
-  filledHeartSprite: {fileID: 8735823042220390117, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
-  emptyHeartSprite: {fileID: 134735002247928564, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
-  halfHeartSprite: {fileID: -3855594113995240100, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  filledHeartSprite: {fileID: 21300000, guid: aebf4ec24ac72d24b9e7c7cf4b21a2e5, type: 3}
+  emptyHeartSprite: {fileID: 21300000, guid: 61d6c9e7fab44764ab37005ba029fe73, type: 3}
+  halfHeartSprite: {fileID: 21300000, guid: a6415336682383741a3539111d1b3bd6, type: 3}
   filledHeartColor: {r: 0.95, g: 0.3, b: 0.3, a: 1}
   emptyHeartColor: {r: 0.3, g: 0.3, b: 0.3, a: 0.8}
-  speedHeartSprite: {fileID: -7394859691097160528, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  speedHeartSprite: {fileID: 21300000, guid: 00fb92055aaa8c542b281fdb9d06de46, type: 3}
+  speedHeartColor: {r: 0.42, g: 0.82, b: 1, a: 1}
+  speedHeartPulseColor: {r: 1, g: 0.44, b: 0.92, a: 1}
+  speedHeartConsumedFlashColor: {r: 1, g: 1, b: 1, a: 1}
+  speedHeartConsumedFeedbackDuration: 0.32
+  speedHeartConsumedShakeAmplitude: 7
+  speedHeartConsumedShakeFrequency: 46
+  speedHeartConsumedScaleBonus: 0.08
+  preferCompactSingleRow: 1
+  topBarValueInsetX: 16
+  topBarValueInsetY: 12
+  topBarValueWidth: 124
+  topBarValueHeight: 46
+  topBarHeartInsetX: 112
+  topBarHeartInsetY: 11
+  compactTopBarHeartInsetY: 10
+  topBarHeartBaselineOffsetY: 2
+  topBarHeartSlotSize: {x: 26, y: 26}
+  compactTopBarHeartSlotSize: {x: 34, y: 34}
+  topBarSlotSpacing: 4
+  topBarRowSpacing: 2
+  topBarMaxRows: 2
+  topBarValueFontSize: 24
+  topBarLabelFontSize: 13
+  topBarHealthValueFontSize: 28
+  compactTopBarLabelFontSize: 18
+  compactTopBarHealthValueFontSize: 36
+  compactTopBarMaxValueFontSize: 18
+  topBarValueLineSpacing: 0.9
+  healthLabelColor: {r: 0.96, g: 0.98, b: 1, a: 0.88}
+  currentHealthColor: {r: 1, g: 0.48, b: 0.46, a: 1}
+  maxHealthColor: {r: 0.94, g: 0.96, b: 1, a: 0.82}
+  criticalHealthColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  valueTextColor: {r: 0.99, g: 0.995, b: 1, a: 1}
+  challengeBaselineLabelColor: {r: 1, g: 0.95, b: 0.84, a: 0.84}
+  challengeBaselineCurrentHealthColor: {r: 1, g: 0.8, b: 0.52, a: 1}
+  challengeBaselineMaxHealthColor: {r: 1, g: 0.92, b: 0.78, a: 0.88}
+  challengeBaselineFilledHeartColor: {r: 1, g: 0.8, b: 0.42, a: 1}
+  challengeBaselineEmptyHeartColor: {r: 0.44, g: 0.34, b: 0.18, a: 0.74}
+  compactLabelAlphaScale: 1.04
+  compactCurrentHealthAlphaScale: 1.08
+  compactMaxHealthAlphaScale: 0.96
+  compactFilledHeartAlphaScale: 1.04
+  compactEmptyHeartAlphaScale: 0.9
+  challengeHeartTintStrength: 0.34
+  challengeValueTintStrength: 0.58
+  challengeLabelTintStrength: 0.3
+  topBarThreatPulseDamping: 0.72
+  compactTextShadowColor: {r: 0.02, g: 0.05, b: 0.08, a: 0.72}
+  compactTextShadowDistance: {x: 1.4, y: -1.4}
 --- !u!1 &820000140
 GameObject:
   m_ObjectHideFlags: 0
@@ -318,7 +489,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: <size=11>현재 체력</size>\n<size=22>0</size><size=15>/0</size>
+  m_Text: "<size=11>\uD604\uC7AC \uCCB4\uB825</size>\n<size=22>0</size><size=15>/0</size>"
 --- !u!1 &820000150
 GameObject:
   m_ObjectHideFlags: 0
@@ -413,14 +584,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.2}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 8735823042220390117, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  m_Sprite: {fileID: 21300000, guid: aebf4ec24ac72d24b9e7c7cf4b21a2e5, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -495,14 +666,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.12}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: e88a5966f34fd7f4d9ab7028f90fcce0, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -524,6 +695,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c159b4f45e4248ba96e043039c9d009b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  topBarIconSize: {x: 20, y: 20}
+  compactTopBarIconSize: {x: 30, y: 30}
+  topBarBackgroundHeight: {x: 52, y: 0}
+  compactTopBarBackgroundHeight: 96
+  topBarSectionPadding: 8
+  compactTopBarSectionPadding: 8
+  topBarBackgroundTopInset: 8
+  compactTopBarBackgroundTopInset: 10
+  topBarIconTopInset: 10
+  topBarIconValueGap: 10
+  topBarValueTopInset: 22
+  topBarValueHeight: 34
+  compactTopBarValueHeight: 30
+  topBarLabelFontSize: 12
+  topBarValueFontSize: 26
+  compactTopBarValueFontSize: 24
+  compactTopBarRowGap: 10
+  compactTopBarRowInsetX: 4
+  topBarValueLineSpacing: 0.9
+  coinSlotColor: {r: 0.92, g: 0.76, b: 0.18, a: 0.22}
+  keySlotColor: {r: 0.72, g: 0.84, b: 1, a: 0.2}
+  bombSlotColor: {r: 1, g: 0.66, b: 0.34, a: 0.2}
+  labelTextColor: {r: 0.96, g: 0.98, b: 1, a: 0.8}
+  valueTextColor: {r: 0.99, g: 0.995, b: 1, a: 1}
+  challengeBaselineLabelColor: {r: 1, g: 0.94, b: 0.84, a: 0.78}
+  challengeBaselineValueColor: {r: 1, g: 0.9, b: 0.64, a: 0.98}
+  valueFontStyle: 1
+  challengeSlotTintStrength: 0.48
+  challengeValueTintStrength: 0.56
+  challengeIconTintStrength: 0.3
+  iconAlpha: 0.92
+  challengeIconAlpha: 0.98
+  unavailableResourceFlashColor: {r: 1, g: 0.22, b: 0.16, a: 1}
+  unavailableResourceFeedbackDuration: 0.42
+  unavailableResourceShakeAmplitude: 7
+  unavailableResourceShakeFrequency: 42
+  unavailableResourceScaleBump: 1.12
   panelRoot: {fileID: 820000170}
   coinBackgroundImage: {fileID: 0}
   coinIconImage: {fileID: 820000183}
@@ -592,14 +800,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.95, g: 0.82, b: 0.25, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 7962475559329695631, guid: c223177c57c8a644d8c76b34ab495fd4, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 3bbc1194b2b793042ab7a7db5f088f1e, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -687,7 +895,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "0"
+  m_Text: 0
 --- !u!1 &820000190
 GameObject:
   m_ObjectHideFlags: 0
@@ -746,14 +954,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.72, g: 0.86, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a1000d, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 4dc5510f3f429b1428782dca07f57776, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -841,7 +1049,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "0"
+  m_Text: 0
 --- !u!1 &820000200
 GameObject:
   m_ObjectHideFlags: 0
@@ -900,14 +1108,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0.52, b: 0.25, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 4498091695805093216, guid: ceb165fb37a3a4e4085dd50601542fe5, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 81116a61886c65d4db64be894ba22a51, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -995,7 +1203,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "0"
+  m_Text: 0
 --- !u!1 &820000210
 GameObject:
   m_ObjectHideFlags: 0
@@ -1058,14 +1266,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.2}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -4140679158150544103, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 12a488a73d928c440912790a92e3a00e, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1090,10 +1298,48 @@ MonoBehaviour:
   panelRoot: {fileID: 820000210}
   frameImage: {fileID: 820000213}
   iconImage: {fileID: 820000218}
-  emptyIconSprite: {fileID: -5961827920145167281, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  emptyIconSprite: {fileID: 21300000, guid: cf56ee07cc8954646a0a2b32fbebc9a0, type: 3}
   chargeSlider: {fileID: 0}
   chargeFillImage: {fileID: 820000223}
   labelText: {fileID: 820000228}
+  topBarIconSize: {x: 42, y: 42}
+  compactTopBarIconSize: {x: 104, y: 104}
+  topBarPadding: 10
+  topBarBackgroundTopInset: 8
+  compactTopBarBackgroundTopInset: 12
+  compactTopBarSidePadding: 7
+  topBarBackgroundHeight: 86
+  compactTopBarBackgroundHeight: 156
+  compactTopBarIconTopInset: 20
+  compactTopBarLabelTopInset: 12
+  compactTopBarLabelHeight: 32
+  compactTopBarChargeBottomInset: 6
+  compactTopBarTextGap: 12
+  topBarLabelFontSize: 18
+  topBarTitleFontSize: 10
+  topBarValueFontSize: 20
+  compactTopBarTitleFontSize: 11
+  compactTopBarValueFontSize: 18
+  topBarChargeHeight: 16
+  compactTopBarChargeHeight: 20
+  compactTopBarLineSpacing: 0.88
+  titleTextColor: {r: 0.92, g: 0.95, b: 1, a: 0.62}
+  placeholderTextColor: {r: 1, g: 1, b: 1, a: 0.68}
+  challengeBaselineTitleColor: {r: 1, g: 0.94, b: 0.82, a: 0.72}
+  challengeBaselineValueColor: {r: 1, g: 0.88, b: 0.62, a: 1}
+  frameTint: {r: 0.1, g: 0.18, b: 0.24, a: 0.18}
+  readyAccent: {r: 1, g: 0.82, b: 0.42, a: 1}
+  cooldownAccent: {r: 0.5, g: 0.85, b: 1, a: 1}
+  timedAccent: {r: 0.58, g: 1, b: 0.74, a: 1}
+  compactFrameAlphaScale: 0.84
+  compactTitleAlphaScale: 1.08
+  compactValueAlphaScale: 1.1
+  compactChargeAlphaScale: 1.06
+  challengeFrameTintStrength: 0.54
+  challengeValueTintStrength: 0.62
+  challengeIconTintStrength: 0.3
+  compactTextShadowColor: {r: 0.02, g: 0.05, b: 0.08, a: 0.74}
+  compactTextShadowDistance: {x: 1.25, y: -1.25}
 --- !u!1 &820000215
 GameObject:
   m_ObjectHideFlags: 0
@@ -1159,7 +1405,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -5961827920145167281, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  m_Sprite: {fileID: 21300000, guid: cf56ee07cc8954646a0a2b32fbebc9a0, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1227,19 +1473,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.45, g: 0.92, b: 0.63, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 0ff04b29fd338fb46a471b94b53b0e7f, type: 3}
+  m_Type: 3
   m_PreserveAspect: 0
   m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 0
+  m_FillMethod: 0
+  m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
@@ -1322,7 +1568,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: <size=11>액티브</size>\n<size=19>비어 있음</size>
+  m_Text: "<size=11>\uC561\uD2F0\uBE0C</size>\n<size=19>\uBE44\uC5B4 \uC788\uC74C</size>"
 --- !u!1 &820000230
 GameObject:
   m_ObjectHideFlags: 0
@@ -1384,14 +1630,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.08}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 1658d7a72bbebb148bcd9ae36b478203, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1419,6 +1665,37 @@ MonoBehaviour:
   fillRect: {fileID: 820000241}
   fillSlider: {fileID: 0}
   bossNameText: {fileID: 820000238}
+  bossSubtitleText: {fileID: 0}
+  bossBadgeText: {fileID: 0}
+  bossStatusText: {fileID: 0}
+  bossHealthValueText: {fileID: 0}
+  fallbackSubtitleFontSize: 20
+  subtitleColor: {r: 1, g: 0.88, b: 0.62, a: 0.96}
+  accentTransitionSpeed: 10
+  topHudPanelSize: {x: 760, y: 92}
+  topHudNameSize: {x: 420, y: 30}
+  topHudSubtitleSize: {x: 420, y: 24}
+  topHudBadgeSize: {x: 120, y: 20}
+  topHudStatusSize: {x: 160, y: 22}
+  topHudValueSize: {x: 120, y: 28}
+  topHudBadgeFontSize: 14
+  topHudNameFontSize: 28
+  topHudSubtitleFontSize: 18
+  topHudStatusFontSize: 16
+  topHudValueFontSize: 20
+  topHudBarHeight: 22
+  compactHorizontalPadding: 18
+  compactMetricColumnWidth: 156
+  compactNameMinimumWidth: 240
+  compactNameTopOffset: 24
+  compactBadgeTopOffset: 8
+  compactSubtitleBottomOffset: 34
+  compactBarBottomOffset: 10
+  badgeColor: {r: 1, g: 0.78, b: 0.42, a: 0.96}
+  statusColor: {r: 0.94, g: 0.9, b: 0.82, a: 0.96}
+  healthValueColor: {r: 1, g: 0.95, b: 0.8, a: 0.98}
+  criticalFillAccent: {r: 1, g: 0.3, b: 0.24, a: 1}
+  criticalHealthThreshold: 0.2
 --- !u!1 &820000235
 GameObject:
   m_ObjectHideFlags: 0
@@ -1497,7 +1774,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 보스
+  m_Text: "\uBCF4\uC2A4"
 --- !u!1 &820000240
 GameObject:
   m_ObjectHideFlags: 0
@@ -1556,18 +1833,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.86, g: 0.16, b: 0.16, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: e8b6d7f59e76ebe41bdb819d4ce60f17, type: 3}
+  m_Type: 3
   m_PreserveAspect: 0
   m_FillCenter: 1
-  m_FillMethod: 4
+  m_FillMethod: 0
   m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
@@ -1633,14 +1910,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.12, b: 0.12, a: 0.72}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 020ed8b68e670364f951f87d80ab2ff9, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1668,27 +1945,241 @@ MonoBehaviour:
   viewportRoot: {fileID: 820000271}
   contentRoot: {fileID: 820000256}
   placeholderText: {fileID: 820000263}
+  roomTypeBadgeImage: {fileID: 0}
+  roomTypeIconImage: {fileID: 0}
+  roomTypeLabelText: {fileID: 0}
+  roomStatusCardImage: {fileID: 0}
+  roomStatusAccentImage: {fileID: 0}
+  roomDetailCardImage: {fileID: 0}
+  roomDetailAccentImage: {fileID: 0}
+  roomStatusText: {fileID: 0}
+  roomDetailText: {fileID: 0}
+  createMissingStatusElements: 0
+  preserveAuthoredStatusLayout: 1
+  showRoomStatusElements: 0
   nodeTemplate: {fileID: 0}
   nodeSpacing: {x: 42, y: 42}
   baseNodeSize: {x: 32, y: 32}
   connectionThickness: 12
   currentRoomFocusOffset: {x: 0, y: 0}
   hideHiddenRooms: 0
-  currentNodeScaleMultiplier: 1.3
-  hideUnknownRooms: 1
-  unknownStateColor: {r: 1, g: 1, b: 1, a: 0.12}
-  visitedStateColor: {r: 0.24, g: 0.3, b: 0.42, a: 0.95}
-  currentStateColor: {r: 0.38, g: 0.62, b: 0.92, a: 1}
-  clearedStateColor: {r: 0.29, g: 0.55, b: 0.34, a: 1}
-  currentOutlineColor: {r: 1, g: 1, b: 1, a: 0.9}
+  compactNodeSpacing: {x: 22, y: 22}
+  compactBaseNodeSize: {x: 16, y: 16}
+  compactContentSize: {x: 340, y: 236}
+  compactPlaceholderSize: {x: 180, y: 24}
+  compactPlaceholderOffset: {x: 0, y: 0}
+  compactConnectionThickness: 5
+  compactPlaceholderFontSize: 18
+  compactViewportOffsetMin: {x: 4, y: 4}
+  compactViewportOffsetMax: {x: -4, y: -4}
+  expandedViewportOffsetMin: {x: 10, y: 10}
+  expandedViewportOffsetMax: {x: -10, y: -28}
+  compactFloatingBackgroundColor: {r: 0.04, g: 0.08, b: 0.14, a: 0.1}
+  compactFloatingFrameColor: {r: 0.78, g: 0.88, b: 1, a: 0.07}
+  roomTypeBadgePosition: {x: 10, y: -8}
+  roomTypeBadgeSize: {x: 128, y: 28}
+  roomTypeIconPosition: {x: 18, y: -14}
+  roomTypeIconSize: {x: 16, y: 16}
+  roomTypeLabelPosition: {x: 40, y: -11}
+  roomTypeLabelSize: {x: 92, y: 18}
+  roomStatusCardPosition: {x: 10, y: -40}
+  roomStatusCardSize: {x: 216, y: 56}
+  roomStatusAccentPosition: {x: 10, y: -40}
+  roomStatusAccentSize: {x: 6, y: 56}
+  roomStatusTextPosition: {x: 18, y: -46}
+  roomStatusTextSize: {x: 200, y: 46}
+  roomDetailCardPosition: {x: 10, y: -102}
+  roomDetailCardSize: {x: 252, y: 58}
+  roomDetailAccentPosition: {x: 10, y: -102}
+  roomDetailAccentSize: {x: 4, y: 58}
+  roomDetailTextPosition: {x: 18, y: -110}
+  roomDetailTextSize: {x: 236, y: 42}
+  challengeBaselineRoomStatusCardSize: {x: 220, y: 58}
+  challengePaceRoomStatusCardSize: {x: 224, y: 62}
+  eliteWarningRoomStatusCardSize: {x: 228, y: 66}
+  challengeBaselineRoomStatusTextSize: {x: 202, y: 48}
+  challengePaceRoomStatusTextSize: {x: 206, y: 52}
+  eliteWarningRoomStatusTextSize: {x: 210, y: 56}
+  challengeBaselineRoomDetailCardSize: {x: 256, y: 60}
+  challengePaceRoomDetailCardSize: {x: 260, y: 64}
+  eliteWarningRoomDetailCardSize: {x: 264, y: 68}
+  challengeBaselineRoomDetailTextSize: {x: 238, y: 44}
+  challengePaceRoomDetailTextSize: {x: 242, y: 48}
+  eliteWarningRoomDetailTextSize: {x: 246, y: 52}
+  compactRoomTypeBadgePosition: {x: 6, y: -4}
+  compactRoomTypeBadgeSize: {x: 88, y: 20}
+  compactRoomTypeIconPosition: {x: 10, y: -9}
+  compactRoomTypeIconSize: {x: 9, y: 9}
+  compactRoomTypeLabelPosition: {x: 24, y: -7}
+  compactRoomTypeLabelSize: {x: 62, y: 12}
+  hideStatusCardsInTopBar: 1
+  hideRoomTypeBadgeInTopBar: 1
+  compactRoomStatusCardPosition: {x: 6, y: -28}
+  compactRoomStatusCardSize: {x: 152, y: 24}
+  compactRoomStatusAccentPosition: {x: 6, y: -32}
+  compactRoomStatusAccentSize: {x: 4, y: 24}
+  compactRoomStatusTextPosition: {x: 14, y: -35}
+  compactRoomStatusTextSize: {x: 138, y: 16}
+  challengeBaselineCompactRoomStatusCardSize: {x: 154, y: 26}
+  challengePaceCompactRoomStatusCardSize: {x: 156, y: 28}
+  eliteWarningCompactRoomStatusCardSize: {x: 158, y: 30}
+  challengeBaselineCompactRoomStatusTextSize: {x: 140, y: 18}
+  challengePaceCompactRoomStatusTextSize: {x: 142, y: 20}
+  eliteWarningCompactRoomStatusTextSize: {x: 144, y: 22}
+  challengeBaselineRoomStatusContentShiftX: 4
+  challengePaceRoomStatusContentShiftX: 6
+  eliteWarningRoomStatusContentShiftX: 8
+  challengeBaselineCompactRoomStatusContentShiftX: 3
+  challengePaceCompactRoomStatusContentShiftX: 4
+  eliteWarningCompactRoomStatusContentShiftX: 5
+  challengeBaselineRoomDetailContentShiftX: 4
+  challengePaceRoomDetailContentShiftX: 6
+  eliteWarningRoomDetailContentShiftX: 8
+  challengeBaselineRoomStatusTextWidthTrim: 8
+  challengePaceRoomStatusTextWidthTrim: 12
+  eliteWarningRoomStatusTextWidthTrim: 16
+  challengeBaselineCompactRoomStatusTextWidthTrim: 6
+  challengePaceCompactRoomStatusTextWidthTrim: 8
+  eliteWarningCompactRoomStatusTextWidthTrim: 10
+  challengeBaselineRoomDetailTextWidthTrim: 10
+  challengePaceRoomDetailTextWidthTrim: 14
+  eliteWarningRoomDetailTextWidthTrim: 18
+  placeholderTextColor: {r: 0.9, g: 0.94, b: 1, a: 0.85}
+  roomTypeBadgeBaseColor: {r: 0.1, g: 0.15, b: 0.22, a: 0.92}
+  roomTypeLabelColor: {r: 0.95, g: 0.98, b: 1, a: 0.96}
+  roomStatusCardColor: {r: 0.08, g: 0.12, b: 0.18, a: 0.86}
+  roomDetailCardColor: {r: 0.08, g: 0.12, b: 0.18, a: 0.72}
+  roomStatusLabelColor: {r: 0.7, g: 0.8, b: 0.95, a: 0.9}
+  roomDetailColor: {r: 0.76, g: 0.82, b: 0.92, a: 0.96}
+  roomTypeFontSize: 15
+  roomStatusFontSize: 24
+  roomDetailFontSize: 18
+  compactRoomStatusFontSize: 15
+  compactRoomTypeFontSize: 11
+  roomStatusEyebrowFontSize: 12
+  roomDetailEyebrowFontSize: 11
+  challengeBaselineStatusEyebrowFontSize: 12
+  challengePaceStatusEyebrowFontSize: 13
+  eliteWarningStatusEyebrowFontSize: 14
+  challengeBaselineDetailEyebrowFontSize: 11
+  challengePaceDetailEyebrowFontSize: 12
+  eliteWarningDetailEyebrowFontSize: 13
+  challengeBaselineDetailFontSize: 18
+  challengePaceDetailFontSize: 19
+  eliteWarningDetailFontSize: 20
+  challengeBaselineCompactTagFontSize: 12
+  challengePaceCompactTagFontSize: 13
+  eliteWarningCompactTagFontSize: 14
+  challengeBaselineStatusLineSpacing: 0.98
+  challengePaceStatusLineSpacing: 0.94
+  eliteWarningStatusLineSpacing: 0.9
+  challengeBaselineCompactStatusLineSpacing: 0.96
+  challengePaceCompactStatusLineSpacing: 0.92
+  eliteWarningCompactStatusLineSpacing: 0.88
+  challengeBaselineDetailLineSpacing: 1
+  challengePaceDetailLineSpacing: 0.96
+  eliteWarningDetailLineSpacing: 0.92
+  roomTypeBadgeMinWidth: 104
+  roomTypeBadgeMaxWidth: 164
+  roomTypeBadgeCharacterWidth: 11
+  compactRoomTypeBadgeMinWidth: 76
+  compactRoomTypeBadgeMaxWidth: 112
+  compactRoomTypeBadgeCharacterWidth: 8
+  accentRailOpacity: 0.92
+  roomDetailMaxCharacters: 92
+  compactRoomStatusMaxCharacters: 22
+  compactChallengePrimaryMinCharacters: 8
+  compactChallengeTagMaxCharacters: 6
+  statusEmphasisPulseSpeed: 3.2
+  statusEmphasisTintStrength: 0.22
+  statusEmphasisTextBoost: 0.16
+  topBarStatusEmphasisDamping: 0.62
+  curseAlertBadgeColor: {r: 0.42, g: 0.08, b: 0.14, a: 0.96}
+  curseAlertStatusCardColor: {r: 0.3, g: 0.06, b: 0.1, a: 0.92}
+  curseAlertDetailCardColor: {r: 0.2, g: 0.05, b: 0.09, a: 0.82}
+  curseAlertDetailTextColor: {r: 1, g: 0.84, b: 0.9, a: 0.98}
+  curseAltarReadyBadgeColor: {r: 0.46, g: 0.14, b: 0.08, a: 0.98}
+  curseAltarReadyStatusCardColor: {r: 0.34, g: 0.1, b: 0.08, a: 0.94}
+  curseAltarReadyDetailCardColor: {r: 0.26, g: 0.09, b: 0.08, a: 0.86}
+  curseAltarReadyDetailTextColor: {r: 1, g: 0.92, b: 0.8, a: 1}
+  challengeThreatBadgeColor: {r: 0.42, g: 0.12, b: 0.06, a: 0.96}
+  challengeBaselineBadgeColor: {r: 0.42, g: 0.22, b: 0.08, a: 0.96}
+  challengeBaselineStatusCardColor: {r: 0.24, g: 0.13, b: 0.06, a: 0.92}
+  challengeBaselineDetailCardColor: {r: 0.2, g: 0.11, b: 0.06, a: 0.84}
+  challengeBaselineDetailTextColor: {r: 1, g: 0.92, b: 0.8, a: 0.98}
+  challengeBaselineLabelColor: {r: 1, g: 0.94, b: 0.82, a: 0.98}
+  challengeRewardReadyBadgeColor: {r: 0.48, g: 0.2, b: 0.08, a: 0.97}
+  challengeRewardReadyLabelColor: {r: 1, g: 0.93, b: 0.78, a: 1}
+  challengeCompletedBadgeColor: {r: 0.42, g: 0.3, b: 0.08, a: 0.97}
+  challengeCompletedLabelColor: {r: 1, g: 0.96, b: 0.72, a: 1}
+  challengeFinaleBadgeColor: {r: 0.52, g: 0.34, b: 0.08, a: 0.98}
+  challengeFinaleLabelColor: {r: 1, g: 0.98, b: 0.8, a: 1}
+  challengeRewardReadyCompactTagColor: {r: 1, g: 0.9, b: 0.56, a: 1}
+  challengeCompletedCompactTagColor: {r: 0.84, g: 1, b: 0.78, a: 1}
+  challengeFinaleCompactTagColor: {r: 1, g: 0.96, b: 0.7, a: 1}
+  challengeThreatStatusCardColor: {r: 0.3, g: 0.1, b: 0.06, a: 0.92}
+  challengeThreatDetailCardColor: {r: 0.24, g: 0.09, b: 0.06, a: 0.84}
+  challengeThreatDetailTextColor: {r: 1, g: 0.9, b: 0.78, a: 0.98}
+  challengeThreatEyebrowColor: {r: 1, g: 0.84, b: 0.66, a: 0.98}
+  challengeThreatCompactTagColor: {r: 1, g: 0.92, b: 0.76, a: 1}
+  challengeThreatAccentRailBoost: 0.24
+  challengeThreatEyebrowBoost: 0.28
+  curseRareRewardThemeColor: {r: 0.56, g: 0.76, b: 1, a: 1}
+  curseLegendaryRewardThemeColor: {r: 1, g: 0.68, b: 0.24, a: 1}
+  curseRelicRewardThemeColor: {r: 1, g: 0.88, b: 0.44, a: 1}
+  curseBossRewardThemeColor: {r: 1, g: 0.42, b: 0.36, a: 1}
+  hiddenFrameColor: {r: 0.44, g: 0.5, b: 0.6, a: 0.28}
+  hiddenFillColor: {r: 1, g: 1, b: 1, a: 0}
+  discoveredFillColor: {r: 0.18, g: 0.22, b: 0.28, a: 0.55}
+  visitedFillColor: {r: 0.32, g: 0.38, b: 0.48, a: 0.88}
+  clearedFillColor: {r: 0.29, g: 0.54, b: 0.35, a: 0.95}
+  currentFillColor: {r: 0.5, g: 0.72, b: 0.98, a: 1}
+  currentMarkerColor: {r: 1, g: 1, b: 1, a: 0.92}
   clearedMarkerColor: {r: 1, g: 1, b: 1, a: 0.92}
-  startRoomColor: {r: 0.85, g: 0.92, b: 1, a: 1}
-  normalRoomColor: {r: 0.88, g: 0.88, b: 0.88, a: 1}
-  bossRoomColor: {r: 0.95, g: 0.35, b: 0.35, a: 1}
-  treasureRoomColor: {r: 1, g: 0.85, b: 0.28, a: 1}
-  shopRoomColor: {r: 0.35, g: 0.95, b: 0.85, a: 1}
-  secretRoomColor: {r: 0.82, g: 0.55, b: 1, a: 1}
-  challengeRoomColor: {r: 1, g: 0.64, b: 0.22, a: 1}
+  rewardMarkerColor: {r: 1, g: 0.84, b: 0.3, a: 0.98}
+  collectedRewardMarkerColor: {r: 0.52, g: 1, b: 0.72, a: 0.98}
+  secretRewardMarkerColor: {r: 1, g: 0.9, b: 0.52, a: 1}
+  challengeCompletedRewardMarkerColor: {r: 1, g: 0.9, b: 0.46, a: 1}
+  challengeCompletedClearedMarkerColor: {r: 1, g: 0.96, b: 0.72, a: 0.98}
+  challengeCompletedFillColor: {r: 0.4, g: 0.32, b: 0.12, a: 0.98}
+  startFrameColor: {r: 0.85, g: 0.92, b: 1, a: 1}
+  normalFrameColor: {r: 0.88, g: 0.88, b: 0.88, a: 1}
+  bossFrameColor: {r: 0.95, g: 0.35, b: 0.35, a: 1}
+  miniBossFrameColor: {r: 0.9, g: 0.46, b: 0.9, a: 1}
+  treasureFrameColor: {r: 1, g: 0.85, b: 0.28, a: 1}
+  shopFrameColor: {r: 0.35, g: 0.95, b: 0.85, a: 1}
+  secretFrameColor: {r: 0.82, g: 0.55, b: 1, a: 1}
+  secretConnectionColor: {r: 0.92, g: 0.74, b: 1, a: 1}
+  lockedConnectionColor: {r: 1, g: 0.82, b: 0.36, a: 1}
+  secretLinkCurrentRoomPulseColor: {r: 0.94, g: 0.82, b: 1, a: 1}
+  secretRewardNodePulseColor: {r: 1, g: 0.9, b: 0.56, a: 1}
+  curseAltarReadyNodePulseColor: {r: 1, g: 0.78, b: 0.34, a: 1}
+  challengeThreatNodePulseColor: {r: 1, g: 0.58, b: 0.24, a: 1}
+  challengeThreatHeavyNodePulseColor: {r: 1, g: 0.36, b: 0.22, a: 1}
+  challengeFrameColor: {r: 1, g: 0.64, b: 0.22, a: 1}
+  trapFrameColor: {r: 1, g: 0.45, b: 0.3, a: 1}
+  curseFrameColor: {r: 0.86, g: 0.32, b: 0.66, a: 1}
+  secretLinkNodePulseSpeed: 2.4
+  secretLinkNodePulseTintStrength: 0.18
+  secretLinkNodePulseScaleAmplitude: 1.05
+  secretRewardNodePulseSpeed: 3.4
+  secretRewardNodePulseTintStrength: 0.24
+  secretRewardNodePulseScaleAmplitude: 1.08
+  curseAltarReadyNodePulseSpeed: 2.9
+  curseAltarReadyNodePulseTintStrength: 0.22
+  curseAltarReadyNodePulseScaleAmplitude: 1.1
+  challengeThreatNodePulseSpeed: 3.05
+  challengeThreatNodePulseTintStrength: 0.2
+  challengeThreatNodePulseScaleAmplitude: 1.1
+  challengeCompletedNodePulseColor: {r: 1, g: 0.88, b: 0.38, a: 1}
+  challengeCompletedNodePulseSpeed: 2.15
+  challengeCompletedNodePulseTintStrength: 0.14
+  challengeCompletedNodePulseScaleAmplitude: 1.06
+  challengeThreatTransitionFlashDuration: 0.9
+  challengeThreatTransitionFlashColor: {r: 1, g: 0.86, b: 0.52, a: 1}
+  challengeThreatTransitionPulseSpeedBonus: 0.7
+  challengeThreatTransitionPulseTintBoost: 0.08
+  challengeThreatTransitionPulseScaleBoost: 0.05
   startRoomIcon: {fileID: 1435560553650173908, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
   normalRoomIcon: {fileID: 8692006518550237604, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
   bossRoomIcon: {fileID: 3981049317945334682, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
@@ -1719,43 +2210,6 @@ MonoBehaviour:
   challengeRoomTileSprite: {fileID: 4060924930900977660, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
   trapRoomTileSprite: {fileID: -1107501060675568549, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
   curseRoomTileSprite: {fileID: -1846042476809360852, guid: 4db0e3983e2b246429612c87b9b34318, type: 3}
---- !u!1 &820000270
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 820000271}
-  m_Layer: 5
-  m_Name: ViewportRoot
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &820000271
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 820000270}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 820000256}
-  - {fileID: 820000261}
-  m_Father: {fileID: 820000251}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -12, y: -12}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &820000255
 GameObject:
   m_ObjectHideFlags: 0
@@ -1868,8 +2322,45 @@ MonoBehaviour:
     m_RichText: 1
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
-  m_LineSpacing: 1
-  m_Text: 지도
+    m_LineSpacing: 1
+  m_Text: "\uC9C0\uB3C4"
+--- !u!1 &820000270
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 820000271}
+  m_Layer: 5
+  m_Name: ViewportRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &820000271
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 820000270}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 820000256}
+  - {fileID: 820000261}
+  m_Father: {fileID: 820000251}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: -12, y: -12}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &820000280
 GameObject:
   m_ObjectHideFlags: 0
@@ -1888,7 +2379,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &820000281
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1933,14 +2424,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.18}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: e9f39f4d21b3a9e4daa7ebcabed27155, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1968,6 +2459,54 @@ MonoBehaviour:
   fireRateValueText: {fileID: 820000292}
   projectileSpeedValueText: {fileID: 820000296}
   luckValueText: {fileID: 820000300}
+  momentumStatusText: {fileID: 0}
+  projectileTraitStatusText: {fileID: 0}
+  topBarPadding: 8
+  topBarBackgroundTopInset: 8
+  compactTopBarBackgroundTopInset: 10
+  topBarColumnGap: 8
+  compactTopBarColumnGap: 6
+  topBarRowGap: 6
+  compactTopBarRowGap: 5
+  topBarContentTopInset: 10
+  compactTopBarContentTopInset: 12
+  compactTopBarColumnWidth: 76
+  topBarFontSize: 20
+  topBarLabelFontSize: 12
+  topBarValueFontSize: 24
+  compactTopBarLabelFontSize: 13
+  compactTopBarValueFontSize: 22
+  topBarRowHeight: 38
+  compactTopBarRowHeight: 34
+  topBarMomentumRowHeight: 24
+  compactTopBarMomentumRowHeight: 18
+  topBarTraitRowHeight: 22
+  compactTopBarTraitRowHeight: 17
+  topBarBackgroundHeight: 86
+  compactTopBarBackgroundHeight: 78
+  topBarMomentumTopGap: 6
+  compactTopBarMomentumTopGap: 4
+  topBarTraitTopGap: 4
+  compactTopBarTraitTopGap: 3
+  topBarLineSpacing: 0.9
+  panelTint: {r: 0.2, g: 0.28, b: 0.38, a: 0.24}
+  statTextColor: {r: 0.98, g: 0.99, b: 1, a: 1}
+  statLabelColor: {r: 0.96, g: 0.98, b: 1, a: 0.78}
+  statValueColor: {r: 1, g: 0.9, b: 0.58, a: 1}
+  challengeBaselinePanelTint: {r: 0.34, g: 0.22, b: 0.1, a: 0.24}
+  challengeBaselineLabelColor: {r: 1, g: 0.94, b: 0.82, a: 0.78}
+  challengeBaselineValueColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  momentumReadyLabelColor: {r: 0.82, g: 0.94, b: 1, a: 0.9}
+  momentumReadyValueColor: {r: 0.96, g: 1, b: 0.98, a: 1}
+  momentumPanelTintStrength: 0.24
+  compactPanelAlphaScale: 0.84
+  compactLabelAlphaScale: 1.02
+  compactValueAlphaScale: 1.08
+  challengePanelTintStrength: 0.42
+  challengeValueTintStrength: 0.58
+  challengePulseAmplitude: 0.12
+  compactTextShadowColor: {r: 0.02, g: 0.05, b: 0.08, a: 0.74}
+  compactTextShadowDistance: {x: 1.25, y: -1.25}
 --- !u!1 &820000285
 GameObject:
   m_ObjectHideFlags: 0
@@ -2046,7 +2585,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: <size=10><color=#EBF2FF99>공격</color></size>\n<size=20><b><color=#FFD672FF>--</color></b></size>
+  m_Text: "<size=10><color=#EBF2FF99>\uACF5\uACA9</color></size>\n<size=20><b><color=#FFD672FF>--</color></b></size>"
 --- !u!1 &820000289
 GameObject:
   m_ObjectHideFlags: 0
@@ -2125,7 +2664,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: <size=10><color=#EBF2FF99>연사</color></size>\n<size=20><b><color=#FFD672FF>--</color></b></size>
+  m_Text: "<size=10><color=#EBF2FF99>\uC5F0\uC0AC</color></size>\n<size=20><b><color=#FFD672FF>--</color></b></size>"
 --- !u!1 &820000293
 GameObject:
   m_ObjectHideFlags: 0
@@ -2204,7 +2743,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: <size=10><color=#EBF2FF99>탄속</color></size>\n<size=20><b><color=#FFD672FF>--</color></b></size>
+  m_Text: "<size=10><color=#EBF2FF99>\uD0C4\uC18D</color></size>\n<size=20><b><color=#FFD672FF>--</color></b></size>"
 --- !u!1 &820000297
 GameObject:
   m_ObjectHideFlags: 0
@@ -2283,7 +2822,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: <size=10><color=#EBF2FF99>행운</color></size>\n<size=20><b><color=#FFD672FF>--</color></b></size>
+  m_Text: "<size=10><color=#EBF2FF99>\uD589\uC6B4</color></size>\n<size=20><b><color=#FFD672FF>--</color></b></size>"
 --- !u!1 &820000310
 GameObject:
   m_ObjectHideFlags: 0
@@ -2346,14 +2885,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.2}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -915197303499889579, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 2d2453604cd82434192ef65bf91cd82f, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2378,9 +2917,52 @@ MonoBehaviour:
   panelRoot: {fileID: 820000310}
   frameImage: {fileID: 820000313}
   iconImage: {fileID: 820000318}
-  emptyIconSprite: {fileID: -4468961221353430322, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  emptyIconSprite: {fileID: 21300000, guid: 9d3056a1ee9c1cb43866915e9f0f5feb, type: 3}
   titleText: {fileID: 820000323}
   detailText: {fileID: 820000328}
+  placeholderColor: {r: 1, g: 1, b: 1, a: 0.7}
+  commonAccent: {r: 0.86, g: 0.86, b: 0.86, a: 1}
+  uncommonAccent: {r: 0.52, g: 0.95, b: 0.72, a: 1}
+  rareAccent: {r: 0.45, g: 0.8, b: 1, a: 1}
+  legendaryAccent: {r: 1, g: 0.78, b: 0.32, a: 1}
+  challengeBaselineCategoryColor: {r: 1, g: 0.94, b: 0.82, a: 0.72}
+  challengeBaselineTitleValueColor: {r: 1, g: 0.88, b: 0.62, a: 1}
+  challengeBaselineDetailValueColor: {r: 1, g: 0.9, b: 0.74, a: 0.9}
+  topBarIconSize: {x: 34, y: 34}
+  compactTopBarIconSize: {x: 36, y: 36}
+  topBarPadding: 10
+  topBarBackgroundTopInset: 8
+  compactTopBarBackgroundTopInset: 12
+  compactTopBarSidePadding: 12
+  topBarBackgroundHeight: 86
+  compactTopBarBackgroundHeight: 78
+  compactTopBarIconTopInset: 12
+  compactTopBarTitleTopInset: 12
+  compactTopBarDetailTopInset: 33
+  compactTopBarTitleHeight: 22
+  compactTopBarDetailHeight: 24
+  compactTopBarTextGap: 12
+  topBarTitleFontSize: 19
+  topBarCategoryFontSize: 10
+  topBarDetailFontSize: 14
+  compactTopBarCategoryFontSize: 10
+  compactTopBarTitleFontSize: 18
+  compactTopBarDetailValueFontSize: 13
+  compactTopBarTitleLineSpacing: 0.88
+  compactTopBarDetailLineSpacing: 0.86
+  categoryTextColor: {r: 0.92, g: 0.95, b: 1, a: 0.62}
+  detailTextColor: {r: 1, g: 1, b: 1, a: 0.82}
+  compactFrameAlphaScale: 0.84
+  compactCategoryAlphaScale: 1.06
+  compactTitleValueAlphaScale: 1.1
+  compactDetailValueAlphaScale: 1.08
+  challengeFrameTintStrength: 0.46
+  challengeValueTintStrength: 0.58
+  challengeIconTintStrength: 0.28
+  challengeDetailTintStrength: 0.34
+  compactTitleShadowColor: {r: 0.02, g: 0.05, b: 0.08, a: 0.76}
+  compactDetailShadowColor: {r: 0.02, g: 0.05, b: 0.08, a: 0.66}
+  compactTextShadowDistance: {x: 1.2, y: -1.2}
 --- !u!1 &820000315
 GameObject:
   m_ObjectHideFlags: 0
@@ -2446,7 +3028,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -4468961221353430322, guid: 57941c82e7945ad4688520b2c91fa5c7, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9d3056a1ee9c1cb43866915e9f0f5feb, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2534,7 +3116,8 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: <size=10><color=#EBF2FF9E>장신구 슬롯</color></size>\n<size=19><b><color=#FFFFFFB3>비어 있음</color></b></size>
+  m_Text: "<size=10><color=#EBF2FF9E>\uC7A5\uC2E0\uAD6C \uC2AC\uB86F</color></size>\n<size=19><b><color=#FFFFFFB3>\uBE44\uC5B4
+    \uC788\uC74C</color></b></size>"
 --- !u!1 &820000325
 GameObject:
   m_ObjectHideFlags: 0
@@ -2613,5 +3196,581 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: <size=10><color=#AAB4C7FF>상태</color></size>
-빈 슬롯
+  m_Text: "<size=10><color=#AAB4C7FF>\uC0C1\uD0DC</color></size>"
+--- !u!1 &1768929884310548588
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5994741709628010396}
+  - component: {fileID: 3921123223709516349}
+  - component: {fileID: 6529502929545593873}
+  m_Layer: 0
+  m_Name: WeaponAmmo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5994741709628010396
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768929884310548588}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 9217074639278256263}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &3921123223709516349
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768929884310548588}
+  m_CullTransparentMesh: 1
+--- !u!114 &6529502929545593873
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768929884310548588}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 0}
+    m_FontSize: 44
+    m_FontStyle: 1
+    m_BestFit: 1
+    m_MinSize: 28
+    m_MaxSize: 46
+    m_Alignment: 3
+    m_AlignByGeometry: 1
+    m_RichText: 0
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: --/--
+--- !u!1 &2068805476373554656
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9217074639278256263}
+  - component: {fileID: 7821149433712224876}
+  - component: {fileID: 8211503946155945188}
+  m_Layer: 0
+  m_Name: WeaponAmmoPlate
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &9217074639278256263
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2068805476373554656}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5994741709628010396}
+  m_Father: {fileID: 7963739960457735370}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 58, y: 18}
+  m_Pivot: {x: 0, y: 1}
+--- !u!222 &7821149433712224876
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2068805476373554656}
+  m_CullTransparentMesh: 1
+--- !u!114 &8211503946155945188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2068805476373554656}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!1 &3530736843525616187
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7544842887368239914}
+  - component: {fileID: 8509052341196404054}
+  - component: {fileID: 3574725414711798513}
+  m_Layer: 0
+  m_Name: ReloadTrack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &7544842887368239914
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3530736843525616187}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6454586263518959459}
+  m_Father: {fileID: 7963739960457735370}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 2, y: -5}
+  m_SizeDelta: {x: 54, y: 5}
+  m_Pivot: {x: 0, y: 0}
+--- !u!222 &8509052341196404054
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3530736843525616187}
+  m_CullTransparentMesh: 1
+--- !u!114 &3574725414711798513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3530736843525616187}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 098b8441ab66c3d4990318a32c2b2083, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!1 &4935521067810811522
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7963739960457735370}
+  - component: {fileID: 6129771499370287981}
+  - component: {fileID: 8039095116405389230}
+  - component: {fileID: 518180909186733498}
+  m_Layer: 0
+  m_Name: WeaponPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &7963739960457735370
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4935521067810811522}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 8298966566529862341}
+  - {fileID: 9217074639278256263}
+  - {fileID: 7544842887368239914}
+  m_Father: {fileID: 820000121}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
+  m_AnchoredPosition: {x: -22, y: 20}
+  m_SizeDelta: {x: 86, y: 66}
+  m_Pivot: {x: 1, y: 0}
+--- !u!222 &6129771499370287981
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4935521067810811522}
+  m_CullTransparentMesh: 1
+--- !u!114 &8039095116405389230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4935521067810811522}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 0, g: 0, b: 0, a: 0}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &518180909186733498
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4935521067810811522}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e41fcad5c84d42ac9cd8889f1aa29d6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CuteIssac.UI.WeaponPanelView
+  panelRoot: {fileID: 4935521067810811522}
+  frameImage: {fileID: 0}
+  iconBackdropImage: {fileID: 7834709107863439388}
+  iconImage: {fileID: 2949855790310045376}
+  statusBackdropImage: {fileID: 0}
+  ammoBackdropImage: {fileID: 8211503946155945188}
+  reloadTrackImage: {fileID: 3574725414711798513}
+  reloadFillImage: {fileID: 2870051345778942248}
+  fallbackWeaponIcon: {fileID: 21300000, guid: b0be6fb7ee8133740a87f4ec8317088f, type: 3}
+  titleText: {fileID: 0}
+  statusText: {fileID: 0}
+  ammoText: {fileID: 6529502929545593873}
+  detailText: {fileID: 0}
+  loadoutText: {fileID: 0}
+  useMinimalLayout: 1
+  showReloadBarInMinimalLayout: 1
+  minimalAmmoTextColor: {r: 1, g: 1, b: 1, a: 1}
+  panelTint: {r: 0.03, g: 0.06, b: 0.1, a: 0.9}
+  iconBackdropTint: {r: 0.07, g: 0.12, b: 0.18, a: 0.97}
+  chipBackdropTint: {r: 0.09, g: 0.15, b: 0.22, a: 0.96}
+  ammoBackdropTint: {r: 0.07, g: 0.11, b: 0.17, a: 0.97}
+  placeholderTextColor: {r: 1, g: 1, b: 1, a: 0.82}
+  detailTextColor: {r: 0.9, g: 0.95, b: 1, a: 0.96}
+  loadoutTextColor: {r: 0.82, g: 0.9, b: 1, a: 0.92}
+  reloadTrackTint: {r: 0.16, g: 0.24, b: 0.34, a: 0.94}
+  authoredTitleTextColor: {r: 0.24, g: 0.15, b: 0.09, a: 1}
+  authoredPrimaryTextColor: {r: 0.3, g: 0.19, b: 0.12, a: 1}
+  authoredSecondaryTextColor: {r: 0.42, g: 0.29, b: 0.19, a: 0.98}
+  authoredMutedTextColor: {r: 0.52, g: 0.38, b: 0.27, a: 0.94}
+--- !u!1 &6241339179596138014
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5609298454573346230}
+  - component: {fileID: 2656002568808962160}
+  - component: {fileID: 2949855790310045376}
+  m_Layer: 0
+  m_Name: WeaponIcon
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5609298454573346230
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6241339179596138014}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8298966566529862341}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 40, y: 40}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &2656002568808962160
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6241339179596138014}
+  m_CullTransparentMesh: 1
+--- !u!114 &2949855790310045376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6241339179596138014}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!1 &8529342382876770326
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8298966566529862341}
+  - component: {fileID: 6700456319979928444}
+  - component: {fileID: 7834709107863439388}
+  m_Layer: 0
+  m_Name: WeaponIconBackdrop
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &8298966566529862341
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8529342382876770326}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5609298454573346230}
+  m_Father: {fileID: 7963739960457735370}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 2, y: 0}
+  m_SizeDelta: {x: 54, y: 46}
+  m_Pivot: {x: 0, y: 0}
+--- !u!222 &6700456319979928444
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8529342382876770326}
+  m_CullTransparentMesh: 1
+--- !u!114 &7834709107863439388
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8529342382876770326}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 28955ffb5e4411744b51045388cfadb0, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!1 &8535720732576480853
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6454586263518959459}
+  - component: {fileID: 1210013879491681196}
+  - component: {fileID: 2870051345778942248}
+  m_Layer: 0
+  m_Name: ReloadFill
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &6454586263518959459
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8535720732576480853}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7544842887368239914}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &1210013879491681196
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8535720732576480853}
+  m_CullTransparentMesh: 1
+--- !u!114 &2870051345778942248
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8535720732576480853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 9769b53333d6beb4989024d97b7d5769, type: 3}
+  m_Type: 3
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 0
+  m_FillAmount: 0
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1

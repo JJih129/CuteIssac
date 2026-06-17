@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Item;
 using CuteIssac.Dungeon;
 using CuteIssac.Data.Dungeon;
@@ -25,6 +26,8 @@ namespace CuteIssac.UI
         private const string RunTraceEmptyDetail = "Recent build, supply, and shop changes will stack here.";
 
         [Header("Data Sources")]
+        [Tooltip("Scene-authored reference hub. If empty, the active GameplaySceneContext is used before fallback scene search.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [Tooltip("Optional. Assign the player's health component here. If empty, the controller tries to find one in the scene.")]
         [SerializeField] private PlayerHealth playerHealth;
         [Tooltip("Optional. Assign the player's inventory component here. If empty, the controller tries to find one in the scene.")]
@@ -57,15 +60,15 @@ namespace CuteIssac.UI
         [SerializeField] private ResourcePanelView resourcePanelView;
         [Tooltip("Replaceable active item slot view. Current prototype shows a reserved placeholder.")]
         [SerializeField] private ActiveItemPanelView activeItemPanelView;
-        [Tooltip("Replaceable combat stat panel view. If empty, HUDController creates a fallback compact stat panel at runtime.")]
+        [Tooltip("Replaceable combat stat panel view. Static HUD scenes should assign this directly instead of relying on runtime creation.")]
         [SerializeField] private CombatStatPanelView combatStatPanelView;
-        [Tooltip("Replaceable trinket slot view. If empty, HUDController creates a fallback panel at runtime.")]
+        [Tooltip("Replaceable trinket slot view. Static HUD scenes should assign this directly instead of relying on runtime creation.")]
         [SerializeField] private TrinketPanelView trinketPanelView;
-        [Tooltip("Replaceable weapon loadout view. If empty, HUDController creates a fallback panel at runtime.")]
+        [Tooltip("Replaceable weapon loadout view. Static HUD scenes should assign this directly instead of relying on runtime creation.")]
         [SerializeField] private WeaponPanelView weaponPanelView;
         [Tooltip("If enabled, HUDController controls the weapon panel RectTransform. Leave disabled for scene-authored HUD layouts.")]
         [SerializeField] private bool autoLayoutWeaponPanel;
-        [Tooltip("Replaceable recent run trace history strip. If empty, HUDController creates a fallback panel at runtime.")]
+        [Tooltip("Replaceable recent run trace history strip. Static HUD scenes should assign this directly instead of relying on runtime creation.")]
         [SerializeField] private LoadoutHistoryPanelView loadoutHistoryPanelView;
         [Tooltip("Replaceable boss HP panel view. Hidden until a boss is explicitly shown.")]
         [SerializeField] private BossHpPanelView bossHpPanelView;
@@ -73,6 +76,15 @@ namespace CuteIssac.UI
         [SerializeField] private MinimapPanelView minimapPanelView;
         [Tooltip("Replaceable top HUD bar layout view. If empty, HUDController creates a fallback layout controller at runtime.")]
         [SerializeField] private TopHudBarView topHudBarView;
+        [Header("Essential HUD Mode")]
+        [Tooltip("Disable to keep an Isaac-like HUD without combat stat rows.")]
+        [SerializeField] private bool showCombatStatPanel;
+        [Tooltip("Disable to keep the HUD focused on core run information only.")]
+        [SerializeField] private bool showLoadoutHistoryPanel;
+        [Tooltip("Enable only for prototype scenes that want HUDController to re-parent and auto-arrange HUD panels into TopHudBarView slots. Keep disabled for scene-authored static HUD layouts.")]
+        [SerializeField] private bool autoArrangeTopHudBar;
+        [Tooltip("Enable only for prototype/debug scenes. Production-style scenes keep this disabled so missing HUD panel references are reported instead of being created and positioned at runtime.")]
+        [SerializeField] private bool allowRuntimeHudFallbacks;
         [Tooltip("Replaceable pause menu controller. If empty, HUDController creates one at runtime.")]
         [SerializeField] private PauseMenuController pauseMenuController;
         [Tooltip("Optional pause menu view. If empty, PauseMenuController creates a fallback parchment menu at runtime.")]
@@ -114,6 +126,7 @@ namespace CuteIssac.UI
         private bool _warnedMissingResourcePanelView;
         private bool _warnedMissingMinimapPanelView;
         private bool _warnedMissingTopHudBarView;
+        private bool _warnedRuntimeHudFallbacksDisabled;
         private bool _loggedAutoReboundHudViews;
         private bool _createdFallbackWeaponPanel;
         private RoomController _observedRoom;
@@ -365,6 +378,7 @@ namespace CuteIssac.UI
         {
             PlayerWeaponLoadout previousWeaponLoadout = playerWeaponLoadout;
             ResolveLocalHudViews();
+            ResolveReferencesFromSceneContext();
 
             if (playerHealth == null)
             {
@@ -434,6 +448,11 @@ namespace CuteIssac.UI
 
             if (playerSpeedBuffState == null)
             {
+                ResolveReferencesFromSceneContext();
+            }
+
+            if (playerSpeedBuffState == null)
+            {
                 playerSpeedBuffState = FindFirstObjectByType<PlayerSpeedBuffState>(FindObjectsInactive.Exclude);
             }
 
@@ -481,34 +500,70 @@ namespace CuteIssac.UI
                 playerRoutePlanCarryController = FindFirstObjectByType<PlayerRoutePlanCarryController>(FindObjectsInactive.Exclude);
             }
 
-            if (combatStatPanelView == null)
+            if (!showCombatStatPanel)
             {
-                combatStatPanelView = CreateFallbackCombatStatPanel();
+                HideCombatStatPanel();
+            }
+            else if (combatStatPanelView == null)
+            {
+                if (allowRuntimeHudFallbacks)
+                {
+                    combatStatPanelView = CreateFallbackCombatStatPanel();
+                }
+                else
+                {
+                    WarnRuntimeHudFallbacksDisabled();
+                }
             }
 
             if (trinketPanelView == null)
             {
-                trinketPanelView = CreateFallbackTrinketPanel();
+                if (allowRuntimeHudFallbacks)
+                {
+                    trinketPanelView = CreateFallbackTrinketPanel();
+                }
+                else
+                {
+                    WarnRuntimeHudFallbacksDisabled();
+                }
             }
 
             if (weaponPanelView == null)
             {
-                weaponPanelView = CreateFallbackWeaponPanel();
-                _createdFallbackWeaponPanel = weaponPanelView != null;
+                if (allowRuntimeHudFallbacks)
+                {
+                    weaponPanelView = CreateFallbackWeaponPanel();
+                    _createdFallbackWeaponPanel = weaponPanelView != null;
+                }
+                else
+                {
+                    WarnRuntimeHudFallbacksDisabled();
+                }
             }
 
             ApplyWeaponHudLayout(false);
 
-            if (loadoutHistoryPanelView == null)
+            if (!showLoadoutHistoryPanel)
             {
-                loadoutHistoryPanelView = CreateFallbackLoadoutHistoryPanel();
+                HideLoadoutHistoryPanel();
+            }
+            else if (loadoutHistoryPanelView == null)
+            {
+                if (allowRuntimeHudFallbacks)
+                {
+                    loadoutHistoryPanelView = CreateFallbackLoadoutHistoryPanel();
+                }
+                else
+                {
+                    WarnRuntimeHudFallbacksDisabled();
+                }
             }
 
             if (topHudBarView == null)
             {
                 topHudBarView = GetComponent<TopHudBarView>();
 
-                if (topHudBarView == null)
+                if (autoArrangeTopHudBar && topHudBarView == null)
                 {
                     topHudBarView = gameObject.AddComponent<TopHudBarView>();
                 }
@@ -557,6 +612,34 @@ namespace CuteIssac.UI
                 ResolveHudSafeArea());
 
             AuditHudViewReferences();
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            playerHealth ??= sceneContext.PlayerHealth;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerConsumableHolder ??= sceneContext.PlayerConsumableHolder;
+            playerActiveItemController ??= sceneContext.PlayerActiveItemController;
+            playerTrinketHolder ??= sceneContext.PlayerTrinketHolder;
+            playerStats ??= sceneContext.PlayerStats;
+            playerSpeedBuffState ??= sceneContext.PlayerSpeedBuffState;
+            playerWeaponLoadout ??= sceneContext.PlayerWeaponLoadout;
+            playerCombatMomentumController ??= sceneContext.PlayerCombatMomentumController;
+            playerRoutePlanCarryController ??= sceneContext.PlayerRoutePlanCarryController;
+            roomNavigationController ??= sceneContext.RoomNavigationController;
+            roomTraversalGuidanceController ??= sceneContext.RoomTraversalGuidanceController;
+            runManager ??= sceneContext.RunManager;
         }
 
         private void Subscribe()
@@ -1089,6 +1172,8 @@ namespace CuteIssac.UI
 
         private void RefreshAll()
         {
+            ApplyTopHudBarLayout();
+
             if (healthPanelView != null && playerHealth != null)
             {
                 healthPanelView.SetHealth(playerHealth.CurrentHealth, playerHealth.MaxHealth, playerHealth.SpeedHeartCount);
@@ -1115,7 +1200,6 @@ namespace CuteIssac.UI
             }
 
             SyncObservedRoom();
-            ApplyTopHudBarLayout();
             RefreshLoadoutHistory(Time.unscaledTime);
         }
 
@@ -1215,6 +1299,12 @@ namespace CuteIssac.UI
 
         private void RefreshCombatStats()
         {
+            if (!showCombatStatPanel)
+            {
+                HideCombatStatPanel();
+                return;
+            }
+
             if (combatStatPanelView == null)
             {
                 return;
@@ -1231,6 +1321,28 @@ namespace CuteIssac.UI
             }
 
             combatStatPanelView.HidePanel();
+        }
+
+        private void HideCombatStatPanel()
+        {
+            if (combatStatPanelView == null)
+            {
+                return;
+            }
+
+            combatStatPanelView.HidePanel();
+            combatStatPanelView.gameObject.SetActive(false);
+        }
+
+        private void HideLoadoutHistoryPanel()
+        {
+            if (loadoutHistoryPanelView == null)
+            {
+                return;
+            }
+
+            loadoutHistoryPanelView.HidePanel();
+            loadoutHistoryPanelView.gameObject.SetActive(false);
         }
 
         private void AuditHudViewReferences()
@@ -1253,7 +1365,7 @@ namespace CuteIssac.UI
                 _warnedMissingMinimapPanelView = true;
             }
 
-            if (topHudBarView == null && !_warnedMissingTopHudBarView)
+            if (autoArrangeTopHudBar && topHudBarView == null && !_warnedMissingTopHudBarView)
             {
                 Debug.LogWarning("HUDController is missing a TopHudBarView reference. Compact top HUD layout will not be applied until the bar view is assigned.", this);
                 _warnedMissingTopHudBarView = true;
@@ -1262,6 +1374,11 @@ namespace CuteIssac.UI
 
         private void ApplyTopHudBarLayout()
         {
+            if (!autoArrangeTopHudBar)
+            {
+                return;
+            }
+
             if (topHudBarView == null)
             {
                 return;
@@ -1275,18 +1392,32 @@ namespace CuteIssac.UI
             topHudBarView.ApplyLayout(
                 minimapPanelView != null ? minimapPanelView.transform as RectTransform : null,
                 resourcePanelView != null ? resourcePanelView.transform as RectTransform : null,
-                combatStatPanelView != null ? combatStatPanelView.transform as RectTransform : null,
+                showCombatStatPanel && combatStatPanelView != null ? combatStatPanelView.transform as RectTransform : null,
                 activeItemPanelView != null ? activeItemPanelView.transform as RectTransform : null,
                 trinketPanelView != null ? trinketPanelView.transform as RectTransform : null,
                 healthPanelView != null ? healthPanelView.transform as RectTransform : null,
                 bossHpPanelView != null ? bossHpPanelView.transform as RectTransform : null);
 
             resourcePanelView?.ApplyTopBarLayout(true);
-            combatStatPanelView?.ApplyTopBarLayout(true);
+            if (showCombatStatPanel)
+            {
+                combatStatPanelView?.ApplyTopBarLayout(true);
+            }
             activeItemPanelView?.ApplyTopBarLayout(true);
             trinketPanelView?.ApplyTopBarLayout(true);
             healthPanelView?.ApplyTopBarLayout(true);
             bossHpPanelView?.ApplyTopHudLayout(true);
+        }
+
+        private void WarnRuntimeHudFallbacksDisabled()
+        {
+            if (_warnedRuntimeHudFallbacksDisabled)
+            {
+                return;
+            }
+
+            Debug.LogWarning("HUDController is configured for scene-authored static HUD layout, so missing HUD panel references will not be created at runtime. Assign the missing panel views in the scene or enable Allow Runtime Hud Fallbacks for prototype scenes.", this);
+            _warnedRuntimeHudFallbacksDisabled = true;
         }
 
         private CombatStatPanelView CreateFallbackCombatStatPanel()
@@ -1789,6 +1920,21 @@ namespace CuteIssac.UI
                 return;
             }
 
+            if (weaponPanelView.UsesMinimalLayout)
+            {
+                if (!autoLayoutWeaponPanel && !_createdFallbackWeaponPanel)
+                {
+                    return;
+                }
+
+                panelRect.anchorMin = new Vector2(1f, 0f);
+                panelRect.anchorMax = new Vector2(1f, 0f);
+                panelRect.pivot = new Vector2(1f, 0f);
+                panelRect.anchoredPosition = new Vector2(-24f, 22f);
+                panelRect.sizeDelta = new Vector2(96f, 72f);
+                return;
+            }
+
             if (!autoLayoutWeaponPanel && !_createdFallbackWeaponPanel)
             {
                 return;
@@ -1933,6 +2079,12 @@ namespace CuteIssac.UI
 
         private void RefreshLoadoutHistory(float now)
         {
+            if (!showLoadoutHistoryPanel)
+            {
+                HideLoadoutHistoryPanel();
+                return;
+            }
+
             ConfigureRunTracePanelView();
 
             if (loadoutHistoryPanelView == null)
@@ -1942,7 +2094,7 @@ namespace CuteIssac.UI
 
             if (_loadoutHistoryEntries.Count == 0)
             {
-                loadoutHistoryPanelView.ShowPlaceholder();
+                loadoutHistoryPanelView.HidePanel();
                 return;
             }
 
@@ -2044,6 +2196,9 @@ namespace CuteIssac.UI
 
             switch (_observedRoom.RoomType)
             {
+                case RoomType.Start:
+                    BuildCleanStartRoomStatus(out headline, out detail, out accentColor);
+                    return;
                 case RoomType.Shop:
                     headline = "상점";
                     detail = "가까이 가서 E 또는 Shift로 구매";
@@ -2092,6 +2247,33 @@ namespace CuteIssac.UI
                 && _observedRoom.State == RoomState.Combat;
         }
 
+        private void BuildCleanStartRoomStatus(out string headline, out string detail, out Color accentColor)
+        {
+            switch (_observedRoom.State)
+            {
+                case RoomState.Combat:
+                    headline = "첫 전투";
+                    detail = "이동하며 적을 정리하고 탄을 피하세요.";
+                    accentColor = new Color(1f, 0.54f, 0.4f, 1f);
+                    return;
+                case RoomState.Rewarded when _observedRoom.HasRewardContent:
+                    headline = "첫 보상";
+                    detail = "보상을 챙긴 뒤 열린 문으로 이동하세요.";
+                    accentColor = new Color(1f, 0.84f, 0.34f, 1f);
+                    return;
+                case RoomState.Rewarded:
+                    headline = "문 개방";
+                    detail = "미니맵을 보고 다음 방으로 이동하세요.";
+                    accentColor = new Color(0.56f, 1f, 0.74f, 1f);
+                    return;
+                default:
+                    headline = "첫 방 목표";
+                    detail = "이동, 공격, 회피를 확인하고 문이 열리면 다음 방으로 이동하세요.";
+                    accentColor = new Color(0.72f, 0.9f, 1f, 1f);
+                    return;
+            }
+        }
+
         private bool TryGetChallengeRewardSettings(out ChallengeRewardSettings challengeRewardSettings)
         {
             challengeRewardSettings = null;
@@ -2106,7 +2288,10 @@ namespace CuteIssac.UI
                 return false;
             }
 
-            challengeRewardSettings = floorConfig.ChallengeRewardSettings;
+            StageProfile stageProfile = floorConfig.StageProfile;
+            challengeRewardSettings = stageProfile != null
+                ? stageProfile.ChallengeRewardSettings
+                : floorConfig.ChallengeRewardSettings;
             return challengeRewardSettings != null;
         }
 
@@ -4387,6 +4572,9 @@ namespace CuteIssac.UI
 
             switch (_observedRoom.RoomType)
             {
+                case RoomType.Start:
+                    BuildReadableStartRoomStatus(out headline, out detail, out accentColor);
+                    return;
                 case RoomType.Shop:
                     headline = "상점";
                     detail = "가까이 이동한 뒤 E 또는 Shift로 구매";
@@ -4419,6 +4607,33 @@ namespace CuteIssac.UI
                     return;
                 default:
                     BuildReadableNormalRoomStatus(out headline, out detail, out accentColor);
+                    return;
+            }
+        }
+
+        private void BuildReadableStartRoomStatus(out string headline, out string detail, out Color accentColor)
+        {
+            switch (_observedRoom.State)
+            {
+                case RoomState.Combat:
+                    headline = "첫 전투";
+                    detail = "이동하며 적을 정리하고 회피 경로를 확보하세요.";
+                    accentColor = new Color(1f, 0.54f, 0.4f, 1f);
+                    return;
+                case RoomState.Rewarded when _observedRoom.HasRewardContent:
+                    headline = "첫 보상";
+                    detail = "보상을 챙긴 뒤 열린 문으로 이동하세요.";
+                    accentColor = new Color(1f, 0.84f, 0.34f, 1f);
+                    return;
+                case RoomState.Rewarded:
+                    headline = "문 개방";
+                    detail = "미니맵을 보고 다음 방으로 이동하세요.";
+                    accentColor = new Color(0.56f, 1f, 0.74f, 1f);
+                    return;
+                default:
+                    headline = "첫 방 목표";
+                    detail = "이동, 공격, 회피를 확인하고 문이 열리면 다음 방으로 이동하세요.";
+                    accentColor = new Color(0.72f, 0.9f, 1f, 1f);
                     return;
             }
         }
@@ -4570,6 +4785,9 @@ namespace CuteIssac.UI
 
             switch (_observedRoom.RoomType)
             {
+                case RoomType.Start:
+                    BuildStartRoomStatus(out headline, out detail, out accentColor);
+                    return;
                 case RoomType.Shop:
                     headline = "상점";
                     detail = "가까이 이동한 뒤 E 또는 Shift로 구매";
@@ -4602,6 +4820,33 @@ namespace CuteIssac.UI
                     return;
                 default:
                     BuildNormalRoomStatus(out headline, out detail, out accentColor);
+                    return;
+            }
+        }
+
+        private void BuildStartRoomStatus(out string headline, out string detail, out Color accentColor)
+        {
+            switch (_observedRoom.State)
+            {
+                case RoomState.Combat:
+                    headline = "첫 전투";
+                    detail = "이동하며 적을 정리하고 탄을 피하세요";
+                    accentColor = new Color(1f, 0.54f, 0.4f, 1f);
+                    return;
+                case RoomState.Rewarded when _observedRoom.HasRewardContent:
+                    headline = "첫 보상";
+                    detail = "보상을 챙긴 뒤 열린 문으로 이동하세요";
+                    accentColor = new Color(1f, 0.84f, 0.34f, 1f);
+                    return;
+                case RoomState.Rewarded:
+                    headline = "문 개방";
+                    detail = "미니맵을 보고 다음 방으로 이동하세요";
+                    accentColor = new Color(0.56f, 1f, 0.74f, 1f);
+                    return;
+                default:
+                    headline = "첫 방 목표";
+                    detail = "이동, 공격, 회피를 확인하세요";
+                    accentColor = new Color(0.72f, 0.9f, 1f, 1f);
                     return;
             }
         }

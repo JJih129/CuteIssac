@@ -10,6 +10,36 @@ namespace CuteIssac.Core.Pooling
     /// </summary>
     public static class PrefabPoolService
     {
+        public readonly struct PoolDebugSnapshot
+        {
+            public PoolDebugSnapshot(
+                string prefabName,
+                int totalCreated,
+                int activeCount,
+                int availableCount,
+                int activeAvailableCount,
+                Vector3 rootPosition,
+                bool rootNearGameplayArea)
+            {
+                PrefabName = prefabName;
+                TotalCreated = totalCreated;
+                ActiveCount = activeCount;
+                AvailableCount = availableCount;
+                ActiveAvailableCount = activeAvailableCount;
+                RootPosition = rootPosition;
+                RootNearGameplayArea = rootNearGameplayArea;
+            }
+
+            public string PrefabName { get; }
+            public int TotalCreated { get; }
+            public int ActiveCount { get; }
+            public int AvailableCount { get; }
+            public int ActiveAvailableCount { get; }
+            public Vector3 RootPosition { get; }
+            public bool RootNearGameplayArea { get; }
+            public bool HasWarning => RootNearGameplayArea || ActiveAvailableCount > 0;
+        }
+
         private sealed class Pool
         {
             public Pool(GameObject prefab, Transform root)
@@ -26,6 +56,8 @@ namespace CuteIssac.Core.Pooling
         }
 
         private static readonly Dictionary<GameObject, Pool> Pools = new();
+        private static readonly Vector3 HiddenPoolRootPosition = new(10000f, 10000f, 0f);
+        private const float GameplayAreaRootWarningDistance = 200f;
         private static Transform _serviceRoot;
 
         public static void Prewarm(GameObject prefab, int count)
@@ -84,6 +116,42 @@ namespace CuteIssac.Core.Pooling
             return true;
         }
 
+        public static int GetDebugSnapshotCount()
+        {
+            return Pools.Count;
+        }
+
+        public static void CopyDebugSnapshots(List<PoolDebugSnapshot> results)
+        {
+            if (results == null)
+            {
+                return;
+            }
+
+            results.Clear();
+
+            foreach (KeyValuePair<GameObject, Pool> pair in Pools)
+            {
+                Pool pool = pair.Value;
+                if (pool == null)
+                {
+                    continue;
+                }
+
+                int activeAvailableCount = CountActiveAvailableInstances(pool);
+                Vector3 rootPosition = pool.Root != null ? pool.Root.position : Vector3.zero;
+                string prefabName = pool.Prefab != null ? pool.Prefab.name : "<missing prefab>";
+                results.Add(new PoolDebugSnapshot(
+                    prefabName,
+                    pool.TotalCreated,
+                    pool.ActiveCount,
+                    pool.Available.Count,
+                    activeAvailableCount,
+                    rootPosition,
+                    IsRootNearGameplayArea(rootPosition)));
+            }
+        }
+
         public static T Spawn<T>(T prefab, Vector3 position, Quaternion rotation, Transform parent = null) where T : Component
         {
             if (prefab == null)
@@ -129,8 +197,8 @@ namespace CuteIssac.Core.Pooling
 
             pooledObject.MarkSpawned();
             pool.ActiveCount++;
-            pooledObject.NotifySpawned();
             pooledObject.gameObject.SetActive(true);
+            pooledObject.NotifySpawned();
             return pooledObject.gameObject;
         }
 
@@ -171,6 +239,8 @@ namespace CuteIssac.Core.Pooling
             EnsureRoot();
             GameObject poolRootObject = new($"Pool_{prefab.name}");
             poolRootObject.transform.SetParent(_serviceRoot, false);
+            poolRootObject.transform.localPosition = Vector3.zero;
+            poolRootObject.transform.localRotation = Quaternion.identity;
             pool = new Pool(prefab, poolRootObject.transform);
             Pools.Add(prefab, pool);
             return pool;
@@ -194,6 +264,9 @@ namespace CuteIssac.Core.Pooling
         private static PooledObject CreatePooledInstance(Pool pool)
         {
             GameObject instance = UnityEngine.Object.Instantiate(pool.Prefab, pool.Root);
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
+            instance.SetActive(false);
             PooledObject pooledObject = instance.GetComponent<PooledObject>();
 
             if (pooledObject == null)
@@ -215,20 +288,50 @@ namespace CuteIssac.Core.Pooling
 
             pool.ActiveCount = Mathf.Max(0, pool.ActiveCount - 1);
             pooledObject.MarkReturned();
-            pooledObject.NotifyDespawned();
-            pooledObject.transform.SetParent(pool.Root, false);
             pooledObject.gameObject.SetActive(false);
+            pooledObject.transform.SetParent(pool.Root, false);
+            pooledObject.transform.localPosition = Vector3.zero;
+            pooledObject.transform.localRotation = Quaternion.identity;
+            pooledObject.transform.localScale = pool.Prefab != null ? pool.Prefab.transform.localScale : Vector3.one;
+            pooledObject.NotifyDespawned();
             pool.Available.Enqueue(pooledObject);
+        }
+
+        private static int CountActiveAvailableInstances(Pool pool)
+        {
+            if (pool == null)
+            {
+                return 0;
+            }
+
+            int activeCount = 0;
+            foreach (PooledObject pooledObject in pool.Available)
+            {
+                if (pooledObject != null && pooledObject.gameObject.activeSelf)
+                {
+                    activeCount++;
+                }
+            }
+
+            return activeCount;
+        }
+
+        private static bool IsRootNearGameplayArea(Vector3 rootPosition)
+        {
+            return Mathf.Abs(rootPosition.x) < GameplayAreaRootWarningDistance
+                && Mathf.Abs(rootPosition.y) < GameplayAreaRootWarningDistance;
         }
 
         private static void EnsureRoot()
         {
             if (_serviceRoot != null)
             {
+                _serviceRoot.position = HiddenPoolRootPosition;
                 return;
             }
 
             GameObject rootObject = new("PrefabPoolService");
+            rootObject.transform.position = HiddenPoolRootPosition;
             UnityEngine.Object.DontDestroyOnLoad(rootObject);
             _serviceRoot = rootObject.transform;
         }

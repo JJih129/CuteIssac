@@ -14,12 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   themeId: floor_2_witch_forest
   displayName: Witch Forest
-  roomVisualPrefab: {fileID: 900000100, guid: 2a1d1c9f3fe14bc88cbfb03545967e28, type: 3}
+  roomVisualPrefab: {fileID: 509581973552721922, guid: 060f7f99e25d6e94f8cad5e4a536b259, type: 3}
   hideFallbackGeometryWhenRoomVisualIsPresent: 1
   floorVisualPrefab: {fileID: 0}
   wallVisualPrefab: {fileID: 0}
-  doorVisualPrefab: {fileID: 990001000, guid: 5b114f666d374c57a17d9ff467d5dc29, type: 3}
+  doorVisualPrefab: {fileID: 5100956796915232156, guid: bab3f1049dc8ea24c957d37ab6c0b25d, type: 3}
   decorationPrefabs: []
+  roomTypeLandmarks: []
+  primaryAccentColor: {r: 0.97, g: 0.78, b: 0.84, a: 1}
+  secondaryAccentColor: {r: 0.74, g: 0.92, b: 0.86, a: 1}
+  tertiaryAccentColor: {r: 0.95, g: 0.88, b: 0.56, a: 1}
+  highlightAccentColor: {r: 0.99, g: 0.95, b: 0.92, a: 1}
+  shadowAccentColor: {r: 0.43, g: 0.28, b: 0.26, a: 1}
   floorColor: {r: 0.23, g: 0.2, b: 0.17, a: 0.22}
   wallColor: {r: 0.25, g: 0.18, b: 0.13, a: 0.95}
   doorColor: {r: 0.84, g: 0.62, b: 0.38, a: 0.92}

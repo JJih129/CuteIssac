@@ -355,7 +355,9 @@ namespace CuteIssac.Room
                 return;
             }
 
-            PlayerController playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            PlayerController playerController = PlayerRegistry.ActiveController != null
+                ? PlayerRegistry.ActiveController
+                : FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
             _playerTransform = playerController != null ? playerController.transform : null;
         }
 

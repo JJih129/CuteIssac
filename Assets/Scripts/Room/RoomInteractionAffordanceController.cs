@@ -1,4 +1,5 @@
 using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Scene;
 using CuteIssac.Item;
 using CuteIssac.Player;
 using CuteIssac.Data.Item;
@@ -16,6 +17,8 @@ namespace CuteIssac.Room
     public sealed class RoomInteractionAffordanceController : MonoBehaviour
     {
         [Header("References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RoomController roomController;
         [SerializeField] private PlayerController playerController;
         [SerializeField] private PlayerInventory playerInventory;
@@ -812,6 +815,8 @@ namespace CuteIssac.Room
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (roomController == null)
             {
                 roomController = GetComponent<RoomController>();
@@ -866,6 +871,29 @@ namespace CuteIssac.Room
             {
                 roomTypeContentController = GetComponent<RoomTypeContentController>();
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            playerController ??= sceneContext.PlayerController;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerItemManager ??= sceneContext.PlayerItemManager;
+            playerHealth ??= sceneContext.PlayerHealth;
+            playerStats ??= sceneContext.PlayerStats;
+            playerTrinketHolder ??= sceneContext.PlayerTrinketHolder;
+            playerActiveItemController ??= sceneContext.PlayerActiveItemController;
+            playerConsumableHolder ??= sceneContext.PlayerConsumableHolder;
         }
 
         private void EnsureRoomSignalsBound()

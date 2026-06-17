@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Floor1DungeonConfig
   m_EditorClassIdentifier: 
   floorIndex: 1
+  stageProfile: {fileID: 11400000, guid: e32be0521c91112468df1d5abd8d9eb5, type: 2}
   minNormalRoomCount: 7
   maxNormalRoomCount: 9
   maxGenerationAttempts: 8

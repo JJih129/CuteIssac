@@ -15,7 +15,7 @@ MonoBehaviour:
   itemType: 0
   itemCategory: 4
   flavorText: A cold heart is still a heart.
-  sourcePools: 000000000100000005000000
+  sourcePools: 0000000001000000030000000500000006000000
   eventFlags: 
   damageModifier: 0
   tearsModifier: 0
@@ -29,6 +29,8 @@ MonoBehaviour:
   displayName: Marble Heart
   description: Max health up. Combat room clears can restore a small amount.
   icon: {fileID: 0}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1
   unlockKey: 
@@ -42,8 +44,30 @@ MonoBehaviour:
     requireCombatEncounter: 1
     triggerChance: 0.45
     internalCooldown: 0
+    luckBonusChancePerPoint: 0
+    coinAmount: 1
+    resourceAmount: 1
     healAmount: 0.5
+    activeChargeAmount: 1
+    invulnerabilityDuration: 1.5
     timedEffectDuration: 8
     feedbackLabel: HEART +0.5
     statModifiers: []
+    projectileModifiers: []
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
     projectileModifiers: []

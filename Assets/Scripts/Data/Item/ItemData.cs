@@ -15,7 +15,13 @@ namespace CuteIssac.Data.Item
         [SerializeField] private string itemId = "item";
         [SerializeField] private string displayName = "Passive Item";
         [SerializeField] [TextArea] private string description;
+        [Header("Visuals")]
+        [Tooltip("Inventory, collection, and HUD icon. Keep this small and readable for UI.")]
         [SerializeField] private Sprite icon;
+        [Tooltip("Optional world pickup sprite. Falls back to Icon when empty.")]
+        [SerializeField] private Sprite worldDropSprite;
+        [Tooltip("Optional shop display sprite. Falls back to World Drop Sprite, then Icon when empty.")]
+        [SerializeField] private Sprite shopDisplaySprite;
         [SerializeField] private ItemRarity rarity = ItemRarity.Common;
         [SerializeField] private bool unlockedByDefault = true;
         [SerializeField] private string unlockKey;
@@ -36,6 +42,8 @@ namespace CuteIssac.Data.Item
         public override string DisplayName => displayName;
         public override string Description => description;
         public override Sprite Icon => icon;
+        public Sprite WorldDropSprite => worldDropSprite != null ? worldDropSprite : icon;
+        public Sprite ShopDisplaySprite => shopDisplaySprite != null ? shopDisplaySprite : WorldDropSprite;
         public override ItemRarity Rarity => rarity;
         public override bool UnlockedByDefault => unlockedByDefault;
         public override string UnlockKey => unlockKey;

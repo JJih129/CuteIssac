@@ -7,6 +7,7 @@ using CuteIssac.Core.Gameplay;
 using CuteIssac.Enemy;
 using CuteIssac.Core.Pooling;
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Scene;
 using CuteIssac.Core.Spawning;
 using CuteIssac.Player;
 using UnityEngine;
@@ -78,6 +79,8 @@ namespace CuteIssac.Room
         [SerializeField] private RoomController roomController;
         [Tooltip("Optional parent used to keep spawned enemies grouped under the room hierarchy.")]
         [SerializeField] private Transform spawnedEnemyParent;
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RunManager runManager;
         [SerializeField] private PlayerController playerController;
 
@@ -255,9 +258,16 @@ namespace CuteIssac.Room
 
         private void Awake()
         {
+            ResolveReferencesFromSceneContext();
+
             if (roomController == null)
             {
                 roomController = GetComponent<RoomController>();
+            }
+
+            if (runManager == null)
+            {
+                ResolveReferencesFromSceneContext();
             }
 
             if (runManager == null)
@@ -1492,9 +1502,13 @@ namespace CuteIssac.Room
 
         private void ResolvePlayerReference()
         {
+            ResolveReferencesFromSceneContext();
+
             if (playerController == null)
             {
-                playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+                playerController = PlayerRegistry.ActiveController != null
+                    ? PlayerRegistry.ActiveController
+                    : FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
             }
 
             _cachedPlayerTransform = playerController != null ? playerController.transform : null;
@@ -1905,7 +1919,7 @@ namespace CuteIssac.Room
         private void Reset()
         {
             roomController = GetComponent<RoomController>();
-            runManager = FindFirstObjectByType<RunManager>(FindObjectsInactive.Exclude);
+            ResolveReferencesFromSceneContext();
         }
 
         private void OnDisable()
@@ -1926,8 +1940,25 @@ namespace CuteIssac.Room
 
             if (runManager == null)
             {
-                runManager = FindFirstObjectByType<RunManager>(FindObjectsInactive.Exclude);
+                ResolveReferencesFromSceneContext();
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            runManager ??= sceneContext.RunManager;
+            playerController ??= sceneContext.PlayerController;
         }
     }
 }

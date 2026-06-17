@@ -2,6 +2,7 @@ using CuteIssac.Player;
 using CuteIssac.Dungeon;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using System.Collections.Generic;
 using System;
@@ -17,6 +18,8 @@ namespace CuteIssac.Room
     public sealed class RoomDoor : MonoBehaviour
     {
         [Header("Room Link")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RoomController ownerRoom;
         [SerializeField] private RoomDirection doorDirection = RoomDirection.Up;
         [SerializeField] private RoomController connectedRoom;
@@ -471,6 +474,8 @@ namespace CuteIssac.Room
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (ownerRoom == null)
             {
                 ownerRoom = GetComponentInParent<RoomController>();
@@ -494,6 +499,23 @@ namespace CuteIssac.Room
             {
                 EnsureHealthCostPrompt();
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            _scenePlayerController ??= sceneContext.PlayerController;
+            _navigationController ??= sceneContext.RoomNavigationController;
+            CachePlayerComponents(_scenePlayerController);
         }
 
         private static void SetCollidersEnabled(Collider2D[] colliders, bool enabled)
@@ -1742,6 +1764,11 @@ namespace CuteIssac.Room
         {
             if (_scenePlayerController == null)
             {
+                ResolveReferencesFromSceneContext();
+            }
+
+            if (_scenePlayerController == null)
+            {
                 _scenePlayerController = PlayerRegistry.ActiveController != null
                     ? PlayerRegistry.ActiveController
                     : FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
@@ -1752,6 +1779,11 @@ namespace CuteIssac.Room
 
         private RoomNavigationController ResolveNavigationController()
         {
+            if (_navigationController == null)
+            {
+                ResolveReferencesFromSceneContext();
+            }
+
             if (_navigationController == null)
             {
                 _navigationController = FindFirstObjectByType<RoomNavigationController>(FindObjectsInactive.Exclude);

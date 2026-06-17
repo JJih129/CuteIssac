@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CuteIssac.Core.Pooling;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Room;
 using UnityEngine;
@@ -76,16 +77,9 @@ namespace CuteIssac.Room
                 return true;
             }
 
-            Transform anchor = landmarkAnchor != null
-                ? landmarkAnchor
-                : decorationAnchor != null
-                    ? decorationAnchor
-                    : floorAnchor != null
-                        ? floorAnchor
-                        : transform;
-            focusPosition = anchor.position;
-            focusRadius = 1.02f;
-            return landmarkAnchor != null || decorationAnchor != null || floorAnchor != null;
+            focusPosition = Vector3.zero;
+            focusRadius = 0f;
+            return false;
         }
 
         public void CollectLandmarkTargets(List<Transform> targetBuffer)
@@ -221,7 +215,13 @@ namespace CuteIssac.Room
                     ? floorAnchor
                     : transform;
             Transform parent = spawnedThemeParent != null ? spawnedThemeParent : anchor;
-            GameObject spawnedObject = Instantiate(roomTheme.RoomVisualPrefab, anchor.position, anchor.rotation, parent);
+            GameObject spawnedObject = PrefabPoolService.Spawn(roomTheme.RoomVisualPrefab, anchor.position, anchor.rotation, parent);
+
+            if (spawnedObject == null)
+            {
+                return;
+            }
+
             spawnedObject.name = $"{roomTheme.RoomVisualPrefab.name}_RoomThemeVisual";
             spawnedObject.transform.SetPositionAndRotation(anchor.position, anchor.rotation);
             spawnedObject.transform.localScale = Vector3.one;
@@ -399,8 +399,17 @@ namespace CuteIssac.Room
                 return;
             }
 
-            GameObject spawnedObject = Instantiate(prefab, anchor, false);
+            GameObject spawnedObject = PrefabPoolService.Spawn(prefab, anchor.position, anchor.rotation, anchor);
+
+            if (spawnedObject == null)
+            {
+                return;
+            }
+
             spawnedObject.name = $"{prefab.name}_ThemeVisual";
+            spawnedObject.transform.localPosition = Vector3.zero;
+            spawnedObject.transform.localRotation = Quaternion.identity;
+            spawnedObject.transform.localScale = Vector3.one;
             _spawnedThemeObjects.Add(spawnedObject);
 
             if (fallbackRenderer != null)
@@ -429,8 +438,15 @@ namespace CuteIssac.Room
                 }
 
                 Transform parent = spawnedThemeParent != null ? spawnedThemeParent : decorationAnchor;
-                GameObject decorationObject = Instantiate(decorationPrefab, decorationAnchor.position, decorationAnchor.rotation, parent);
+                GameObject decorationObject = PrefabPoolService.Spawn(decorationPrefab, decorationAnchor.position, decorationAnchor.rotation, parent);
+
+                if (decorationObject == null)
+                {
+                    continue;
+                }
+
                 decorationObject.name = $"{decorationPrefab.name}_Decoration";
+                decorationObject.transform.localScale = Vector3.one;
                 _spawnedThemeObjects.Add(decorationObject);
             }
         }
@@ -486,7 +502,13 @@ namespace CuteIssac.Room
 
             if (landmarkEntry.LandmarkPrefab != null)
             {
-                spawnedObject = Instantiate(landmarkEntry.LandmarkPrefab, anchor, false);
+                spawnedObject = PrefabPoolService.Spawn(landmarkEntry.LandmarkPrefab, anchor.position, anchor.rotation, anchor);
+
+                if (spawnedObject == null)
+                {
+                    return;
+                }
+
                 spawnedObject.name = $"{roomType}_{landmarkEntry.LandmarkPrefab.name}_Landmark";
             }
             else if (landmarkEntry.UseRuntimeFallback)
@@ -532,14 +554,7 @@ namespace CuteIssac.Room
                     continue;
                 }
 
-                if (Application.isPlaying)
-                {
-                    Destroy(spawnedObject);
-                }
-                else
-                {
-                    DestroyImmediate(spawnedObject);
-                }
+                ReleaseSpawnedThemeObject(spawnedObject);
             }
 
             _spawnedThemeObjects.Clear();
@@ -602,6 +617,29 @@ namespace CuteIssac.Room
 
                 renderer.enabled = true;
                 renderer.gameObject.SetActive(true);
+            }
+        }
+
+        private static void ReleaseSpawnedThemeObject(GameObject spawnedObject)
+        {
+            if (spawnedObject == null)
+            {
+                return;
+            }
+
+            if (spawnedObject.TryGetComponent(out PooledObject pooledObject) && pooledObject.SourcePrefab != null)
+            {
+                PrefabPoolService.Return(spawnedObject);
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(spawnedObject);
+            }
+            else
+            {
+                DestroyImmediate(spawnedObject);
             }
         }
 

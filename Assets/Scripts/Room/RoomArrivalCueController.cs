@@ -228,7 +228,7 @@ namespace CuteIssac.Room
                     "START ROOM",
                     "Route is open",
                     false,
-                    true,
+                    false,
                     1.4f,
                     0f,
                     0f,

@@ -21,6 +21,10 @@ namespace CuteIssac.UI
             bool hasDownSecretConnection,
             bool hasLeftSecretConnection,
             bool hasRightSecretConnection,
+            bool hasUpLockedConnection,
+            bool hasDownLockedConnection,
+            bool hasLeftLockedConnection,
+            bool hasRightLockedConnection,
             bool isCleared,
             bool hasRewardContent,
             bool hasCollectedRewardContent)
@@ -36,6 +40,10 @@ namespace CuteIssac.UI
             HasDownSecretConnection = hasDownSecretConnection;
             HasLeftSecretConnection = hasLeftSecretConnection;
             HasRightSecretConnection = hasRightSecretConnection;
+            HasUpLockedConnection = hasUpLockedConnection;
+            HasDownLockedConnection = hasDownLockedConnection;
+            HasLeftLockedConnection = hasLeftLockedConnection;
+            HasRightLockedConnection = hasRightLockedConnection;
             IsCleared = isCleared;
             HasRewardContent = hasRewardContent;
             HasCollectedRewardContent = hasCollectedRewardContent;
@@ -52,6 +60,10 @@ namespace CuteIssac.UI
         public bool HasDownSecretConnection { get; }
         public bool HasLeftSecretConnection { get; }
         public bool HasRightSecretConnection { get; }
+        public bool HasUpLockedConnection { get; }
+        public bool HasDownLockedConnection { get; }
+        public bool HasLeftLockedConnection { get; }
+        public bool HasRightLockedConnection { get; }
         public bool IsCleared { get; }
         public bool HasRewardContent { get; }
         public bool HasCollectedRewardContent { get; }

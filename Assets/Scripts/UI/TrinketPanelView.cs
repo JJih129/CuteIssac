@@ -84,6 +84,16 @@ namespace CuteIssac.UI
         private Color _currentTitleValueColor = Color.white;
         private Color _currentDetailValueColor = Color.white;
 
+        private void Awake()
+        {
+            NormalizeSerializedText();
+        }
+
+        private void OnValidate()
+        {
+            NormalizeSerializedText();
+        }
+
         public void ConfigureRuntimeView(GameObject root, Image frame, Image icon, Text title, Text detail)
         {
             panelRoot = root;
@@ -396,6 +406,11 @@ namespace CuteIssac.UI
         {
             if (!_hasChallengeThreatTheme)
             {
+                if (frameImage != null && frameImage.sprite != null)
+                {
+                    return ApplyCompactAlpha(Color.white, compactFrameAlphaScale);
+                }
+
                 return ApplyCompactAlpha(_currentFrameBaseColor, compactFrameAlphaScale);
             }
 
@@ -499,6 +514,12 @@ namespace CuteIssac.UI
             shadow.effectColor = shadowColor;
             shadow.effectDistance = compactTextShadowDistance;
             shadow.useGraphicAlpha = true;
+        }
+
+        private void NormalizeSerializedText()
+        {
+            HudTextFormatting.NormalizeSerializedLineBreaks(titleText);
+            HudTextFormatting.NormalizeSerializedLineBreaks(detailText);
         }
 
         private bool UsesChallengeBaselineTheme()

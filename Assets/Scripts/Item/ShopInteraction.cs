@@ -1,6 +1,7 @@
 using CuteIssac.Common.Input;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Scene;
 using CuteIssac.Player;
 using CuteIssac.UI;
 using UnityEngine;
@@ -17,6 +18,8 @@ namespace CuteIssac.Item
         private const string ShopModalScopeId = "ShopPanel";
 
         [Header("References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private ShopInventory shopInventory;
         [SerializeField] private Collider2D interactionTrigger;
         [SerializeField] private MonoBehaviour inputReaderSource;
@@ -131,6 +134,8 @@ namespace CuteIssac.Item
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (shopInventory == null)
             {
                 shopInventory = GetComponent<ShopInventory>();
@@ -196,6 +201,11 @@ namespace CuteIssac.Item
 
         private void ResolveInputReader()
         {
+            if (inputReaderSource == null)
+            {
+                ResolveReferencesFromSceneContext();
+            }
+
             if (inputReaderSource == null)
             {
                 inputReaderSource = FindFirstObjectByType<CuteIssac.Core.Input.InputSystemPlayerInputReader>(FindObjectsInactive.Exclude);
@@ -343,6 +353,13 @@ namespace CuteIssac.Item
                 return;
             }
 
+            ResolveReferencesFromSceneContext();
+
+            if (shopPanelView != null)
+            {
+                return;
+            }
+
             shopPanelView = FindFirstObjectByType<ShopPanelView>(FindObjectsInactive.Include);
 
             if (shopPanelView != null)
@@ -350,12 +367,53 @@ namespace CuteIssac.Item
                 return;
             }
 
-            Canvas canvas = FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            Canvas canvas = ResolveOverlayCanvasFromSceneContext();
+
+            if (canvas == null)
+            {
+                canvas = FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            }
 
             if (canvas != null)
             {
                 shopPanelView = ShopPanelView.CreateRuntime(canvas);
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+
+            if (inputReaderSource == null)
+            {
+                inputReaderSource = sceneContext.PlayerInputReader;
+            }
+        }
+
+        private Canvas ResolveOverlayCanvasFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return null;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            return sceneContext.OverlayCanvas;
         }
 
         private void ResolvePromptTextReferences()

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CuteIssac.Data.Visual;
 using UnityEngine;
 
 namespace CuteIssac.Player
@@ -34,6 +35,10 @@ namespace CuteIssac.Player
         [SerializeField] private int frontSortingOffset = 1;
         [SerializeField] private int backSortingOffset = -1;
         [SerializeField] private Color spriteTint = Color.white;
+
+        [Header("Sorting")]
+        [Tooltip("Optional global sorting profile. When empty, the project default profile is used before falling back to the offsets above.")]
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
 
         private string _currentVisualKey = string.Empty;
         private Vector2 _lastAimDirection = Vector2.right;
@@ -290,15 +295,17 @@ namespace CuteIssac.Player
         private void ApplySorting(Vector2 aimDirection)
         {
             SpriteRenderer bodyRenderer = playerVisual != null ? playerVisual.BodySpriteRenderer : null;
+            int resolvedBackOffset = SortingOrderProfile.ResolvePlayerWeaponBackOffset(sortingOrderProfile, backSortingOffset);
+            int resolvedFrontOffset = SortingOrderProfile.ResolvePlayerWeaponFrontOffset(sortingOrderProfile, frontSortingOffset);
             if (bodyRenderer != null)
             {
                 weaponSpriteRenderer.sortingLayerID = bodyRenderer.sortingLayerID;
                 weaponSpriteRenderer.sortingLayerName = bodyRenderer.sortingLayerName;
-                weaponSpriteRenderer.sortingOrder = bodyRenderer.sortingOrder + (aimDirection.y > 0.2f ? backSortingOffset : frontSortingOffset);
+                weaponSpriteRenderer.sortingOrder = bodyRenderer.sortingOrder + (aimDirection.y > 0.2f ? resolvedBackOffset : resolvedFrontOffset);
                 return;
             }
 
-            weaponSpriteRenderer.sortingOrder = aimDirection.y > 0.2f ? backSortingOffset : frontSortingOffset;
+            weaponSpriteRenderer.sortingOrder = aimDirection.y > 0.2f ? resolvedBackOffset : resolvedFrontOffset;
         }
 
         private void RefreshMuzzleAnchorLocalPosition()

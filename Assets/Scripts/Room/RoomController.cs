@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using CuteIssac.Combat;
 using CuteIssac.Core.Audio;
 using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Dungeon;
 using CuteIssac.Enemy;
@@ -536,9 +537,17 @@ namespace CuteIssac.Room
 
         private static PlayerController ResolveActivePlayerController()
         {
-            return PlayerRegistry.ActiveController != null
-                ? PlayerRegistry.ActiveController
-                : FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            if (PlayerRegistry.ActiveController != null)
+            {
+                return PlayerRegistry.ActiveController;
+            }
+
+            if (GameplaySceneContext.Active != null && GameplaySceneContext.Active.PlayerController != null)
+            {
+                return GameplaySceneContext.Active.PlayerController;
+            }
+
+            return FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
         }
 
         private static bool IsPlayerCollider(Collider2D other)
@@ -549,6 +558,11 @@ namespace CuteIssac.Room
             }
 
             PlayerController playerController = PlayerRegistry.ActiveController;
+            if (playerController == null && GameplaySceneContext.Active != null)
+            {
+                playerController = GameplaySceneContext.Active.PlayerController;
+            }
+
             if (playerController == null)
             {
                 return other.GetComponentInParent<PlayerController>() != null;

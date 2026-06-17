@@ -135,6 +135,8 @@ MonoBehaviour:
   bossHealthMultiplier: 12
   firstFloorBossHealthScale: 0.5
   regularEnemyGlobalHealthScale: 0.82
+  hardModeRegularHealthMultiplier: 1.18
+  hardModeBossHealthMultiplier: 1.12
   championEnemyModifier: {fileID: 0}
   enemyVisual: {fileID: 930000107}
 --- !u!114 &930000106

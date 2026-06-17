@@ -143,11 +143,6 @@ namespace CuteIssac.Combat
         private void OnValidate()
         {
             ResolveReferences();
-
-            if (Application.isPlaying)
-            {
-                SyncOutlineRenderer();
-            }
         }
 
         private void ResolveReferences()

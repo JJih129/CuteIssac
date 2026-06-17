@@ -59,6 +59,13 @@ namespace CuteIssac.Enemy
             }
 
             _resolvedPhaseProfile = ResolvePhaseProfile();
+            if (enemyController != null && enemyController.ActiveBrain != bossEnemyBrain)
+            {
+                // 일부 보스는 전용 Brain을 실제 AI로 쓰고, BossEnemyBrain은 HUD/페이즈 연출 상태만 담당한다.
+                // 이 경우 EnemyController가 BossEnemyBrain을 초기화하지 않으므로 여기서 보조 초기화를 보장한다.
+                bossEnemyBrain.Initialize(enemyController);
+            }
+
             bossEnemyBrain.SetPhaseProfile(_resolvedPhaseProfile);
 
             enemyHealth.Damaged += HandleDamaged;

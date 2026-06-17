@@ -1,5 +1,6 @@
 using System;
 using CuteIssac.Common.Combat;
+using CuteIssac.Core.Scene;
 using CuteIssac.Player;
 using UnityEngine;
 
@@ -15,6 +16,8 @@ namespace CuteIssac.Room
         private const float SpriteWorldSize = 0.64f;
 
         [Header("Hazard")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 런타임 생성 시 비어 있으면 Active Context를 사용합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RoomController roomController;
         [SerializeField] [Min(0.25f)] private float radius = 1f;
         [SerializeField] [Min(0.1f)] private float telegraphDuration = 0.9f;
@@ -131,7 +134,7 @@ namespace CuteIssac.Room
 
         private void ApplyDamageIfPlayerInside()
         {
-            PlayerHealth playerHealth = FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
+            PlayerHealth playerHealth = ResolvePlayerHealth();
 
             if (playerHealth == null || playerHealth.IsDead)
             {
@@ -153,6 +156,26 @@ namespace CuteIssac.Room
             }
 
             playerHealth.ApplyDamage(new DamageInfo(damage, offset.normalized, transform, knockbackForce));
+        }
+
+        private PlayerHealth ResolvePlayerHealth()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext != null)
+            {
+                sceneContext.ResolveMissingReferences();
+
+                if (sceneContext.PlayerHealth != null)
+                {
+                    return sceneContext.PlayerHealth;
+                }
+            }
+
+            return FindFirstObjectByType<PlayerHealth>(FindObjectsInactive.Exclude);
         }
 
         private void BuildVisual()

@@ -5,6 +5,7 @@ using CuteIssac.Common.Stats;
 using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
 using CuteIssac.Item;
@@ -20,6 +21,11 @@ namespace CuteIssac.Player
     [DisallowMultipleComponent]
     public sealed class PlayerItemManager : MonoBehaviour
     {
+        [Header("Scene References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. RunItemPoolService 같은 전역 런 참조를 Inspector에서 명시적으로 확인하기 위한 선택 참조입니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
+
+        [Header("Player References")]
         [SerializeField] private PlayerInventory playerInventory;
         [SerializeField] private PlayerTrinketHolder playerTrinketHolder;
         [SerializeField] private PlayerStats playerStats;
@@ -245,6 +251,8 @@ namespace CuteIssac.Player
 
         private void ResolveDependencies()
         {
+            ResolveDependenciesFromSceneContext();
+
             if (playerInventory == null)
             {
                 playerInventory = GetComponent<PlayerInventory>();
@@ -277,8 +285,35 @@ namespace CuteIssac.Player
 
             if (runItemPoolService == null)
             {
+                ResolveDependenciesFromSceneContext();
+            }
+
+            if (runItemPoolService == null)
+            {
                 runItemPoolService = FindFirstObjectByType<RunItemPoolService>(FindObjectsInactive.Exclude);
             }
+        }
+
+        private void ResolveDependenciesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            runItemPoolService ??= sceneContext.RunItemPoolService;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerTrinketHolder ??= sceneContext.PlayerTrinketHolder;
+            playerStats ??= sceneContext.PlayerStats;
+            playerHealth ??= sceneContext.PlayerHealth;
+            playerActiveItemController ??= sceneContext.PlayerActiveItemController;
+            playerWeaponLoadout ??= sceneContext.PlayerWeaponLoadout;
         }
 
         private void RebuildEventEffectBindings()

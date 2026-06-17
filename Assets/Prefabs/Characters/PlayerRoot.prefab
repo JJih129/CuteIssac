@@ -40,6 +40,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000100}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -47,7 +48,6 @@ Transform:
   m_Children:
   - {fileID: 910000121}
   m_Father: {fileID: 0}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &910000102
 Rigidbody2D:
@@ -66,6 +66,12 @@ Rigidbody2D:
   m_AngularDamping: 0.05
   m_GravityScale: 0
   m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
   m_Interpolate: 1
   m_SleepingMode: 1
   m_CollisionDetection: 0
@@ -134,7 +140,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseMoveSpeed: 5
+  externalVelocityDamping: 18
   moveSpeedProviderSource: {fileID: 910000109}
+  movementLockState: {fileID: 0}
 --- !u!114 &910000106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -148,6 +156,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   spawnOrigin: {fileID: 910000141}
+  spawnOriginIncludesMuzzleOffset: 0
+  prewarmCount: 24
 --- !u!114 &910000107
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -165,7 +175,16 @@ MonoBehaviour:
   inputReaderSource: {fileID: 0}
   playerStats: {fileID: 910000109}
   playerVisual: {fileID: 910000112}
+  heldWeaponVisual: {fileID: 0}
+  playerRigidbody: {fileID: 910000102}
+  routePlanCarryController: {fileID: 0}
+  weaponLoadout: {fileID: 0}
   attackDefinition: {fileID: 11400000, guid: ef5f63d1a265450e9c9702da0aa16407, type: 2}
+  multishotSpreadDegrees: 9
+  inertiaFactor: 0.22
+  smgShotsPerTrigger: 4
+  assaultRifleShotsPerTrigger: 3
+  minigunShotsPerTrigger: 7
 --- !u!114 &910000108
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -181,6 +200,15 @@ MonoBehaviour:
   maxHealth: 6
   startingHealth: -1
   invulnerabilityDuration: 1
+  enableDevelopmentHotkeys: 1
+  playerStats: {fileID: 0}
+  playerVisual: {fileID: 0}
+  playerShieldState: {fileID: 0}
+  speedBuffState: {fileID: 0}
+  maxSpeedHeartCount: 3
+  defaultSpeedHeartBuffDuration: 10
+  defaultSpeedHeartMoveSpeedMultiplier: 1.2
+  defaultSpeedHeartDuplicatePolicy: 1
 --- !u!114 &910000109
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -199,6 +227,18 @@ MonoBehaviour:
   fallbackMoveSpeed: 5
   fallbackDamage: 3
   fallbackFireInterval: 0.35
+  fallbackProjectileSpeed: 8.5
+  fallbackRange: 18
+  fallbackProjectileScale: 2.36
+  fallbackLuck: 0
+  fallbackProjectileCount: 1
+  fallbackKnockback: 2
+  fallbackProjectilePierce: 0
+  fallbackHomingStrength: 0
+  fallbackMaxHealth: 6
+  fireIntervalModifierToShotsPerSecondScale: 2.4
+  minimumShotsPerSecond: 1
+  maximumShotsPerSecond: 8
 --- !u!114 &910000110
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -228,7 +268,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerInventory: {fileID: 910000110}
+  playerTrinketHolder: {fileID: 0}
   playerStats: {fileID: 910000109}
+  playerHealth: {fileID: 0}
+  playerActiveItemController: {fileID: 0}
+  playerWeaponLoadout: {fileID: 0}
+  runItemPoolService: {fileID: 0}
   debugPickupItem: {fileID: 0}
 --- !u!114 &910000112
 MonoBehaviour:
@@ -243,13 +288,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerHealth: {fileID: 910000108}
+  playerMovement: {fileID: 910000105}
   projectileSpawner: {fileID: 910000106}
+  screenFeedback: {fileID: 910000113}
+  speedBuffState: {fileID: 0}
   visualRoot: {fileID: 910000121}
+  hitFeedbackRoot: {fileID: 910000121}
   facingRoot: {fileID: 910000131}
   optionalShadowRoot: {fileID: 910000171}
   bodySpriteRenderer: {fileID: 910000132}
   bodyAnimator: {fileID: 0}
   visualSet: {fileID: 0}
+  sortingOrderProfile: {fileID: 11400000, guid: ac613b7feb551dd46b52068d631c4dd0, type: 2}
+  applySortingProfile: 1
   useSpriteSequenceAnimation: 1
   idleBodySprite: {fileID: -5115618752126089108, guid: 95acb54aac5fe2c449cf265355267053, type: 3}
   walkLeftBodySprites:
@@ -258,7 +309,7 @@ MonoBehaviour:
   - {fileID: -2314172788027130779, guid: 95cb6762e501cfd428aecb0b70f3eb04, type: 3}
   - {fileID: 7952475427389446626, guid: 390227437256301419d6a4cc1d99efce, type: 3}
   hitBodySprite: {fileID: 4457663794195168306, guid: 080aae1badc49af499cdbe3c300ecc7e, type: 3}
-    hitSpriteDuration: 0.12
+  hitSpriteDuration: 0.12
   walkAnimationFramesPerSecond: 10
   walkAnimationMoveThreshold: 0.08
   animateVerticalMovementWithWalkCycle: 1
@@ -269,16 +320,22 @@ MonoBehaviour:
   bodySpriteFacesRightByDefault: 0
   useMoveDirectionWhenAimMissing: 1
   moveMuzzleAnchorWithAim: 1
-  screenFeedback: {fileID: 910000113}
-  hitFeedbackRoot: {fileID: 910000121}
   baseColor: {r: 1, g: 1, b: 1, a: 1}
+  hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
   damagedColor: {r: 1, g: 0.45, b: 0.45, a: 1}
-    hitFlashBlinkInterval: 0.1
+  hitFlashBlinkInterval: 0.1
   hitKnockbackImpulse: 4.75
   hitVisualPunchDistance: 0.14
   hitVisualRecoverSpeed: 1.4
   screenFeedbackScale: 1
   deadColor: {r: 1, g: 1, b: 1, a: 0.55}
+  rainbowTintDuringSpeedBuff: 1
+  rainbowTintCyclesPerSecond: 7.5
+  rainbowTintSaturation: 0.88
+  rainbowTintValue: 1
+  rainbowTintBlend: 0.86
+  speedBuffActivationPulseDuration: 0.22
+  speedBuffActivationScaleBonus: 0.18
   moveXParameter: MoveX
   moveYParameter: MoveY
   speedParameter: Speed
@@ -349,6 +406,8 @@ MonoBehaviour:
   playerHealth: {fileID: 910000108}
   playerInventory: {fileID: 910000110}
   playerStats: {fileID: 910000109}
+  playerBombController: {fileID: 0}
+  playerMovement: {fileID: 0}
   inputReaderSource: {fileID: 0}
   startingActiveItem: {fileID: 11400000, guid: f103bd774c7b4321a93609cbebc13003, type: 2}
 --- !u!114 &910000117
@@ -368,6 +427,7 @@ MonoBehaviour:
   inputReaderSource: {fileID: 0}
   bombPrefab: {fileID: 980000102, guid: 6c6d29e257df490f9ddadb339f4fd338, type: 3}
   bombSpawnAnchor: {fileID: 910000101}
+  bombPrewarmCount: 4
   placementOffset: 0
   placementCooldown: 0.15
 --- !u!114 &910000118
@@ -383,17 +443,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerVisual: {fileID: 910000112}
-  playerCombat: {fileID: 910000109}
+  playerCombat: {fileID: 0}
+  playerMovement: {fileID: 0}
   weaponLoadout: {fileID: 0}
+  projectileSpawner: {fileID: 0}
   weaponVisualParent: {fileID: 0}
   weaponVisualRoot: {fileID: 0}
+  weaponMuzzleAnchor: {fileID: 0}
   weaponSpriteRenderer: {fileID: 0}
+  weaponOrbitRadius: 0.62
   handBackOffset: 0.28
   lateralOffset: 0.035
   worldScale: 1.1
+  muzzleTipPadding: 0.02
+  muzzleLocalOffset: {x: 0, y: 0}
+  driveProjectileSpawnFromWeaponMuzzle: 1
+  recentAimDirectionHoldDuration: 0.18
   frontSortingOffset: 1
   backSortingOffset: -1
   spriteTint: {r: 1, g: 1, b: 1, a: 1}
+  sortingOrderProfile: {fileID: 11400000, guid: ac613b7feb551dd46b52068d631c4dd0, type: 2}
 --- !u!1 &910000120
 GameObject:
   m_ObjectHideFlags: 0
@@ -417,6 +486,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000120}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -454,6 +524,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000130}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.05, z: 0}
   m_LocalScale: {x: 0.00254, y: 0.00221, z: 1}
@@ -463,6 +534,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &910000132
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -507,7 +579,8 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 10
+  m_SortingOrder: 45
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -5115618752126089108, guid: 95acb54aac5fe2c449cf265355267053, type: 3}
   m_Color: {r: 1, g: 0.88, b: 0.92, a: 1}
   m_FlipX: 0
@@ -517,7 +590,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!1 &910000140
 GameObject:
@@ -542,6 +614,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000140}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.62, y: 0.05, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -572,6 +645,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000150}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.05, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -602,6 +676,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000160}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.05, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -633,6 +708,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000170}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: -0.2, z: 0}
   m_LocalScale: {x: 0.9, y: 0.32, z: 1}
@@ -642,6 +718,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &910000172
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -687,6 +764,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 5
+  m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10002, type: 3}
   m_Color: {r: 0, g: 0, b: 0, a: 0.28}
   m_FlipX: 0
@@ -696,7 +774,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!1 &910000180
 GameObject:
@@ -721,6 +798,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 910000180}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}

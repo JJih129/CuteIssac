@@ -98,7 +98,7 @@ MonoBehaviour:
   shopItems:
   - {fileID: 950000135}
   - {fileID: 950000165}
-  runtimeShopkeeperSprite: {fileID: -3613652688311690706, guid: 52f2bdb7e86bf064a9eea127ae55ab11, type: 3}
+  runtimeShopkeeperSprite: {fileID: -5020477330708847173, guid: 674938fe940c7124f9c3313151eb2205, type: 3}
   runtimeShopkeeperLocalScale: {x: 0.105, y: 0.105, z: 1}
 --- !u!114 &950000104
 MonoBehaviour:

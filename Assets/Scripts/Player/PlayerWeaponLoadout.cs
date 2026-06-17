@@ -9,6 +9,7 @@ using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Data.Combat;
 using CuteIssac.Data.Item;
+using CuteIssac.Data.Visual;
 using CuteIssac.Item;
 using UnityEngine;
 
@@ -161,9 +162,11 @@ namespace CuteIssac.Player
         [SerializeField] [Min(0.1f)] private float droppedPickupColliderRadius = 0.44f;
         [SerializeField] [Range(0.5f, 1.5f)] private float droppedPickupScale = 0.9f;
         [SerializeField] private int droppedPickupSortingOrder = 32;
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
 
         [Header("Weapon Carousel")]
         [SerializeField] [Range(0.05f, 1f)] private float weaponCarouselTimeScale = 0.18f;
+        [SerializeField] [Min(0.03f)] private float weaponCarouselTapCycleMaxDuration = 0.18f;
 
         public event System.Action WeaponStateChanged;
 
@@ -175,6 +178,8 @@ namespace CuteIssac.Player
         private float _dryFireRemaining;
         private bool _isWeaponCarouselOpen;
         private int _weaponCarouselPreviewIndex = -1;
+        private float _weaponCarouselOpenedAt;
+        private bool _weaponCarouselSelectionChanged;
         private float _cachedTimeScale = 1f;
         private float _cachedFixedDeltaTime = 0.02f;
 
@@ -260,7 +265,7 @@ namespace CuteIssac.Player
                 stateChanged |= CloseWeaponCarousel(commitSelection: true, restoreTimeScale: true);
             }
 
-            if (!_isWeaponCarouselOpen && inputState.CycleWeaponPressed)
+            if (!_isWeaponCarouselOpen && !inputState.WeaponCarouselHeld && inputState.CycleWeaponPressed)
             {
                 stateChanged |= TryCycleWeaponInternal();
             }
@@ -311,7 +316,7 @@ namespace CuteIssac.Player
             }
 
             WeaponRuntimeSlot currentSlot = CurrentSlot;
-            return currentSlot != null && !currentSlot.IsStarter && currentSlot.SourceItem != null;
+            return currentSlot != null;
         }
 
         private bool OpenWeaponCarousel()
@@ -323,6 +328,8 @@ namespace CuteIssac.Player
 
             _isWeaponCarouselOpen = true;
             _weaponCarouselPreviewIndex = Mathf.Clamp(_equippedIndex, 0, _weaponSlots.Count - 1);
+            _weaponCarouselOpenedAt = Time.unscaledTime;
+            _weaponCarouselSelectionChanged = false;
             _cachedTimeScale = Time.timeScale > 0.001f ? Time.timeScale : 1f;
             _cachedFixedDeltaTime = Time.fixedDeltaTime > 0.0001f ? Time.fixedDeltaTime : 0.02f;
             ApplyWeaponCarouselTimeScale(Mathf.Clamp(weaponCarouselTimeScale, 0.05f, 1f));
@@ -336,7 +343,16 @@ namespace CuteIssac.Player
                 return false;
             }
 
-            if (commitSelection
+            bool shouldTapCycle = commitSelection
+                && !_weaponCarouselSelectionChanged
+                && Time.unscaledTime - _weaponCarouselOpenedAt <= Mathf.Max(0.03f, weaponCarouselTapCycleMaxDuration)
+                && _weaponSlots.Count > 1;
+
+            if (shouldTapCycle)
+            {
+                TryCycleWeaponInternal();
+            }
+            else if (commitSelection
                 && _weaponCarouselPreviewIndex >= 0
                 && _weaponCarouselPreviewIndex < _weaponSlots.Count
                 && _weaponCarouselPreviewIndex != _equippedIndex)
@@ -346,6 +362,7 @@ namespace CuteIssac.Player
 
             _isWeaponCarouselOpen = false;
             _weaponCarouselPreviewIndex = -1;
+            _weaponCarouselSelectionChanged = false;
 
             if (restoreTimeScale)
             {
@@ -366,6 +383,7 @@ namespace CuteIssac.Player
             int slotCount = _weaponSlots.Count;
             int previewIndex = Mathf.Clamp(_weaponCarouselPreviewIndex, 0, slotCount - 1);
             _weaponCarouselPreviewIndex = (previewIndex + normalizedDirection + slotCount) % slotCount;
+            _weaponCarouselSelectionChanged = true;
             return true;
         }
 
@@ -405,6 +423,7 @@ namespace CuteIssac.Player
             }
 
             _weaponCarouselPreviewIndex = Mathf.Clamp(removedIndex, 0, _weaponSlots.Count - 1);
+            _weaponCarouselSelectionChanged = true;
             SpawnDroppedWeaponPickup(selectedSlot);
             RaiseLoadoutDelta(
                 "WEAPON DROPPED",
@@ -969,6 +988,8 @@ namespace CuteIssac.Player
             _ownedWeaponItemIds.Clear();
             _equippedIndex = 0;
             _weaponCarouselPreviewIndex = -1;
+            _weaponCarouselOpenedAt = 0f;
+            _weaponCarouselSelectionChanged = false;
             _isWeaponCarouselOpen = false;
             CancelReload();
             _dryFireRemaining = 0f;
@@ -1103,7 +1124,7 @@ namespace CuteIssac.Player
             pickupObject.transform.localScale = Vector3.one * droppedPickupScale;
 
             SpriteRenderer spriteRenderer = pickupObject.AddComponent<SpriteRenderer>();
-            spriteRenderer.sortingOrder = droppedPickupSortingOrder;
+            spriteRenderer.sortingOrder = SortingOrderProfile.ResolveDroppedWeaponPickupOrder(sortingOrderProfile, droppedPickupSortingOrder);
             spriteRenderer.color = Color.white;
 
             pickupObject.AddComponent<PickupVisual>();

@@ -368,7 +368,7 @@ namespace CuteIssac.UI
         {
             if (backgroundImage != null)
             {
-                backgroundImage.color = ResolveSlotBackgroundColor(backgroundColor, unscaledTime);
+                backgroundImage.color = ResolveSlotBackgroundColor(backgroundImage, backgroundColor, unscaledTime);
             }
 
             if (iconImage != null)
@@ -399,10 +399,15 @@ namespace CuteIssac.UI
                 $"<size={topBarValueFontSize}><b><color=#{valueHex}>{value}</color></b></size>";
         }
 
-        private Color ResolveSlotBackgroundColor(Color baseColor, float unscaledTime)
+        private Color ResolveSlotBackgroundColor(Image backgroundImage, Color baseColor, float unscaledTime)
         {
             if (!_hasChallengeThreatTheme)
             {
+                if (backgroundImage != null && backgroundImage.sprite != null)
+                {
+                    return Color.white;
+                }
+
                 return baseColor;
             }
 

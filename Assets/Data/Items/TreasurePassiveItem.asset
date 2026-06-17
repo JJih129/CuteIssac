@@ -12,16 +12,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 971b35e7528a79a49ba40271396635ed, type: 3}
   m_Name: TreasurePassiveItem
   m_EditorClassIdentifier: 
+  itemType: 0
+  itemCategory: 5
+  flavorText: 
+  sourcePools: 0000000001000000030000000500000006000000
+  eventFlags: 
+  damageModifier: 0
+  tearsModifier: 0
+  speedModifier: 0
+  rangeModifier: 0
+  shotSpeedModifier: 0
+  luckModifier: 0
+  maxHealthModifier: 0
+  projectileFlags: 
   itemId: treasure_relic
   displayName: Treasure Relic
-  description: Treasure passive item that adds an extra shot and slightly larger tears for immediate build variety.
+  description: Treasure passive item that adds an extra shot and slightly larger
+    tears for immediate build variety.
   icon: {fileID: 21300000, guid: bfa11a01c6e54f6db1d858f4e7a10010, type: 3}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 1
   unlockedByDefault: 1
   unlockKey: 
-  synergyTags:
-  - 3
-  - 2
+  itemTags: 0300000002000000
   statModifiers:
   - statType: 1
     operation: 0
@@ -41,7 +55,14 @@ MonoBehaviour:
     effectType: 1
     requirePlayerSource: 1
     requireCombatEncounter: 1
+    triggerChance: 1
+    internalCooldown: 0
+    luckBonusChancePerPoint: 0
     coinAmount: 0
+    resourceAmount: 1
+    healAmount: 1
+    activeChargeAmount: 1
+    invulnerabilityDuration: 1.5
     timedEffectDuration: 12
     feedbackLabel: CLEAR SURGE
     statModifiers:
@@ -55,3 +76,20 @@ MonoBehaviour:
     - modifierType: 0
       operation: 0
       value: 2
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
+    projectileModifiers: []

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using CuteIssac.Common.Input;
 using CuteIssac.Core.Gameplay;
+using CuteIssac.Core.Scene;
 using CuteIssac.Dungeon;
 using UnityEngine;
 
@@ -14,6 +15,8 @@ namespace CuteIssac.UI
     public sealed class MinimapController : MonoBehaviour
     {
         [Header("Scene References")]
+        [Tooltip("Scene-authored reference hub. If empty, the active GameplaySceneContext is used before fallback scene search.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [Tooltip("Optional. Generated dungeon source. If empty, the controller searches the scene.")]
         [SerializeField] private DungeonInstantiator dungeonInstantiator;
         [Tooltip("Optional. Room navigation source. If empty, the controller searches the scene.")]
@@ -104,6 +107,8 @@ namespace CuteIssac.UI
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (dungeonInstantiator == null)
             {
                 dungeonInstantiator = FindFirstObjectByType<DungeonInstantiator>(FindObjectsInactive.Exclude);
@@ -120,6 +125,25 @@ namespace CuteIssac.UI
             }
 
             ResolveInputReader();
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            dungeonInstantiator ??= sceneContext.DungeonInstantiator;
+            roomNavigationController ??= sceneContext.RoomNavigationController;
+            minimapPanelView ??= sceneContext.MinimapPanelView;
+            inputReaderSource ??= sceneContext.PlayerInputReader;
         }
 
         private void ResolveInputReader()

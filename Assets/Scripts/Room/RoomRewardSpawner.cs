@@ -4,6 +4,7 @@ using CuteIssac.Core.Feedback;
 using CuteIssac.Core.Gameplay;
 using CuteIssac.Core.Pooling;
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Scene;
 using CuteIssac.Core.Spawning;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Data.Item;
@@ -22,6 +23,8 @@ namespace CuteIssac.Room
     public sealed class RoomRewardSpawner : MonoBehaviour
     {
         [Header("References")]
+        [Tooltip("Scene-authored reference hub. If empty, the active GameplaySceneContext is used before fallback scene search.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [Tooltip("Owning room that requests reward drops after the encounter is cleared.")]
         [SerializeField] private RoomController roomController;
         [Tooltip("Data-driven reward table for this room.")]
@@ -272,6 +275,8 @@ namespace CuteIssac.Room
                 rewardSpawnAnchor = transform;
             }
 
+            ResolveReferencesFromSceneContext();
+
             if (_runItemPoolService == null)
             {
                 _runItemPoolService = FindFirstObjectByType<RunItemPoolService>(FindObjectsInactive.Exclude);
@@ -301,6 +306,25 @@ namespace CuteIssac.Room
                     momentumRewardController = gameObject.AddComponent<RoomMomentumRewardController>();
                 }
             }
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            _runItemPoolService ??= sceneContext.RunItemPoolService;
+            playerItemManager ??= sceneContext.PlayerItemManager;
+            playerInventory ??= sceneContext.PlayerInventory;
+            playerHealth ??= sceneContext.PlayerHealth;
         }
 
         private RoomRewardTable ResolveRewardTable()
@@ -1158,7 +1182,7 @@ namespace CuteIssac.Room
                 EnemyDropKind.Ammo => "AmmoPickup",
                 EnemyDropKind.Bomb => "BombPickup",
                 EnemyDropKind.Key => "KeyPickup",
-                _ => "CandyCoinPickup"
+                _ => "CoinPickup"
             };
         }
 

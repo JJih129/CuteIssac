@@ -17,7 +17,6 @@ namespace CuteIssac.UI
         {
             SceneManager.sceneLoaded -= HandleSceneLoaded;
             SceneManager.sceneLoaded += HandleSceneLoaded;
-            EnsureReady();
         }
 
         private static void HandleSceneLoaded(Scene _, LoadSceneMode __)

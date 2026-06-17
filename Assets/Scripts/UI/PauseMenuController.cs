@@ -1,4 +1,5 @@
 using CuteIssac.Core.Run;
+using CuteIssac.Core.Scene;
 using CuteIssac.Core.Settings;
 using CuteIssac.Player;
 using UnityEngine;
@@ -15,7 +16,17 @@ namespace CuteIssac.UI
     [DisallowMultipleComponent]
     public sealed class PauseMenuController : MonoBehaviour
     {
+        private static readonly Vector2Int[] ResolutionPresets =
+        {
+            new(1280, 720),
+            new(1600, 900),
+            new(1920, 1080),
+            new(2560, 1440)
+        };
+
         [Header("Optional References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private PauseMenuView pauseMenuView;
         [SerializeField] private PlayerStats playerStats;
         [SerializeField] private RunManager runManager;
@@ -84,9 +95,6 @@ namespace CuteIssac.UI
             pauseMenuView = runtimePauseMenuView;
             playerStats = runtimePlayerStats;
             runManager = runtimeRunManager;
-            gameOptionsService = gameOptionsService != null
-                ? gameOptionsService
-                : FindFirstObjectByType<GameOptionsService>(FindObjectsInactive.Exclude);
             safeAreaRoot = runtimeSafeAreaRoot;
             ResolveReferences();
             BindButtons();
@@ -100,6 +108,8 @@ namespace CuteIssac.UI
 
         private void ResolveReferences()
         {
+            ResolveReferencesFromSceneContext();
+
             if (playerStats == null)
             {
                 playerStats = FindFirstObjectByType<PlayerStats>(FindObjectsInactive.Exclude);
@@ -133,6 +143,24 @@ namespace CuteIssac.UI
             }
 
             pauseMenuView?.EnsureRuntimeBaseline(safeAreaRoot);
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            playerStats ??= sceneContext.PlayerStats;
+            runManager ??= sceneContext.RunManager;
+            gameOptionsService ??= sceneContext.GameOptionsService;
         }
 
         private void BindButtons()
@@ -317,7 +345,8 @@ namespace CuteIssac.UI
             {
                 PauseSettingsTarget.Master => PauseSettingsTarget.Music,
                 PauseSettingsTarget.Music => PauseSettingsTarget.Sfx,
-                PauseSettingsTarget.Sfx => PauseSettingsTarget.UiScale,
+                PauseSettingsTarget.Sfx => PauseSettingsTarget.Resolution,
+                PauseSettingsTarget.Resolution => PauseSettingsTarget.UiScale,
                 PauseSettingsTarget.UiScale => PauseSettingsTarget.Fullscreen,
                 PauseSettingsTarget.Fullscreen => PauseSettingsTarget.CameraShake,
                 PauseSettingsTarget.CameraShake => PauseSettingsTarget.DamageNumbers,
@@ -342,6 +371,9 @@ namespace CuteIssac.UI
                     break;
                 case PauseSettingsTarget.Sfx:
                     nextOptions.SfxVolume = Mathf.Clamp01(nextOptions.SfxVolume + delta);
+                    break;
+                case PauseSettingsTarget.Resolution:
+                    CycleResolution(nextOptions, delta);
                     break;
                 case PauseSettingsTarget.UiScale:
                     nextOptions.UiScale = Mathf.Clamp(nextOptions.UiScale + Mathf.Sign(delta) * 0.1f, 0.75f, 1.5f);
@@ -388,6 +420,7 @@ namespace CuteIssac.UI
             {
                 PauseSettingsTarget.Music => "Music Volume",
                 PauseSettingsTarget.Sfx => "SFX Volume",
+                PauseSettingsTarget.Resolution => "Resolution",
                 PauseSettingsTarget.UiScale => "UI Scale",
                 PauseSettingsTarget.Fullscreen => "Fullscreen",
                 PauseSettingsTarget.CameraShake => "Camera Shake",
@@ -397,6 +430,42 @@ namespace CuteIssac.UI
                 PauseSettingsTarget.ColorAssist => "Color Assist",
                 _ => "Master Volume"
             };
+        }
+
+        private static void CycleResolution(GameOptionsData options, float delta)
+        {
+            if (options == null || ResolutionPresets.Length == 0)
+            {
+                return;
+            }
+
+            int direction = delta < 0f ? -1 : 1;
+            int currentIndex = ResolveClosestResolutionPresetIndex(options.ResolutionWidth, options.ResolutionHeight);
+            int nextIndex = (currentIndex + direction + ResolutionPresets.Length) % ResolutionPresets.Length;
+            Vector2Int preset = ResolutionPresets[nextIndex];
+            options.ResolutionWidth = preset.x;
+            options.ResolutionHeight = preset.y;
+        }
+
+        private static int ResolveClosestResolutionPresetIndex(int width, int height)
+        {
+            int bestIndex = 0;
+            int bestScore = int.MaxValue;
+
+            for (int index = 0; index < ResolutionPresets.Length; index++)
+            {
+                Vector2Int preset = ResolutionPresets[index];
+                int score = Mathf.Abs(preset.x - width) + Mathf.Abs(preset.y - height);
+                if (score >= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                bestIndex = index;
+            }
+
+            return bestIndex;
         }
 
         private void RefreshMenuSelectionVisuals()
@@ -678,6 +747,7 @@ namespace CuteIssac.UI
             Master,
             Music,
             Sfx,
+            Resolution,
             UiScale,
             Fullscreen,
             CameraShake,

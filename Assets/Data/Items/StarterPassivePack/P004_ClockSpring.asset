@@ -15,7 +15,7 @@ MonoBehaviour:
   itemType: 0
   itemCategory: 1
   flavorText: You can almost hear it winding.
-  sourcePools: 0000000002000000
+  sourcePools: 00000000020000000400000007000000
   eventFlags: 
   damageModifier: 0
   tearsModifier: 0.42
@@ -29,6 +29,8 @@ MonoBehaviour:
   displayName: Clock Spring
   description: Fire rate up. Room clears add active charge.
   icon: {fileID: 0}
+  worldDropSprite: {fileID: 0}
+  shopDisplaySprite: {fileID: 0}
   rarity: 0
   unlockedByDefault: 1
   unlockKey: 
@@ -40,9 +42,32 @@ MonoBehaviour:
     effectType: 5
     requirePlayerSource: 1
     requireCombatEncounter: 1
+    triggerChance: 1
+    internalCooldown: 0
+    luckBonusChancePerPoint: 0
     coinAmount: 0
+    resourceAmount: 1
+    healAmount: 1
     activeChargeAmount: 1
+    invulnerabilityDuration: 1.5
     timedEffectDuration: 8
     feedbackLabel: CHARGE +1
     statModifiers: []
+    projectileModifiers: []
+  shopPriceModifiers: []
+  doorCostModifiers: []
+  roomRewardModifiers: []
+  weaponProfile:
+    firearmMotif: 
+    hudLabel: 
+    attackDefinition: {fileID: 0}
+    magazineCapacity: 12
+    reserveAmmoCapacity: 72
+    startingReserveAmmo: 72
+    infiniteReserveAmmo: 0
+    reloadDuration: 1.15
+    dryFireCooldown: 0.18
+    shotsPerTrigger: 1
+    spreadDegrees: 9
+    knockbackMultiplier: 1
     projectileModifiers: []

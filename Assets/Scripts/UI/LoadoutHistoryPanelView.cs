@@ -107,7 +107,7 @@ namespace CuteIssac.UI
 
             if (backgroundImage != null)
             {
-                backgroundImage.color = panelTint;
+                backgroundImage.color = ResolveBackgroundImageColor(panelTint);
             }
 
             if (titleText != null)
@@ -140,9 +140,10 @@ namespace CuteIssac.UI
 
             if (backgroundImage != null)
             {
+                Color basePanelColor = ResolveBackgroundImageColor(panelTint);
                 backgroundImage.color = Color.Lerp(
-                    panelTint,
-                    Color.Lerp(panelTint, newestEntry.AccentColor, 0.5f),
+                    basePanelColor,
+                    Color.Lerp(basePanelColor, newestEntry.AccentColor, 0.18f),
                     accentTintStrength * Mathf.Lerp(0.7f, 1f, newestEntry.Freshness));
             }
 
@@ -155,6 +156,11 @@ namespace CuteIssac.UI
             ApplyEntry(firstEntryText, entries.Count > 0 ? entries[0].Headline : string.Empty, entries.Count > 0 ? entries[0].Detail : string.Empty, entries.Count > 0 ? entries[0].AccentColor : placeholderAccentColor, entries.Count > 0 && entries[0].Emphasize, entries.Count > 0 ? entries[0].Freshness : 0f, 1f);
             ApplyEntry(secondEntryText, entries.Count > 1 ? entries[1].Headline : string.Empty, entries.Count > 1 ? entries[1].Detail : string.Empty, entries.Count > 1 ? entries[1].AccentColor : placeholderAccentColor, entries.Count > 1 && entries[1].Emphasize, entries.Count > 1 ? entries[1].Freshness : 0f, 0.92f);
             ApplyEntry(thirdEntryText, entries.Count > 2 ? entries[2].Headline : string.Empty, entries.Count > 2 ? entries[2].Detail : string.Empty, entries.Count > 2 ? entries[2].AccentColor : placeholderAccentColor, entries.Count > 2 && entries[2].Emphasize, entries.Count > 2 ? entries[2].Freshness : 0f, 0.86f);
+        }
+
+        private Color ResolveBackgroundImageColor(Color fallbackColor)
+        {
+            return backgroundImage != null && backgroundImage.sprite != null ? Color.white : fallbackColor;
         }
 
         private void EnsureTextSetup()

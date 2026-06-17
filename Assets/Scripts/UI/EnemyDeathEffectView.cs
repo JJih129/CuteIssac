@@ -1,5 +1,6 @@
 using UnityEngine;
 using CuteIssac.Core.Pooling;
+using CuteIssac.Data.Visual;
 
 namespace CuteIssac.UI
 {
@@ -13,6 +14,8 @@ namespace CuteIssac.UI
         [SerializeField] [Min(0.1f)] private float burstRadius = 0.8f;
         [SerializeField] [Min(0f)] private float startScale = 0.18f;
         [SerializeField] [Min(0f)] private float endScale = 0.04f;
+        [Tooltip("비워두면 Resources/Sorting/DefaultSortingOrderProfile 기준을 사용합니다.")]
+        [SerializeField] private SortingOrderProfile sortingOrderProfile;
         [SerializeField] [Min(0)] private int sortingOrder = 260;
 
         private SpriteRenderer[] _shards;
@@ -120,9 +123,14 @@ namespace CuteIssac.UI
                 shardObject.transform.SetParent(transform, false);
                 SpriteRenderer renderer = shardObject.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
-                renderer.sortingOrder = sortingOrder + i;
+                renderer.sortingOrder = ResolveSortingOrder(i);
                 _shards[i] = renderer;
             }
+        }
+
+        private int ResolveSortingOrder(int offset)
+        {
+            return SortingOrderProfile.ResolveEffectOrder(sortingOrderProfile, sortingOrder) + offset;
         }
 
         private static Sprite GetFallbackSprite()

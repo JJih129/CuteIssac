@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CuteIssac.Combat;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Enemy;
 using CuteIssac.Player;
@@ -29,9 +30,12 @@ namespace CuteIssac.Room
         }
 
         [Header("References")]
+        [Tooltip("씬에 배치된 GameplaySceneContext입니다. 비워두면 Active Context를 먼저 사용하고, 마지막에만 씬 검색으로 보정합니다.")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private RoomController roomController;
         [SerializeField] private Transform pressureRoot;
         [SerializeField] private ArenaPressureReliefPocketPresentation reliefPocketPresentation;
+        [SerializeField] private PlayerController playerController;
         [SerializeField] private PlayerRoutePlanCarryController routePlanCarryController;
 
         [Header("Runtime")]
@@ -119,6 +123,7 @@ namespace CuteIssac.Room
 
         private void OnEnable()
         {
+            ResolveReferencesFromSceneContext();
             BindRoomEvents();
             EnsureReliefPocketPresentation();
             EnsureRoutePlanCarryController();
@@ -901,7 +906,16 @@ namespace CuteIssac.Room
 
         private Vector2 ResolvePlayerPosition(Bounds roomBounds, float resolvedHazardRadius)
         {
-            PlayerController playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            if (playerController == null)
+            {
+                ResolveReferencesFromSceneContext();
+            }
+
+            if (playerController == null)
+            {
+                playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+            }
+
             Vector2 fallbackPosition = roomBounds.center;
             Vector2 playerPosition = playerController != null
                 ? (Vector2)playerController.transform.position
@@ -1801,7 +1815,31 @@ namespace CuteIssac.Room
                 return;
             }
 
+            ResolveReferencesFromSceneContext();
+
+            if (routePlanCarryController != null)
+            {
+                return;
+            }
+
             routePlanCarryController = FindFirstObjectByType<PlayerRoutePlanCarryController>(FindObjectsInactive.Exclude);
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            playerController ??= sceneContext.PlayerController;
+            routePlanCarryController ??= sceneContext.PlayerRoutePlanCarryController;
         }
 
         private void TryBindBossControllerIfNeeded()

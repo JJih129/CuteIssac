@@ -1,5 +1,6 @@
 using System;
 using CuteIssac.Core.Audio;
+using CuteIssac.Core.Scene;
 using CuteIssac.Data.Dungeon;
 using CuteIssac.Player;
 using CuteIssac.Room;
@@ -15,6 +16,7 @@ namespace CuteIssac.Dungeon
     public sealed class RoomNavigationController : MonoBehaviour
     {
         [Header("Scene References")]
+        [SerializeField] private GameplaySceneContext sceneContext;
         [SerializeField] private PlayerController playerController;
         [SerializeField] private Camera targetCamera;
         [SerializeField] private RoomController[] rooms;
@@ -50,9 +52,13 @@ namespace CuteIssac.Dungeon
 
         private void Awake()
         {
+            ResolveReferencesFromSceneContext();
+
             if (playerController == null)
             {
-                playerController = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
+                playerController = PlayerRegistry.ActiveController != null
+                    ? PlayerRegistry.ActiveController
+                    : FindFirstObjectByType<PlayerController>(FindObjectsInactive.Exclude);
             }
 
             if (targetCamera == null)
@@ -69,6 +75,23 @@ namespace CuteIssac.Dungeon
             EnsureRoomArrivalCueController();
             EnsureRoomEntryFocusBeatController();
             ApplyInitialRoomState();
+        }
+
+        private void ResolveReferencesFromSceneContext()
+        {
+            if (sceneContext == null)
+            {
+                sceneContext = GameplaySceneContext.Active;
+            }
+
+            if (sceneContext == null)
+            {
+                return;
+            }
+
+            sceneContext.ResolveMissingReferences();
+            playerController ??= sceneContext.PlayerController;
+            targetCamera ??= sceneContext.MainCamera;
         }
 
         private void OnDestroy()
@@ -382,6 +405,26 @@ namespace CuteIssac.Dungeon
                 SnapCameraTo(candidate);
                 _lastTransitionTime = Time.unscaledTime;
                 return true;
+            }
+
+            return false;
+        }
+
+        public bool HasDebugRoomType(RoomType roomType)
+        {
+            if (rooms == null || rooms.Length == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                RoomController candidate = rooms[i];
+
+                if (candidate != null && candidate.RoomType == roomType)
+                {
+                    return true;
+                }
             }
 
             return false;

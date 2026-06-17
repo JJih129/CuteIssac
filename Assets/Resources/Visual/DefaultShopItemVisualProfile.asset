@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9bf5d5f50bd202349865989752e28a9e, type: 3}
+  m_Name: DefaultShopItemVisualProfile
+  m_EditorClassIdentifier: Assembly-CSharp::CuteIssac.Data.Visual.ShopItemVisualProfile
+  priceLabelLocalPosition: {x: 0, y: -0.9, z: -0.01}
+  priceShadowLocalOffset: {x: 0.04, y: -0.045, z: 0.02}
+  priceLabelCharacterSize: 0.3
+  coinPriceSuffix: "\uC6D0"
+  availableBodyColor: {r: 0.94, g: 0.94, b: 0.94, a: 1}
+  unaffordableBodyColor: {r: 0.62, g: 0.62, b: 0.62, a: 1}
+  soldBodyColor: {r: 0.24, g: 0.24, b: 0.24, a: 0.9}
+  highlightColor: {r: 1, g: 1, b: 1, a: 0.85}
+  soldOverlayColor: {r: 0.2, g: 0.2, b: 0.2, a: 0.55}
+  coinMarkerColor: {r: 1, g: 0.85, b: 0.25, a: 1}
+  keyMarkerColor: {r: 0.7, g: 0.9, b: 1, a: 1}
+  bombMarkerColor: {r: 1, g: 0.55, b: 0.2, a: 1}
+  healthMarkerColor: {r: 1, g: 0.28, b: 0.42, a: 1}
+  availablePriceTextColor: {r: 1, g: 0.98, b: 0.78, a: 1}
+  unavailablePriceTextColor: {r: 1, g: 0.42, b: 0.34, a: 1}
+  soldPriceTextColor: {r: 0.66, g: 0.66, b: 0.66, a: 0.92}
+  worldTextShadowColor: {r: 0.08, g: 0.04, b: 0.03, a: 0.82}
+  highlightPulseSpeed: 6
+  highlightPulseAlphaFloor: 0.35
+  purchaseFlashColor: {r: 1, g: 0.92, b: 0.46, a: 1}
+  purchaseFlashDuration: 0.28
+  purchaseFailureFlashColor: {r: 1, g: 0.24, b: 0.18, a: 0.95}
+  purchaseFailureFlashDuration: 0.22
+  purchaseScaleMultiplier: 1.12
+  purchaseScaleRecoverSpeed: 7.5
+  weaponBodyScaleMultiplier: 1.4
+  weaponIconScaleMultiplier: 2.8
+  weaponHighlightScaleMultiplier: 1.55

@@ -16,7 +16,15 @@ namespace CuteIssac.UI
         [SerializeField] private Text titleText;
         [SerializeField] private Text subtitleText;
         [SerializeField] private Text detailsText;
+        [SerializeField] private ScrollRect buttonsScrollRect;
+        [SerializeField] private RectTransform buttonsViewport;
         [SerializeField] private RectTransform buttonsRoot;
+
+        private const float ButtonAreaWidth = 412f;
+        private const float ButtonViewportHeight = 420f;
+        private const float ButtonHeight = 40f;
+        private const float ButtonSpacing = 8f;
+        private const float ButtonStep = ButtonHeight + ButtonSpacing;
 
         private readonly List<Button> _runtimeButtons = new();
 
@@ -48,6 +56,7 @@ namespace CuteIssac.UI
 
             int desiredCount = buttons != null ? buttons.Count : 0;
             EnsureButtonCount(desiredCount);
+            ResizeButtonsContent(desiredCount);
 
             for (int index = 0; index < _runtimeButtons.Count; index++)
             {
@@ -170,14 +179,50 @@ namespace CuteIssac.UI
 
             if (buttonsRoot == null)
             {
+                GameObject scrollObject = new("ButtonsScrollView", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(ScrollRect));
+                scrollObject.transform.SetParent(rootRect, false);
+
+                RectTransform scrollRectTransform = scrollObject.GetComponent<RectTransform>();
+                scrollRectTransform.anchorMin = new Vector2(0f, 1f);
+                scrollRectTransform.anchorMax = new Vector2(0f, 1f);
+                scrollRectTransform.pivot = new Vector2(0f, 1f);
+                scrollRectTransform.anchoredPosition = new Vector2(16f, -360f);
+                scrollRectTransform.sizeDelta = new Vector2(ButtonAreaWidth, ButtonViewportHeight);
+
+                Image scrollBackground = scrollObject.GetComponent<Image>();
+                scrollBackground.color = new Color(0f, 0f, 0f, 0f);
+                scrollBackground.raycastTarget = false;
+
+                buttonsScrollRect = scrollObject.GetComponent<ScrollRect>();
+                buttonsScrollRect.horizontal = false;
+                buttonsScrollRect.vertical = true;
+                buttonsScrollRect.movementType = ScrollRect.MovementType.Clamped;
+                buttonsScrollRect.scrollSensitivity = 28f;
+
+                GameObject viewportObject = new("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(RectMask2D));
+                viewportObject.transform.SetParent(scrollRectTransform, false);
+                buttonsViewport = viewportObject.GetComponent<RectTransform>();
+                buttonsViewport.anchorMin = Vector2.zero;
+                buttonsViewport.anchorMax = Vector2.one;
+                buttonsViewport.pivot = new Vector2(0f, 1f);
+                buttonsViewport.anchoredPosition = Vector2.zero;
+                buttonsViewport.sizeDelta = Vector2.zero;
+
+                Image viewportImage = viewportObject.GetComponent<Image>();
+                viewportImage.color = new Color(0f, 0f, 0f, 0f);
+                viewportImage.raycastTarget = true;
+
                 GameObject buttonsObject = new("ButtonsRoot", typeof(RectTransform));
-                buttonsObject.transform.SetParent(rootRect, false);
+                buttonsObject.transform.SetParent(buttonsViewport, false);
                 buttonsRoot = buttonsObject.GetComponent<RectTransform>();
                 buttonsRoot.anchorMin = new Vector2(0f, 1f);
                 buttonsRoot.anchorMax = new Vector2(0f, 1f);
                 buttonsRoot.pivot = new Vector2(0f, 1f);
-                buttonsRoot.anchoredPosition = new Vector2(16f, -360f);
-                buttonsRoot.sizeDelta = new Vector2(412f, 420f);
+                buttonsRoot.anchoredPosition = Vector2.zero;
+                buttonsRoot.sizeDelta = new Vector2(ButtonAreaWidth, ButtonViewportHeight);
+
+                buttonsScrollRect.viewport = buttonsViewport;
+                buttonsScrollRect.content = buttonsRoot;
             }
         }
 
@@ -186,6 +231,27 @@ namespace CuteIssac.UI
             while (_runtimeButtons.Count < desiredCount)
             {
                 _runtimeButtons.Add(CreateRuntimeButton(_runtimeButtons.Count));
+            }
+        }
+
+        private void ResizeButtonsContent(int desiredCount)
+        {
+            if (buttonsRoot == null)
+            {
+                return;
+            }
+
+            float contentHeight = desiredCount > 0 ? desiredCount * ButtonStep - ButtonSpacing : 0f;
+            contentHeight = Mathf.Max(ButtonViewportHeight, contentHeight);
+
+            bool isScrollContent = buttonsScrollRect != null && buttonsScrollRect.content == buttonsRoot;
+            float contentWidth = isScrollContent ? ButtonAreaWidth : buttonsRoot.sizeDelta.x;
+            buttonsRoot.sizeDelta = new Vector2(contentWidth, contentHeight);
+
+            if (isScrollContent)
+            {
+                buttonsRoot.anchoredPosition = Vector2.zero;
+                buttonsScrollRect.verticalNormalizedPosition = 1f;
             }
         }
 
@@ -198,8 +264,8 @@ namespace CuteIssac.UI
             rectTransform.anchorMin = new Vector2(0f, 1f);
             rectTransform.anchorMax = new Vector2(0f, 1f);
             rectTransform.pivot = new Vector2(0f, 1f);
-            rectTransform.anchoredPosition = new Vector2(0f, -(index * 48f));
-            rectTransform.sizeDelta = new Vector2(412f, 40f);
+            rectTransform.anchoredPosition = new Vector2(0f, -(index * ButtonStep));
+            rectTransform.sizeDelta = new Vector2(ButtonAreaWidth, ButtonHeight);
 
             Image background = buttonObject.GetComponent<Image>();
             background.color = new Color(0.16f, 0.22f, 0.3f, 0.96f);

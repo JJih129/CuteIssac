@@ -122,15 +122,13 @@ namespace CuteIssac.Dungeon
 
         private void AssignRuleDrivenRooms(DungeonMap dungeonMap)
         {
-            FloorSpecialRoomRules rules = dungeonMap.FloorConfig.SpecialRoomRules;
+            _specialRuleBuffer.Clear();
+            CollectAvailableSpecialRoomRules(dungeonMap, _specialRuleBuffer);
 
-            if (rules == null)
+            if (_specialRuleBuffer.Count == 0)
             {
                 return;
             }
-
-            _specialRuleBuffer.Clear();
-            rules.CollectAvailableRules(dungeonMap.FloorConfig.FloorIndex, _specialRuleBuffer);
 
             for (int index = 0; index < _specialRuleBuffer.Count; index++)
             {
@@ -184,6 +182,27 @@ namespace CuteIssac.Dungeon
                 }
 
                 secretRoomNode.SetDistanceFromStart(candidate.DistanceFromStart);
+            }
+        }
+
+        private static void CollectAvailableSpecialRoomRules(DungeonMap dungeonMap, List<SpecialRoomRuleData> results)
+        {
+            if (dungeonMap == null || dungeonMap.FloorConfig == null || results == null)
+            {
+                return;
+            }
+
+            StageProfile stageProfile = dungeonMap.StageProfile;
+            if (stageProfile != null)
+            {
+                stageProfile.CollectAvailableSpecialRoomRules(results);
+                return;
+            }
+
+            FloorSpecialRoomRules rules = dungeonMap.FloorConfig.SpecialRoomRules;
+            if (rules != null)
+            {
+                rules.CollectAvailableRules(dungeonMap.FloorConfig.FloorIndex, results);
             }
         }
 
